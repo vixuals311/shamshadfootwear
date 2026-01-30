@@ -10,6 +10,7 @@ import {
   Trash2,
   Package,
   MoreHorizontal,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,64 +29,96 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  category: string;
-  stock: number;
-  price: number;
-  supplier: string;
-}
-
-const initialProducts: Product[] = [
-  { id: "1", name: "Wireless Mouse", sku: "WM-001", category: "Electronics", stock: 5, price: 29.99, supplier: "TechSupply Co" },
-  { id: "2", name: "USB-C Cable (3ft)", sku: "USB-C-3F", category: "Accessories", stock: 8, price: 12.99, supplier: "CablePro" },
-  { id: "3", name: "Laptop Stand", sku: "LS-100", category: "Furniture", stock: 3, price: 79.99, supplier: "OfficeGear" },
-  { id: "4", name: "Webcam HD", sku: "WC-HD-01", category: "Electronics", stock: 2, price: 89.99, supplier: "TechSupply Co" },
-  { id: "5", name: "Mechanical Keyboard", sku: "MK-PRO", category: "Electronics", stock: 25, price: 149.99, supplier: "KeyMaster" },
-  { id: "6", name: "Monitor 27\"", sku: "MON-27-4K", category: "Electronics", stock: 12, price: 399.99, supplier: "DisplayTech" },
-  { id: "7", name: "Desk Lamp LED", sku: "DL-LED-01", category: "Furniture", stock: 40, price: 34.99, supplier: "LightHouse" },
-  { id: "8", name: "Headphones Pro", sku: "HP-PRO-X", category: "Electronics", stock: 18, price: 199.99, supplier: "AudioMax" },
-];
+import { Brand, Product, SizeBundlePricing } from "@/types";
+import { initialBrands, initialProducts } from "@/data/mockData";
 
 const Inventory = () => {
+  const [brands, setBrands] = useState<Brand[]>(initialBrands);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
+  const [isAddBrandDialogOpen, setIsAddBrandDialogOpen] = useState(false);
+  const [newBrandName, setNewBrandName] = useState("");
   const [newProduct, setNewProduct] = useState({
     name: "",
-    sku: "",
+    articleNumber: "",
+    brandId: "",
     category: "",
     stock: "",
-    price: "",
+    defaultPairsPerBundle: "6",
     supplier: "",
+    sizeBundles: [
+      { sizeRange: "7-10" as const, pricePerPair: "" },
+      { sizeRange: "4-6" as const, pricePerPair: "" },
+      { sizeRange: "1-3" as const, pricePerPair: "" },
+    ],
   });
 
   const filteredProducts = products.filter(
     (product) =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.articleNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleAddBrand = () => {
+    if (newBrandName.trim()) {
+      const newBrand: Brand = {
+        id: Date.now().toString(),
+        name: newBrandName.trim(),
+      };
+      setBrands([...brands, newBrand]);
+      setNewBrandName("");
+      setIsAddBrandDialogOpen(false);
+    }
+  };
+
   const handleAddProduct = () => {
-    if (newProduct.name && newProduct.sku) {
+    if (newProduct.name && newProduct.articleNumber && newProduct.brandId) {
+      const selectedBrand = brands.find((b) => b.id === newProduct.brandId);
+      const sizeBundles: SizeBundlePricing[] = newProduct.sizeBundles.map((sb) => ({
+        sizeRange: sb.sizeRange,
+        pricePerPair: parseFloat(sb.pricePerPair as string) || 0,
+      }));
+
       const product: Product = {
         id: Date.now().toString(),
         name: newProduct.name,
-        sku: newProduct.sku,
+        articleNumber: newProduct.articleNumber,
+        brandId: newProduct.brandId,
+        brandName: selectedBrand?.name || "Unknown",
         category: newProduct.category || "Uncategorized",
         stock: parseInt(newProduct.stock) || 0,
-        price: parseFloat(newProduct.price) || 0,
+        sizeBundles,
+        defaultPairsPerBundle: parseInt(newProduct.defaultPairsPerBundle) || 6,
         supplier: newProduct.supplier || "N/A",
       };
       setProducts([product, ...products]);
-      setNewProduct({ name: "", sku: "", category: "", stock: "", price: "", supplier: "" });
-      setIsAddDialogOpen(false);
+      setNewProduct({
+        name: "",
+        articleNumber: "",
+        brandId: "",
+        category: "",
+        stock: "",
+        defaultPairsPerBundle: "6",
+        supplier: "",
+        sizeBundles: [
+          { sizeRange: "7-10", pricePerPair: "" },
+          { sizeRange: "4-6", pricePerPair: "" },
+          { sizeRange: "1-3", pricePerPair: "" },
+        ],
+      });
+      setIsAddProductDialogOpen(false);
     }
   };
 
@@ -93,10 +126,23 @@ const Inventory = () => {
     setProducts(products.filter((p) => p.id !== id));
   };
 
+  const handleDeleteBrand = (id: string) => {
+    setBrands(brands.filter((b) => b.id !== id));
+  };
+
   const getStockStatus = (stock: number) => {
     if (stock <= 5) return { label: "Critical", class: "status-badge-danger" };
     if (stock <= 15) return { label: "Low", class: "status-badge-warning" };
     return { label: "In Stock", class: "status-badge-success" };
+  };
+
+  const updateSizeBundlePrice = (sizeRange: string, price: string) => {
+    setNewProduct({
+      ...newProduct,
+      sizeBundles: newProduct.sizeBundles.map((sb) =>
+        sb.sizeRange === sizeRange ? { ...sb, pricePerPair: price } : sb
+      ),
+    });
   };
 
   return (
@@ -110,10 +156,57 @@ const Inventory = () => {
         <div>
           <h2 className="text-2xl font-bold text-foreground">Inventory</h2>
           <p className="text-muted-foreground">
-            Manage your products and stock levels
+            Manage your products, brands, and stock levels
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Brand Management Dialog */}
+          <Dialog open={isAddBrandDialogOpen} onOpenChange={setIsAddBrandDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Tag className="w-4 h-4" />
+                Manage Brands
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Manage Brands</DialogTitle>
+                <DialogDescription>
+                  Add or remove brands for your products.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter brand name"
+                    value={newBrandName}
+                    onChange={(e) => setNewBrandName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddBrand()}
+                  />
+                  <Button onClick={handleAddBrand}>Add</Button>
+                </div>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {brands.map((brand) => (
+                    <div
+                      key={brand.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                    >
+                      <span className="font-medium">{brand.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteBrand(brand.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <Button variant="outline" size="sm" className="gap-2">
             <Upload className="w-4 h-4" />
             Import
@@ -122,18 +215,20 @@ const Inventory = () => {
             <Download className="w-4 h-4" />
             Export
           </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+
+          {/* Add Product Dialog */}
+          <Dialog open={isAddProductDialogOpen} onOpenChange={setIsAddProductDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />
                 Add Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Product</DialogTitle>
                 <DialogDescription>
-                  Enter the product details below.
+                  Enter the product details with size bundle pricing.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -150,18 +245,39 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="sku">SKU</Label>
+                    <Label htmlFor="articleNumber">Article Number / SKU</Label>
                     <Input
-                      id="sku"
-                      value={newProduct.sku}
+                      id="articleNumber"
+                      value={newProduct.articleNumber}
                       onChange={(e) =>
-                        setNewProduct({ ...newProduct, sku: e.target.value })
+                        setNewProduct({ ...newProduct, articleNumber: e.target.value })
                       }
-                      placeholder="Enter SKU"
+                      placeholder="e.g., CC-001"
                     />
                   </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="brand">Brand</Label>
+                    <Select
+                      value={newProduct.brandId}
+                      onValueChange={(value) =>
+                        setNewProduct({ ...newProduct, brandId: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select brand" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {brands.map((brand) => (
+                          <SelectItem key={brand.id} value={brand.id}>
+                            {brand.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
                     <Input
@@ -170,24 +286,14 @@ const Inventory = () => {
                       onChange={(e) =>
                         setNewProduct({ ...newProduct, category: e.target.value })
                       }
-                      placeholder="Enter category"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="supplier">Supplier</Label>
-                    <Input
-                      id="supplier"
-                      value={newProduct.supplier}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, supplier: e.target.value })
-                      }
-                      placeholder="Enter supplier"
+                      placeholder="e.g., Shoes, Sandals"
                     />
                   </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="stock">Stock Quantity</Label>
+                    <Label htmlFor="stock">Stock (Bundles)</Label>
                     <Input
                       id="stock"
                       type="number"
@@ -199,22 +305,61 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="price">Unit Price ($)</Label>
+                    <Label htmlFor="pairsPerBundle">Pairs per Bundle</Label>
                     <Input
-                      id="price"
+                      id="pairsPerBundle"
                       type="number"
-                      step="0.01"
-                      value={newProduct.price}
+                      value={newProduct.defaultPairsPerBundle}
                       onChange={(e) =>
-                        setNewProduct({ ...newProduct, price: e.target.value })
+                        setNewProduct({ ...newProduct, defaultPairsPerBundle: e.target.value })
                       }
-                      placeholder="0.00"
+                      placeholder="6"
                     />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="supplier">Supplier</Label>
+                  <Input
+                    id="supplier"
+                    value={newProduct.supplier}
+                    onChange={(e) =>
+                      setNewProduct({ ...newProduct, supplier: e.target.value })
+                    }
+                    placeholder="Enter supplier name"
+                  />
+                </div>
+
+                {/* Size Bundle Pricing */}
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Size Bundle Pricing (Rs per pair)</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    {newProduct.sizeBundles.map((sb) => (
+                      <div key={sb.sizeRange} className="space-y-2">
+                        <Label className="text-sm text-muted-foreground">
+                          Size {sb.sizeRange}
+                        </Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            Rs
+                          </span>
+                          <Input
+                            type="number"
+                            value={sb.pricePerPair}
+                            onChange={(e) =>
+                              updateSizeBundlePrice(sb.sizeRange, e.target.value)
+                            }
+                            className="pl-10"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setIsAddProductDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button onClick={handleAddProduct}>Add Product</Button>
@@ -234,7 +379,7 @@ const Inventory = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search products by name, SKU, or category..."
+            placeholder="Search by name, article number, brand, or category..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -258,11 +403,11 @@ const Inventory = () => {
             <thead>
               <tr>
                 <th>Product</th>
-                <th>SKU</th>
-                <th>Category</th>
+                <th>Article #</th>
+                <th>Brand</th>
+                <th>Size Pricing (Rs/pair)</th>
                 <th>Stock</th>
-                <th>Price</th>
-                <th>Supplier</th>
+                <th>Pairs/Bundle</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
@@ -282,18 +427,32 @@ const Inventory = () => {
                         <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                           <Package className="w-5 h-5 text-muted-foreground" />
                         </div>
-                        <span className="font-medium text-foreground">
-                          {product.name}
-                        </span>
+                        <div>
+                          <span className="font-medium text-foreground block">
+                            {product.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {product.category}
+                          </span>
+                        </div>
                       </div>
                     </td>
                     <td className="text-muted-foreground font-mono text-sm">
-                      {product.sku}
+                      {product.articleNumber}
                     </td>
                     <td>
                       <span className="status-badge status-badge-default">
-                        {product.category}
+                        {product.brandName}
                       </span>
+                    </td>
+                    <td>
+                      <div className="flex flex-col gap-1 text-xs">
+                        {product.sizeBundles.map((sb) => (
+                          <span key={sb.sizeRange} className="text-muted-foreground">
+                            <span className="font-medium text-foreground">{sb.sizeRange}:</span> Rs {sb.pricePerPair}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td>
                       <div className="flex items-center gap-2">
@@ -303,8 +462,7 @@ const Inventory = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="font-medium">${product.price.toFixed(2)}</td>
-                    <td className="text-muted-foreground">{product.supplier}</td>
+                    <td className="font-medium">{product.defaultPairsPerBundle}</td>
                     <td>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

@@ -12,13 +12,11 @@ import {
   User,
   Package,
   Calculator,
-  Percent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -40,88 +38,45 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  price: number;
-  stock: number;
-}
-
-interface InvoiceItem {
-  id: string;
-  productId: string;
-  name: string;
-  quantity: number;
-  price: number;
-}
-
-const clients: Client[] = [
-  { id: "1", name: "Acme Corp", email: "billing@acme.com" },
-  { id: "2", name: "Stark Industries", email: "accounts@stark.com" },
-  { id: "3", name: "Wayne Enterprises", email: "finance@wayne.com" },
-  { id: "4", name: "Oscorp", email: "billing@oscorp.com" },
-  { id: "5", name: "Umbrella Corp", email: "payments@umbrella.com" },
-];
-
-const products: Product[] = [
-  { id: "1", name: "Wireless Mouse", sku: "WM-001", price: 29.99, stock: 50 },
-  { id: "2", name: "USB-C Cable (3ft)", sku: "USB-C-3F", price: 12.99, stock: 100 },
-  { id: "3", name: "Laptop Stand", sku: "LS-100", price: 79.99, stock: 25 },
-  { id: "4", name: "Webcam HD", sku: "WC-HD-01", price: 89.99, stock: 30 },
-  { id: "5", name: "Mechanical Keyboard", sku: "MK-PRO", price: 149.99, stock: 40 },
-  { id: "6", name: "Monitor 27\"", sku: "MON-27-4K", price: 399.99, stock: 15 },
-  { id: "7", name: "Headphones Pro", sku: "HP-PRO-X", price: 199.99, stock: 35 },
-];
-
-const paymentAccounts = [
-  { id: "1", name: "Bank A - Main Account" },
-  { id: "2", name: "Bank B - Business" },
-  { id: "3", name: "PayPal Business" },
-];
+import { Client, Product, InvoiceItem, SizeBundlePricing } from "@/types";
+import { initialClients, initialProducts, paymentAccounts } from "@/data/mockData";
 
 const NewInvoice = () => {
   const navigate = useNavigate();
+  const [clients] = useState<Client[]>(initialClients);
+  const [products] = useState<Product[]>(initialProducts);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientOpen, setClientOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
   const [items, setItems] = useState<InvoiceItem[]>([]);
-  const [showDiscount, setShowDiscount] = useState(false);
-  const [discountPercent, setDiscountPercent] = useState(0);
   const [taxPercent, setTaxPercent] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "account">("cash");
   const [selectedAccount, setSelectedAccount] = useState("");
+  const [amountReceived, setAmountReceived] = useState("");
   const [notes, setNotes] = useState("");
 
-  const addProduct = (product: Product) => {
-    const existingItem = items.find((item) => item.productId === product.id);
-    if (existingItem) {
-      setItems(
-        items.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setItems([
-        ...items,
-        {
-          id: Date.now().toString(),
-          productId: product.id,
-          name: product.name,
-          quantity: 1,
-          price: product.price,
-        },
-      ]);
-    }
+  const addProduct = (product: Product, sizeBundle: SizeBundlePricing) => {
+    const itemId = `${product.id}-${sizeBundle.sizeRange}-${Date.now()}`;
+    const quantity = 1;
+    const totalPairs = quantity * product.defaultPairsPerBundle;
+    const total = totalPairs * sizeBundle.pricePerPair;
+
+    setItems([
+      ...items,
+      {
+        id: itemId,
+        productId: product.id,
+        productName: product.name,
+        articleNumber: product.articleNumber,
+        brandName: product.brandName,
+        sizeRange: sizeBundle.sizeRange,
+        quantity,
+        pairsPerBundle: product.defaultPairsPerBundle,
+        pricePerPair: sizeBundle.pricePerPair,
+        discount: 0,
+        total,
+      },
+    ]);
     setProductOpen(false);
   };
 
@@ -130,7 +85,29 @@ const NewInvoice = () => {
       removeItem(id);
       return;
     }
-    setItems(items.map((item) => (item.id === id ? { ...item, quantity } : item)));
+    setItems(
+      items.map((item) => {
+        if (item.id === id) {
+          const totalPairs = quantity * item.pairsPerBundle;
+          const total = totalPairs * item.pricePerPair - item.discount;
+          return { ...item, quantity, total };
+        }
+        return item;
+      })
+    );
+  };
+
+  const updateItemDiscount = (id: string, discount: number) => {
+    setItems(
+      items.map((item) => {
+        if (item.id === id) {
+          const totalPairs = item.quantity * item.pairsPerBundle;
+          const total = totalPairs * item.pricePerPair - discount;
+          return { ...item, discount, total: Math.max(0, total) };
+        }
+        return item;
+      })
+    );
   };
 
   const removeItem = (id: string) => {
@@ -138,13 +115,18 @@ const NewInvoice = () => {
   };
 
   const calculations = useMemo(() => {
-    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const discount = showDiscount ? (subtotal * discountPercent) / 100 : 0;
-    const afterDiscount = subtotal - discount;
+    const subtotal = items.reduce(
+      (sum, item) => sum + item.quantity * item.pairsPerBundle * item.pricePerPair,
+      0
+    );
+    const totalDiscount = items.reduce((sum, item) => sum + item.discount, 0);
+    const afterDiscount = subtotal - totalDiscount;
     const tax = (afterDiscount * taxPercent) / 100;
     const total = afterDiscount + tax;
-    return { subtotal, discount, tax, total };
-  }, [items, showDiscount, discountPercent, taxPercent]);
+    const received = parseFloat(amountReceived) || 0;
+    const balance = total - received;
+    return { subtotal, totalDiscount, tax, total, received, balance };
+  }, [items, taxPercent, amountReceived]);
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
@@ -211,7 +193,7 @@ const NewInvoice = () => {
                     <div className="text-left">
                       <p className="font-medium">{selectedClient.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {selectedClient.email}
+                        {selectedClient.city} • Balance: Rs {selectedClient.currentBalance.toLocaleString()}
                       </p>
                     </div>
                   ) : (
@@ -238,7 +220,7 @@ const NewInvoice = () => {
                           <div>
                             <p className="font-medium">{client.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {client.email}
+                              {client.city} • Balance: Rs {client.currentBalance.toLocaleString()}
                             </p>
                           </div>
                         </CommandItem>
@@ -264,30 +246,37 @@ const NewInvoice = () => {
                     Add Product
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0" align="end">
+                <PopoverContent className="w-[500px] p-0" align="end">
                   <Command>
                     <CommandInput placeholder="Search products..." />
-                    <CommandList>
+                    <CommandList className="max-h-[400px]">
                       <CommandEmpty>No product found.</CommandEmpty>
                       <CommandGroup>
                         {products.map((product) => (
-                          <CommandItem
-                            key={product.id}
-                            value={product.name}
-                            onSelect={() => addProduct(product)}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <div>
-                                <p className="font-medium">{product.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  SKU: {product.sku} • Stock: {product.stock}
-                                </p>
-                              </div>
-                              <span className="font-semibold">
-                                ${product.price.toFixed(2)}
-                              </span>
+                          <div key={product.id} className="border-b last:border-b-0">
+                            <div className="px-3 py-2 bg-muted/30">
+                              <p className="font-medium">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {product.brandName} • {product.articleNumber}
+                              </p>
                             </div>
-                          </CommandItem>
+                            <div className="p-2 grid grid-cols-3 gap-2">
+                              {product.sizeBundles.map((sb) => (
+                                <Button
+                                  key={sb.sizeRange}
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex flex-col h-auto py-2"
+                                  onClick={() => addProduct(product, sb)}
+                                >
+                                  <span className="font-medium">Size {sb.sizeRange}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    Rs {sb.pricePerPair}/pair
+                                  </span>
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </CommandGroup>
                     </CommandList>
@@ -303,51 +292,81 @@ const NewInvoice = () => {
                     key={item.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 border border-border/50"
+                    className="p-3 rounded-lg bg-muted/30 border border-border/50"
                   >
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        ${item.price.toFixed(2)} each
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="font-medium text-foreground">{item.productName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.brandName} • {item.articleNumber} • Size {item.sizeRange}
+                        </p>
+                      </div>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
-                        onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                        className="text-destructive hover:text-destructive h-8 w-8"
+                        onClick={() => removeItem(item.id)}
                       >
-                        -
-                      </Button>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateItemQuantity(item.id, parseInt(e.target.value) || 0)
-                        }
-                        className="w-16 h-8 text-center"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                      >
-                        +
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-                    <p className="w-24 text-right font-semibold">
-                      ${(item.price * item.quantity).toFixed(2)}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => removeItem(item.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="grid grid-cols-4 gap-4 items-center">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Bundles</Label>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                          >
+                            -
+                          </Button>
+                          <Input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) =>
+                              updateItemQuantity(item.id, parseInt(e.target.value) || 0)
+                            }
+                            className="w-14 h-8 text-center"
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                          >
+                            +
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">
+                          Rate ({item.pairsPerBundle} pairs × Rs {item.pricePerPair})
+                        </Label>
+                        <p className="font-medium mt-1">
+                          Rs {(item.quantity * item.pairsPerBundle * item.pricePerPair).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Discount (Rs)</Label>
+                        <Input
+                          type="number"
+                          value={item.discount || ""}
+                          onChange={(e) =>
+                            updateItemDiscount(item.id, parseFloat(e.target.value) || 0)
+                          }
+                          className="h-8 mt-1"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="text-right">
+                        <Label className="text-xs text-muted-foreground">Total</Label>
+                        <p className="font-semibold text-lg mt-1">
+                          Rs {item.total.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -392,69 +411,41 @@ const NewInvoice = () => {
             </h3>
 
             <div className="space-y-4">
-              {/* Discount Toggle */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="discount"
-                    checked={showDiscount}
-                    onCheckedChange={(checked) => setShowDiscount(checked as boolean)}
-                  />
-                  <Label htmlFor="discount" className="text-sm cursor-pointer">
-                    Apply Discount
-                  </Label>
-                </div>
-                {showDiscount && (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      value={discountPercent}
-                      onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
-                      className="w-16 h-8 text-center"
-                    />
-                    <Percent className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-
               {/* Tax */}
               <div className="flex items-center justify-between">
-                <Label className="text-sm">Tax Rate</Label>
+                <Label className="text-sm">Tax Rate (%)</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
                     value={taxPercent}
                     onChange={(e) => setTaxPercent(parseFloat(e.target.value) || 0)}
-                    className="w-16 h-8 text-center"
+                    className="w-20 h-8 text-center"
                   />
-                  <Percent className="w-4 h-4 text-muted-foreground" />
                 </div>
               </div>
 
               <div className="border-t border-border pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>${calculations.subtotal.toFixed(2)}</span>
+                  <span>Rs {calculations.subtotal.toLocaleString()}</span>
                 </div>
-                {showDiscount && calculations.discount > 0 && (
+                {calculations.totalDiscount > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Discount ({discountPercent}%)
-                    </span>
-                    <span className="text-success">
-                      -${calculations.discount.toFixed(2)}
+                    <span className="text-muted-foreground">Total Discount</span>
+                    <span className="text-destructive">
+                      - Rs {calculations.totalDiscount.toLocaleString()}
                     </span>
                   </div>
                 )}
                 {calculations.tax > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Tax ({taxPercent}%)</span>
-                    <span>${calculations.tax.toFixed(2)}</span>
+                    <span>Rs {calculations.tax.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
                   <span>Total</span>
-                  <span className="text-primary">${calculations.total.toFixed(2)}</span>
+                  <span className="text-primary">Rs {calculations.total.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -471,11 +462,11 @@ const NewInvoice = () => {
                 onValueChange={(value: "cash" | "account") => setPaymentMethod(value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select payment method" />
+                  <SelectValue placeholder="Select method" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="account">Bank Account</SelectItem>
+                  <SelectItem value="account">Account</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -492,6 +483,27 @@ const NewInvoice = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-sm">Amount Received (Rs)</Label>
+                <Input
+                  type="number"
+                  value={amountReceived}
+                  onChange={(e) => setAmountReceived(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+
+              {calculations.balance > 0 && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Balance Due</span>
+                    <span className="font-semibold text-destructive">
+                      Rs {calculations.balance.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
           </div>
