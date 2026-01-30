@@ -10,6 +10,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ const navItems = [
   { icon: Users, label: "Clients", path: "/clients" },
   { icon: FileText, label: "Invoices", path: "/invoices" },
   { icon: CreditCard, label: "Payments", path: "/payments" },
+  { icon: Wallet, label: "Recovery", path: "/recovery" },
   { icon: BarChart3, label: "Reports", path: "/reports" },
 ];
 
