@@ -16,7 +16,8 @@ export const initialProducts: Product[] = [
     brandId: "1",
     brandName: "Bata",
     category: "Chappal",
-    stock: 50,
+    stockDozens: 5,
+    pairsPerDozen: 12,
     sizeBundles: [
       { sizeRange: "7-10", pricePerPair: 450 },
       { sizeRange: "4-6", pricePerPair: 400 },
@@ -32,7 +33,8 @@ export const initialProducts: Product[] = [
     brandId: "2",
     brandName: "Service",
     category: "Shoes",
-    stock: 30,
+    stockDozens: 3,
+    pairsPerDozen: 12,
     sizeBundles: [
       { sizeRange: "7-10", pricePerPair: 850 },
       { sizeRange: "4-6", pricePerPair: 750 },
@@ -48,7 +50,8 @@ export const initialProducts: Product[] = [
     brandId: "4",
     brandName: "Metro",
     category: "Joggers",
-    stock: 25,
+    stockDozens: 2,
+    pairsPerDozen: 12,
     sizeBundles: [
       { sizeRange: "7-10", pricePerPair: 1200 },
       { sizeRange: "4-6", pricePerPair: 1100 },
@@ -64,7 +67,8 @@ export const initialProducts: Product[] = [
     brandId: "5",
     brandName: "Urban Sole",
     category: "Sandals",
-    stock: 40,
+    stockDozens: 4,
+    pairsPerDozen: 12,
     sizeBundles: [
       { sizeRange: "7-10", pricePerPair: 550 },
       { sizeRange: "4-6", pricePerPair: 500 },
@@ -80,7 +84,8 @@ export const initialProducts: Product[] = [
     brandId: "2",
     brandName: "Service",
     category: "Formal",
-    stock: 15,
+    stockDozens: 1,
+    pairsPerDozen: 12,
     sizeBundles: [
       { sizeRange: "7-10", pricePerPair: 1800 },
       { sizeRange: "4-6", pricePerPair: 1600 },
@@ -152,6 +157,18 @@ export const initialClients: Client[] = [
     totalSpent: 75000,
     invoiceCount: 8,
   },
+  {
+    id: "6",
+    name: "Lahore Footwear Hub",
+    email: "lahore@footwear.pk",
+    phone: "+92 322 9988776",
+    address: "Liberty Market",
+    city: "Lahore",
+    openingBalance: 8000,
+    currentBalance: 18000,
+    totalSpent: 150000,
+    invoiceCount: 18,
+  },
 ];
 
 export const initialInvoices: Invoice[] = [
@@ -171,16 +188,16 @@ export const initialInvoices: Invoice[] = [
         quantity: 2,
         pairsPerBundle: 6,
         pricePerPair: 450,
-        discount: 100,
-        total: 5300,
+        discountPerPair: 10,
+        total: 5280, // 2 * 6 * (450 - 10)
       },
     ],
     subtotal: 5400,
-    totalDiscount: 100,
+    totalDiscount: 120, // 2 * 6 * 10
     tax: 0,
-    total: 5300,
+    total: 5280,
     paymentMethod: "cash",
-    amountReceived: 5300,
+    amountReceived: 5280,
     balanceDue: 0,
     status: "paid",
     createdAt: new Date("2026-01-28T10:30:00"),
@@ -201,7 +218,7 @@ export const initialInvoices: Invoice[] = [
         quantity: 3,
         pairsPerBundle: 6,
         pricePerPair: 750,
-        discount: 0,
+        discountPerPair: 0,
         total: 13500,
       },
     ],
@@ -230,11 +247,15 @@ export const initialRecoveries: Recovery[] = [
   },
   {
     id: "2",
-    city: "Karachi",
+    city: "Lahore",
     amount: 25000,
     date: new Date("2026-01-20"),
     notes: "City-wise collection",
     type: "city",
+    clientAmounts: [
+      { clientId: "1", clientName: "Ahmed Traders", amount: 15000 },
+      { clientId: "6", clientName: "Lahore Footwear Hub", amount: 10000 },
+    ],
   },
 ];
 
