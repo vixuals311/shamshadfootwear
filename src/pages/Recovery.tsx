@@ -9,6 +9,7 @@ import {
   MapPin,
   Calendar,
   Download,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -35,6 +46,14 @@ import { Client, Recovery } from "@/types";
 import { initialClients, initialRecoveries } from "@/data/mockData";
 import { format } from "date-fns";
 
+interface CityClientRecovery {
+  clientId: string;
+  clientName: string;
+  phone: string;
+  currentBalance: number;
+  recoveryAmount: string;
+}
+
 const RecoveryPage = () => {
   const [clients] = useState<Client[]>(initialClients);
   const [recoveries, setRecoveries] = useState<Recovery[]>(initialRecoveries);
@@ -44,17 +63,19 @@ const RecoveryPage = () => {
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState("");
   
+  // Confirmation dialogs
+  const [showAddClientRecoveryConfirm, setShowAddClientRecoveryConfirm] = useState(false);
+  const [showAddCityRecoveryConfirm, setShowAddCityRecoveryConfirm] = useState(false);
+  
   const [clientRecovery, setClientRecovery] = useState({
     clientId: "",
     amount: "",
     notes: "",
   });
 
-  const [cityRecovery, setCityRecovery] = useState({
-    city: "",
-    amount: "",
-    notes: "",
-  });
+  const [cityRecoveryCity, setCityRecoveryCity] = useState("");
+  const [cityRecoveryNotes, setCityRecoveryNotes] = useState("");
+  const [cityClientRecoveries, setCityClientRecoveries] = useState<CityClientRecovery[]>([]);
 
   // Get unique cities
   const cities = useMemo(() => {
@@ -66,6 +87,37 @@ const RecoveryPage = () => {
     if (!selectedCity) return [];
     return clients.filter((c) => c.city === selectedCity);
   }, [clients, selectedCity]);
+
+  // Get clients by city for city recovery
+  const clientsForCityRecovery = useMemo(() => {
+    if (!cityRecoveryCity) return [];
+    return clients.filter((c) => c.city === cityRecoveryCity).map(c => ({
+      clientId: c.id,
+      clientName: c.name,
+      phone: c.phone,
+      currentBalance: c.currentBalance,
+      recoveryAmount: "",
+    }));
+  }, [clients, cityRecoveryCity]);
+
+  // Update city client recoveries when city changes
+  const handleCityChange = (city: string) => {
+    setCityRecoveryCity(city);
+    const cityClients = clients.filter((c) => c.city === city).map(c => ({
+      clientId: c.id,
+      clientName: c.name,
+      phone: c.phone,
+      currentBalance: c.currentBalance,
+      recoveryAmount: "",
+    }));
+    setCityClientRecoveries(cityClients);
+  };
+
+  const updateClientRecoveryAmount = (clientId: string, amount: string) => {
+    setCityClientRecoveries(prev => 
+      prev.map(c => c.clientId === clientId ? { ...c, recoveryAmount: amount } : c)
+    );
+  };
 
   const filteredRecoveries = recoveries.filter(
     (recovery) =>
@@ -87,23 +139,40 @@ const RecoveryPage = () => {
       };
       setRecoveries([newRecovery, ...recoveries]);
       setClientRecovery({ clientId: "", amount: "", notes: "" });
+      setShowAddClientRecoveryConfirm(false);
       setIsAddClientRecoveryOpen(false);
     }
   };
 
   const handleAddCityRecovery = () => {
-    if (cityRecovery.city && cityRecovery.amount) {
-      const newRecovery: Recovery = {
-        id: Date.now().toString(),
-        city: cityRecovery.city,
-        amount: parseFloat(cityRecovery.amount),
-        date: new Date(),
-        notes: cityRecovery.notes,
-        type: "city",
-      };
-      setRecoveries([newRecovery, ...recoveries]);
-      setCityRecovery({ city: "", amount: "", notes: "" });
-      setIsAddCityRecoveryOpen(false);
+    if (cityRecoveryCity) {
+      const clientAmounts = cityClientRecoveries
+        .filter(c => parseFloat(c.recoveryAmount) > 0)
+        .map(c => ({
+          clientId: c.clientId,
+          clientName: c.clientName,
+          amount: parseFloat(c.recoveryAmount),
+        }));
+
+      const totalAmount = clientAmounts.reduce((sum, c) => sum + c.amount, 0);
+
+      if (totalAmount > 0) {
+        const newRecovery: Recovery = {
+          id: Date.now().toString(),
+          city: cityRecoveryCity,
+          amount: totalAmount,
+          date: new Date(),
+          notes: cityRecoveryNotes,
+          type: "city",
+          clientAmounts,
+        };
+        setRecoveries([newRecovery, ...recoveries]);
+        setCityRecoveryCity("");
+        setCityRecoveryNotes("");
+        setCityClientRecoveries([]);
+        setShowAddCityRecoveryConfirm(false);
+        setIsAddCityRecoveryOpen(false);
+      }
     }
   };
 
@@ -124,7 +193,7 @@ const RecoveryPage = () => {
           th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: left; }
           th { background-color: #f5f5f5; font-weight: bold; }
           .amount-col { width: 150px; }
-          .recovery-input { width: 100%; border: none; border-bottom: 1px solid #999; padding: 5px 0; }
+          .recovery-input { width: 100%; border: none; border-bottom: 1px solid #999; padding: 5px 0; min-height: 20px; }
           .pending { color: #dc2626; font-weight: bold; }
           @media print { 
             button { display: none; }
@@ -174,6 +243,10 @@ const RecoveryPage = () => {
   const totalRecovery = useMemo(() => {
     return recoveries.reduce((sum, r) => sum + r.amount, 0);
   }, [recoveries]);
+
+  const cityRecoveryTotal = useMemo(() => {
+    return cityClientRecoveries.reduce((sum, c) => sum + (parseFloat(c.recoveryAmount) || 0), 0);
+  }, [cityClientRecoveries]);
 
   return (
     <div className="space-y-6">
@@ -331,6 +404,11 @@ const RecoveryPage = () => {
                     </td>
                     <td className="font-medium">
                       {recovery.type === "client" ? recovery.clientName : recovery.city}
+                      {recovery.type === "city" && recovery.clientAmounts && (
+                        <p className="text-xs text-muted-foreground">
+                          {recovery.clientAmounts.length} clients
+                        </p>
+                      )}
                     </td>
                     <td className="font-semibold text-success">
                       Rs {recovery.amount.toLocaleString()}
@@ -391,6 +469,7 @@ const RecoveryPage = () => {
                 <tr>
                   <th>Date & Time</th>
                   <th>City</th>
+                  <th>Clients</th>
                   <th>Amount</th>
                   <th>Notes</th>
                 </tr>
@@ -407,6 +486,17 @@ const RecoveryPage = () => {
                         </div>
                       </td>
                       <td className="font-medium">{recovery.city}</td>
+                      <td>
+                        {recovery.clientAmounts && (
+                          <div className="text-xs space-y-1">
+                            {recovery.clientAmounts.map((ca, idx) => (
+                              <div key={idx} className="text-muted-foreground">
+                                {ca.clientName}: Rs {ca.amount.toLocaleString()}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
                       <td className="font-semibold text-success">
                         Rs {recovery.amount.toLocaleString()}
                       </td>
@@ -481,28 +571,26 @@ const RecoveryPage = () => {
             <Button variant="outline" onClick={() => setIsAddClientRecoveryOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddClientRecovery}>Add Recovery</Button>
+            <Button onClick={() => setShowAddClientRecoveryConfirm(true)}>Add Recovery</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Add City Recovery Dialog */}
       <Dialog open={isAddCityRecoveryOpen} onOpenChange={setIsAddCityRecoveryOpen}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add City Recovery</DialogTitle>
             <DialogDescription>
-              Record a bulk recovery for all clients in a city.
+              Record recoveries for all clients in a city at once.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label>Select City</Label>
               <Select
-                value={cityRecovery.city}
-                onValueChange={(value) =>
-                  setCityRecovery({ ...cityRecovery, city: value })
-                }
+                value={cityRecoveryCity}
+                onValueChange={handleCityChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a city" />
@@ -510,30 +598,64 @@ const RecoveryPage = () => {
                 <SelectContent>
                   {cities.map((city) => (
                     <SelectItem key={city} value={city}>
-                      {city}
+                      {city} ({clients.filter((c) => c.city === city).length} clients)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Total Amount (Rs)</Label>
-              <Input
-                type="number"
-                value={cityRecovery.amount}
-                onChange={(e) =>
-                  setCityRecovery({ ...cityRecovery, amount: e.target.value })
-                }
-                placeholder="Enter total amount"
-              />
-            </div>
+
+            {cityClientRecoveries.length > 0 && (
+              <div className="space-y-3">
+                <Label>Client Recoveries</Label>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Client</th>
+                        <th>Phone</th>
+                        <th>Pending Balance</th>
+                        <th>Recovery Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cityClientRecoveries.map((client) => (
+                        <tr key={client.clientId}>
+                          <td className="font-medium">{client.clientName}</td>
+                          <td className="text-muted-foreground text-sm">{client.phone}</td>
+                          <td className="text-destructive font-medium">
+                            Rs {client.currentBalance.toLocaleString()}
+                          </td>
+                          <td>
+                            <Input
+                              type="number"
+                              value={client.recoveryAmount}
+                              onChange={(e) => updateClientRecoveryAmount(client.clientId, e.target.value)}
+                              placeholder="0"
+                              className="h-8 w-32"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex justify-end p-3 bg-muted/30 rounded-lg">
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Total Recovery</p>
+                    <p className="text-xl font-bold text-success">
+                      Rs {cityRecoveryTotal.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Notes (Optional)</Label>
               <Textarea
-                value={cityRecovery.notes}
-                onChange={(e) =>
-                  setCityRecovery({ ...cityRecovery, notes: e.target.value })
-                }
+                value={cityRecoveryNotes}
+                onChange={(e) => setCityRecoveryNotes(e.target.value)}
                 placeholder="Add any notes..."
                 rows={2}
               />
@@ -543,7 +665,12 @@ const RecoveryPage = () => {
             <Button variant="outline" onClick={() => setIsAddCityRecoveryOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddCityRecovery}>Add Recovery</Button>
+            <Button 
+              onClick={() => setShowAddCityRecoveryConfirm(true)}
+              disabled={cityRecoveryTotal === 0}
+            >
+              Add Recovery
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -594,6 +721,39 @@ const RecoveryPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={showAddClientRecoveryConfirm} onOpenChange={setShowAddClientRecoveryConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add Client Recovery</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to add a recovery of Rs {parseFloat(clientRecovery.amount || "0").toLocaleString()} for{" "}
+              {clients.find(c => c.id === clientRecovery.clientId)?.name}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAddClientRecovery}>Add Recovery</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showAddCityRecoveryConfirm} onOpenChange={setShowAddCityRecoveryConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add City Recovery</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to add a total recovery of Rs {cityRecoveryTotal.toLocaleString()} for{" "}
+              {cityClientRecoveries.filter(c => parseFloat(c.recoveryAmount) > 0).length} clients in {cityRecoveryCity}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAddCityRecovery}>Add Recovery</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

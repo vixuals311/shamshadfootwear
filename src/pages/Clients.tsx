@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -19,6 +19,8 @@ import {
   CreditCard,
   Calendar,
   Eye,
+  Printer,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +39,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -54,6 +66,8 @@ const Clients = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
+  const [showAddClientConfirm, setShowAddClientConfirm] = useState(false);
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
@@ -88,12 +102,16 @@ const Clients = () => {
       };
       setClients([client, ...clients]);
       setNewClient({ name: "", email: "", phone: "", address: "", city: "", openingBalance: "", notes: "" });
+      setShowAddClientConfirm(false);
       setIsAddDialogOpen(false);
     }
   };
 
-  const handleDeleteClient = (id: string) => {
-    setClients(clients.filter((c) => c.id !== id));
+  const handleDeleteClient = () => {
+    if (deleteClientId) {
+      setClients(clients.filter((c) => c.id !== deleteClientId));
+      setDeleteClientId(null);
+    }
   };
 
   const getClientInvoices = (clientId: string) => {
@@ -101,7 +119,117 @@ const Clients = () => {
   };
 
   const getClientRecoveries = (clientId: string) => {
-    return recoveries.filter((rec) => rec.clientId === clientId);
+    // Get direct client recoveries
+    const directRecoveries = recoveries.filter((rec) => rec.clientId === clientId);
+    
+    // Get recoveries from city-wise that include this client
+    const cityRecoveries = recoveries
+      .filter((rec) => rec.type === "city" && rec.clientAmounts?.some(ca => ca.clientId === clientId))
+      .map((rec) => {
+        const clientAmount = rec.clientAmounts?.find(ca => ca.clientId === clientId);
+        return {
+          ...rec,
+          amount: clientAmount?.amount || 0,
+          isFromCity: true,
+        };
+      });
+
+    return [...directRecoveries.map(r => ({ ...r, isFromCity: false })), ...cityRecoveries];
+  };
+
+  const generatePrintContent = (type: "bills" | "recoveries", clientName: string, data: any[]) => {
+    const title = type === "bills" ? "Bills History" : "Recoveries History";
+    
+    let tableContent = "";
+    if (type === "bills") {
+      tableContent = `
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              <th>Date & Time</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map((invoice: Invoice) => `
+              <tr>
+                <td>${invoice.invoiceNumber}</td>
+                <td>${format(invoice.createdAt, "dd MMM yyyy, hh:mm a")}</td>
+                <td>${invoice.items.length} items</td>
+                <td>Rs ${invoice.total.toLocaleString()}</td>
+                <td>${invoice.status}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } else {
+      tableContent = `
+        <table>
+          <thead>
+            <tr>
+              <th>Date & Time</th>
+              <th>Amount</th>
+              <th>Category</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map((recovery: any) => `
+              <tr>
+                <td>${format(recovery.date, "dd MMM yyyy, hh:mm a")}</td>
+                <td>Rs ${recovery.amount.toLocaleString()}</td>
+                <td>${recovery.isFromCity ? "City Recovery" : "Individual"}</td>
+                <td>${recovery.notes || "-"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title} - ${clientName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { text-align: center; margin-bottom: 5px; }
+          h3 { text-align: center; color: #666; margin-top: 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: left; }
+          th { background-color: #f5f5f5; font-weight: bold; }
+          @media print { button { display: none; } }
+        </style>
+      </head>
+      <body>
+        <h1>${title}</h1>
+        <h3>${clientName} - ${format(new Date(), "dd MMM yyyy")}</h3>
+        ${tableContent}
+        <script>window.print();</script>
+      </body>
+      </html>
+    `;
+  };
+
+  const handlePrint = (type: "bills" | "recoveries") => {
+    if (!selectedClient) return;
+    const data = type === "bills" ? getClientInvoices(selectedClient.id) : getClientRecoveries(selectedClient.id);
+    const content = generatePrintContent(type, selectedClient.name, data);
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(content);
+      printWindow.document.close();
+    }
+  };
+
+  const handleDownloadPDF = (type: "bills" | "recoveries") => {
+    // For now, we'll use print functionality for PDF
+    handlePrint(type);
   };
 
   // Client Detail View
@@ -185,18 +313,30 @@ const Clients = () => {
 
         {/* Tabs for Bills and Recoveries */}
         <Tabs defaultValue="bills" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="bills" className="gap-2">
-              <FileText className="w-4 h-4" />
-              Bills ({clientInvoices.length})
-            </TabsTrigger>
-            <TabsTrigger value="recoveries" className="gap-2">
-              <CreditCard className="w-4 h-4" />
-              Recoveries ({clientRecoveries.length})
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between mb-4">
+            <TabsList>
+              <TabsTrigger value="bills" className="gap-2">
+                <FileText className="w-4 h-4" />
+                Bills ({clientInvoices.length})
+              </TabsTrigger>
+              <TabsTrigger value="recoveries" className="gap-2">
+                <CreditCard className="w-4 h-4" />
+                Recoveries ({clientRecoveries.length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="bills">
+            <div className="flex justify-end gap-2 mb-4">
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint("bills")}>
+                <Printer className="w-4 h-4" />
+                Print
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => handleDownloadPDF("bills")}>
+                <Download className="w-4 h-4" />
+                Download PDF
+              </Button>
+            </div>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -260,6 +400,16 @@ const Clients = () => {
           </TabsContent>
 
           <TabsContent value="recoveries">
+            <div className="flex justify-end gap-2 mb-4">
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint("recoveries")}>
+                <Printer className="w-4 h-4" />
+                Print
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => handleDownloadPDF("recoveries")}>
+                <Download className="w-4 h-4" />
+                Download PDF
+              </Button>
+            </div>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -271,11 +421,12 @@ const Clients = () => {
                     <tr>
                       <th>Date & Time</th>
                       <th>Amount</th>
+                      <th>Category</th>
                       <th>Notes</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {clientRecoveries.map((recovery) => (
+                    {clientRecoveries.map((recovery: any) => (
                       <tr key={recovery.id}>
                         <td>
                           <div className="flex items-center gap-2 text-muted-foreground">
@@ -285,6 +436,14 @@ const Clients = () => {
                         </td>
                         <td className="font-semibold text-success">
                           Rs {recovery.amount.toLocaleString()}
+                        </td>
+                        <td>
+                          <span className={cn(
+                            "status-badge",
+                            recovery.isFromCity ? "status-badge-warning" : "status-badge-success"
+                          )}>
+                            {recovery.isFromCity ? "City Recovery" : "Individual"}
+                          </span>
                         </td>
                         <td className="text-muted-foreground">{recovery.notes || "-"}</td>
                       </tr>
@@ -320,7 +479,7 @@ const Clients = () => {
                       <th>Size</th>
                       <th>Qty</th>
                       <th>Rate</th>
-                      <th>Discount</th>
+                      <th>Discount/Pair</th>
                       <th>Total</th>
                     </tr>
                   </thead>
@@ -337,7 +496,7 @@ const Clients = () => {
                         <td>{item.quantity} × {item.pairsPerBundle}</td>
                         <td>Rs {item.pricePerPair}</td>
                         <td className="text-destructive">
-                          {item.discount > 0 ? `- Rs ${item.discount}` : "-"}
+                          {item.discountPerPair > 0 ? `- Rs ${item.discountPerPair}` : "-"}
                         </td>
                         <td className="font-semibold">Rs {item.total.toLocaleString()}</td>
                       </tr>
@@ -492,7 +651,7 @@ const Clients = () => {
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddClient}>Add Client</Button>
+                <Button onClick={() => setShowAddClientConfirm(true)}>Add Client</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -598,7 +757,7 @@ const Clients = () => {
                       className="gap-2 text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteClient(client.id);
+                        setDeleteClientId(client.id);
                       }}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -704,7 +863,7 @@ const Clients = () => {
                           className="gap-2 text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteClient(client.id);
+                            setDeleteClientId(client.id);
                           }}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -731,6 +890,39 @@ const Clients = () => {
           </p>
         </div>
       )}
+
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={!!deleteClientId} onOpenChange={() => setDeleteClientId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Client</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this client? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteClient} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showAddClientConfirm} onOpenChange={setShowAddClientConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add Client</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to add "{newClient.name}" as a new client?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAddClient}>Add Client</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

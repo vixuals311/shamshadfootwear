@@ -6,7 +6,7 @@ export interface Brand {
 }
 
 export interface SizeBundlePricing {
-  sizeRange: "7-10" | "4-6" | "1-3";
+  sizeRange: string; // Now can be custom like "7-10", "4-6", "1-3" or any custom range
   pricePerPair: number;
 }
 
@@ -17,7 +17,8 @@ export interface Product {
   brandId: string;
   brandName: string;
   category: string;
-  stock: number;
+  stockDozens: number; // Stock in dozens
+  pairsPerDozen: number; // Usually 12, but editable
   sizeBundles: SizeBundlePricing[];
   defaultPairsPerBundle: number; // usually 6
   supplier: string;
@@ -43,11 +44,11 @@ export interface InvoiceItem {
   productName: string;
   articleNumber: string;
   brandName: string;
-  sizeRange: "7-10" | "4-6" | "1-3";
+  sizeRange: string;
   quantity: number; // number of bundles
-  pairsPerBundle: number;
+  pairsPerBundle: number; // editable pairs in this bundle (can be less than default)
   pricePerPair: number;
-  discount: number; // discount in Rs (figures, not percentage)
+  discountPerPair: number; // discount per pair in Rs
   total: number;
 }
 
@@ -79,9 +80,14 @@ export interface Recovery {
   date: Date;
   notes?: string;
   type: "client" | "city";
+  // For city recoveries, track individual client amounts
+  clientAmounts?: { clientId: string; clientName: string; amount: number }[];
 }
 
 export interface PaymentAccount {
   id: string;
   name: string;
 }
+
+// Default size bundles for dropdown
+export const DEFAULT_SIZE_BUNDLES = ["7-10", "4-6", "1-3"];

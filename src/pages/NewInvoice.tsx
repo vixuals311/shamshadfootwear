@@ -37,6 +37,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { Client, Product, InvoiceItem, SizeBundlePricing } from "@/types";
 import { initialClients, initialProducts, paymentAccounts } from "@/data/mockData";
@@ -44,7 +54,7 @@ import { initialClients, initialProducts, paymentAccounts } from "@/data/mockDat
 const NewInvoice = () => {
   const navigate = useNavigate();
   const [clients] = useState<Client[]>(initialClients);
-  const [products] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientOpen, setClientOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
@@ -54,64 +64,109 @@ const NewInvoice = () => {
   const [selectedAccount, setSelectedAccount] = useState("");
   const [amountReceived, setAmountReceived] = useState("");
   const [notes, setNotes] = useState("");
+  const [removeItemId, setRemoveItemId] = useState<string | null>(null);
 
   const addProduct = (product: Product, sizeBundle: SizeBundlePricing) => {
-    const itemId = `${product.id}-${sizeBundle.sizeRange}-${Date.now()}`;
-    const quantity = 1;
-    const totalPairs = quantity * product.defaultPairsPerBundle;
-    const total = totalPairs * sizeBundle.pricePerPair;
+    // Check if same product with same size already exists
+    const existingItemIndex = items.findIndex(
+      (item) => item.productId === product.id && item.sizeRange === sizeBundle.sizeRange
+    );
 
-    setItems([
-      ...items,
-      {
-        id: itemId,
-        productId: product.id,
-        productName: product.name,
-        articleNumber: product.articleNumber,
-        brandName: product.brandName,
-        sizeRange: sizeBundle.sizeRange,
-        quantity,
-        pairsPerBundle: product.defaultPairsPerBundle,
-        pricePerPair: sizeBundle.pricePerPair,
-        discount: 0,
-        total,
-      },
-    ]);
+    if (existingItemIndex !== -1) {
+      // Increment bundle quantity for existing item
+      const updatedItems = [...items];
+      const existingItem = updatedItems[existingItemIndex];
+      const newQuantity = existingItem.quantity + 1;
+      const totalPairs = newQuantity * existingItem.pairsPerBundle;
+      const discountTotal = totalPairs * existingItem.discountPerPair;
+      const total = totalPairs * existingItem.pricePerPair - discountTotal;
+      
+      updatedItems[existingItemIndex] = {
+        ...existingItem,
+        quantity: newQuantity,
+        total: Math.max(0, total),
+      };
+      setItems(updatedItems);
+    } else {
+      // Add new item
+      const itemId = `${product.id}-${sizeBundle.sizeRange}-${Date.now()}`;
+      const quantity = 1;
+      const pairsPerBundle = product.defaultPairsPerBundle;
+      const totalPairs = quantity * pairsPerBundle;
+      const total = totalPairs * sizeBundle.pricePerPair;
+
+      setItems([
+        ...items,
+        {
+          id: itemId,
+          productId: product.id,
+          productName: product.name,
+          articleNumber: product.articleNumber,
+          brandName: product.brandName,
+          sizeRange: sizeBundle.sizeRange,
+          quantity,
+          pairsPerBundle,
+          pricePerPair: sizeBundle.pricePerPair,
+          discountPerPair: 0,
+          total,
+        },
+      ]);
+    }
     setProductOpen(false);
   };
 
   const updateItemQuantity = (id: string, quantity: number) => {
     if (quantity < 1) {
-      removeItem(id);
+      setRemoveItemId(id);
       return;
     }
     setItems(
       items.map((item) => {
         if (item.id === id) {
           const totalPairs = quantity * item.pairsPerBundle;
-          const total = totalPairs * item.pricePerPair - item.discount;
-          return { ...item, quantity, total };
+          const discountTotal = totalPairs * item.discountPerPair;
+          const total = totalPairs * item.pricePerPair - discountTotal;
+          return { ...item, quantity, total: Math.max(0, total) };
         }
         return item;
       })
     );
   };
 
-  const updateItemDiscount = (id: string, discount: number) => {
+  const updateItemPairs = (id: string, pairsPerBundle: number) => {
+    if (pairsPerBundle < 1) return;
+    setItems(
+      items.map((item) => {
+        if (item.id === id) {
+          const totalPairs = item.quantity * pairsPerBundle;
+          const discountTotal = totalPairs * item.discountPerPair;
+          const total = totalPairs * item.pricePerPair - discountTotal;
+          return { ...item, pairsPerBundle, total: Math.max(0, total) };
+        }
+        return item;
+      })
+    );
+  };
+
+  const updateItemDiscountPerPair = (id: string, discountPerPair: number) => {
     setItems(
       items.map((item) => {
         if (item.id === id) {
           const totalPairs = item.quantity * item.pairsPerBundle;
-          const total = totalPairs * item.pricePerPair - discount;
-          return { ...item, discount, total: Math.max(0, total) };
+          const discountTotal = totalPairs * discountPerPair;
+          const total = totalPairs * item.pricePerPair - discountTotal;
+          return { ...item, discountPerPair, total: Math.max(0, total) };
         }
         return item;
       })
     );
   };
 
-  const removeItem = (id: string) => {
-    setItems(items.filter((item) => item.id !== id));
+  const confirmRemoveItem = () => {
+    if (removeItemId) {
+      setItems(items.filter((item) => item.id !== removeItemId));
+      setRemoveItemId(null);
+    }
   };
 
   const calculations = useMemo(() => {
@@ -119,7 +174,10 @@ const NewInvoice = () => {
       (sum, item) => sum + item.quantity * item.pairsPerBundle * item.pricePerPair,
       0
     );
-    const totalDiscount = items.reduce((sum, item) => sum + item.discount, 0);
+    const totalDiscount = items.reduce(
+      (sum, item) => sum + item.quantity * item.pairsPerBundle * item.discountPerPair,
+      0
+    );
     const afterDiscount = subtotal - totalDiscount;
     const tax = (afterDiscount * taxPercent) / 100;
     const total = afterDiscount + tax;
@@ -257,7 +315,7 @@ const NewInvoice = () => {
                             <div className="px-3 py-2 bg-muted/30">
                               <p className="font-medium">{product.name}</p>
                               <p className="text-xs text-muted-foreground">
-                                {product.brandName} • {product.articleNumber}
+                                {product.brandName} • {product.articleNumber} • Stock: {product.stockDozens * product.pairsPerDozen} pairs
                               </p>
                             </div>
                             <div className="p-2 grid grid-cols-3 gap-2">
@@ -287,88 +345,108 @@ const NewInvoice = () => {
 
             {items.length > 0 ? (
               <div className="space-y-3">
-                {items.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="p-3 rounded-lg bg-muted/30 border border-border/50"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-medium text-foreground">{item.productName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.brandName} • {item.articleNumber} • Size {item.sizeRange}
-                        </p>
+                {items.map((item) => {
+                  const totalPairs = item.quantity * item.pairsPerBundle;
+                  const discountTotal = totalPairs * item.discountPerPair;
+                  return (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="p-4 rounded-lg bg-muted/30 border border-border/50"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-medium text-foreground">{item.productName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {item.brandName} • {item.articleNumber} • Size {item.sizeRange}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive h-8 w-8"
+                          onClick={() => setRemoveItemId(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive h-8 w-8"
-                        onClick={() => removeItem(item.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-4 gap-4 items-center">
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Bundles</Label>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
-                          >
-                            -
-                          </Button>
+                      <div className="grid grid-cols-5 gap-3 items-end">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Bundles</Label>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                            >
+                              -
+                            </Button>
+                            <Input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) =>
+                                updateItemQuantity(item.id, parseInt(e.target.value) || 0)
+                              }
+                              className="w-12 h-8 text-center"
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Pairs/Bundle</Label>
                           <Input
                             type="number"
-                            value={item.quantity}
+                            value={item.pairsPerBundle}
                             onChange={(e) =>
-                              updateItemQuantity(item.id, parseInt(e.target.value) || 0)
+                              updateItemPairs(item.id, parseInt(e.target.value) || 0)
                             }
-                            className="w-14 h-8 text-center"
+                            className="h-8 mt-1"
                           />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                          >
-                            +
-                          </Button>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">
+                            Rate ({totalPairs} × Rs {item.pricePerPair})
+                          </Label>
+                          <p className="font-medium mt-1 h-8 flex items-center">
+                            Rs {(totalPairs * item.pricePerPair).toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Discount/Pair (Rs)</Label>
+                          <Input
+                            type="number"
+                            value={item.discountPerPair || ""}
+                            onChange={(e) =>
+                              updateItemDiscountPerPair(item.id, parseFloat(e.target.value) || 0)
+                            }
+                            className="h-8 mt-1"
+                            placeholder="0"
+                          />
+                          {discountTotal > 0 && (
+                            <p className="text-xs text-destructive mt-1">
+                              Total: -Rs {discountTotal.toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <Label className="text-xs text-muted-foreground">Total</Label>
+                          <p className="font-semibold text-lg mt-1">
+                            Rs {item.total.toLocaleString()}
+                          </p>
                         </div>
                       </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">
-                          Rate ({item.pairsPerBundle} pairs × Rs {item.pricePerPair})
-                        </Label>
-                        <p className="font-medium mt-1">
-                          Rs {(item.quantity * item.pairsPerBundle * item.pricePerPair).toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Discount (Rs)</Label>
-                        <Input
-                          type="number"
-                          value={item.discount || ""}
-                          onChange={(e) =>
-                            updateItemDiscount(item.id, parseFloat(e.target.value) || 0)
-                          }
-                          className="h-8 mt-1"
-                          placeholder="0"
-                        />
-                      </div>
-                      <div className="text-right">
-                        <Label className="text-xs text-muted-foreground">Total</Label>
-                        <p className="font-semibold text-lg mt-1">
-                          Rs {item.total.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </div>
             ) : (
               <div className="py-12 text-center border-2 border-dashed border-border rounded-lg">
@@ -509,6 +587,24 @@ const NewInvoice = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Remove Item Confirmation */}
+      <AlertDialog open={!!removeItemId} onOpenChange={() => setRemoveItemId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this product from the invoice?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemoveItem} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
