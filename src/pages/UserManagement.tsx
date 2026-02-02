@@ -177,6 +177,9 @@ const UserManagement = () => {
       if (authError) throw authError;
 
       if (authData.user) {
+        // Wait a moment for triggers to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Update the profile with phone if provided
         if (newUser.phone) {
           await supabase
@@ -185,12 +188,17 @@ const UserManagement = () => {
             .eq("user_id", authData.user.id);
         }
 
-        // Update the role if not the default biller
-        if (newUser.role !== "biller") {
+        // Update the user's role (trigger creates default 'biller', so we update if different)
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .update({ role: newUser.role })
+          .eq("user_id", authData.user.id);
+
+        // If update failed (no row), try insert
+        if (roleError) {
           await supabase
             .from("user_roles")
-            .update({ role: newUser.role })
-            .eq("user_id", authData.user.id);
+            .insert({ user_id: authData.user.id, role: newUser.role });
         }
 
         if (profile) {
