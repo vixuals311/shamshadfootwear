@@ -15,7 +15,7 @@ import {
   History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
+import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -24,22 +24,22 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
-  const { hasPermission } = useAuth();
+  const { hasPermission, role } = useSupabaseAuthContext();
 
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/", show: true },
-    { icon: Package, label: "Inventory", path: "/inventory", show: hasPermission("canManageInventory") },
-    { icon: Users, label: "Clients", path: "/clients", show: hasPermission("canManageClients") },
-    { icon: FileText, label: "Invoices", path: "/invoices", show: hasPermission("canCreateInvoices") },
-    { icon: CreditCard, label: "Payments", path: "/payments", show: hasPermission("canRecordPayments") },
-    { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPermission("canManageRecoveries") },
-    { icon: BarChart3, label: "Reports", path: "/reports", show: hasPermission("canViewReports") },
+    { icon: Package, label: "Inventory", path: "/inventory", show: hasPermission("canManageInventory") || role === "admin" },
+    { icon: Users, label: "Clients", path: "/clients", show: hasPermission("canManageClients") || role === "admin" },
+    { icon: FileText, label: "Invoices", path: "/invoices", show: hasPermission("canCreateInvoices") || role === "admin" },
+    { icon: CreditCard, label: "Payments", path: "/payments", show: hasPermission("canRecordPayments") || role === "admin" || role === "cashier" },
+    { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPermission("canManageRecoveries") || role === "admin" || role === "cashier" },
+    { icon: BarChart3, label: "Reports", path: "/reports", show: hasPermission("canViewReports") || role === "admin" },
   ].filter((item) => item.show);
 
   const bottomNavItems = [
-    { icon: UserCog, label: "Users", path: "/users", show: hasPermission("canManageUsers") },
-    { icon: History, label: "Audit Logs", path: "/audit-logs", show: hasPermission("canManageSettings") },
-    { icon: Settings, label: "Settings", path: "/settings", show: hasPermission("canManageSettings") },
+    { icon: UserCog, label: "Users", path: "/users", show: hasPermission("canManageUsers") || role === "admin" },
+    { icon: History, label: "Audit Logs", path: "/audit-logs", show: hasPermission("canManageSettings") || role === "admin" },
+    { icon: Settings, label: "Settings", path: "/settings", show: hasPermission("canManageSettings") || role === "admin" },
   ].filter((item) => item.show);
 
   return (
@@ -117,35 +117,37 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="py-4 px-2 border-t border-sidebar-border space-y-1">
-        {bottomNavItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <item.icon className="w-5 h-5 shrink-0" />
-              <motion.span
-                initial={false}
-                animate={{ 
-                  opacity: collapsed ? 0 : 1,
-                  width: collapsed ? 0 : "auto"
-                }}
-                className="text-sm font-medium whitespace-nowrap overflow-hidden"
+      {bottomNavItems.length > 0 && (
+        <div className="py-4 px-2 border-t border-sidebar-border space-y-1">
+          {bottomNavItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                  isActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
               >
-                {item.label}
-              </motion.span>
-            </Link>
-          );
-        })}
-      </div>
+                <item.icon className="w-5 h-5 shrink-0" />
+                <motion.span
+                  initial={false}
+                  animate={{ 
+                    opacity: collapsed ? 0 : 1,
+                    width: collapsed ? 0 : "auto"
+                  }}
+                  className="text-sm font-medium whitespace-nowrap overflow-hidden"
+                >
+                  {item.label}
+                </motion.span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </motion.aside>
   );
 }
