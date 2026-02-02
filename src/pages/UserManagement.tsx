@@ -10,6 +10,7 @@ import {
   UserCheck,
   UserX,
   Loader2,
+  Edit2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +85,10 @@ const UserManagement = () => {
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [showAddConfirm, setShowAddConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit role state
+  const [editRoleUser, setEditRoleUser] = useState<UserWithRole | null>(null);
+  const [editRoleValue, setEditRoleValue] = useState<AppRole>("biller");
 
   const [newUser, setNewUser] = useState({
     name: "",
@@ -319,6 +324,46 @@ const UserManagement = () => {
     }
   };
 
+  const handleChangeRole = async () => {
+    if (!editRoleUser) return;
+
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ role: editRoleValue })
+        .eq("user_id", editRoleUser.user_id);
+
+      if (error) throw error;
+
+      if (profile) {
+        addLog(
+          user?.id || "",
+          profile.name,
+          "update",
+          "user",
+          editRoleUser.user_id,
+          editRoleUser.name,
+          `Changed role from ${editRoleUser.role} to ${editRoleValue}`
+        );
+      }
+
+      toast({
+        title: "Role updated",
+        description: `${editRoleUser.name}'s role changed to ${editRoleValue}`,
+      });
+
+      setEditRoleUser(null);
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error updating role:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update role",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!hasPermission("canManageUsers")) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -487,6 +532,16 @@ const UserManagement = () => {
                         )}
                       </DropdownMenuItem>
                       <DropdownMenuItem
+                        className="gap-2"
+                        onClick={() => {
+                          setEditRoleUser(u);
+                          setEditRoleValue(u.role);
+                        }}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        Change Role
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         className="gap-2 text-destructive"
                         onClick={() => setDeleteUserId(u.user_id)}
                       >
@@ -626,6 +681,84 @@ const UserManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Change Role Dialog */}
+      <Dialog open={!!editRoleUser} onOpenChange={() => setEditRoleUser(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Change User Role</DialogTitle>
+            <DialogDescription>
+              Update the role for {editRoleUser?.name}. This will change their permissions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">{editRoleUser?.name}</p>
+                  <p className="text-sm text-muted-foreground">{editRoleUser?.email}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Select New Role</Label>
+                <Select
+                  value={editRoleValue}
+                  onValueChange={(value: AppRole) => setEditRoleValue(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">Admin</span>
+                        <span className="text-xs text-muted-foreground">Full system access</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="biller">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">Biller</span>
+                        <span className="text-xs text-muted-foreground">Invoices, inventory & clients</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="cashier">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">Cashier</span>
+                        <span className="text-xs text-muted-foreground">Payments & recoveries</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {editRoleUser?.role !== editRoleValue && (
+                <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                  <p className="text-sm">
+                    <span className="font-medium">Note:</span> Changing from{" "}
+                    <span className="font-semibold">{editRoleUser?.role}</span> to{" "}
+                    <span className="font-semibold">{editRoleValue}</span> will update this user's permissions immediately.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditRoleUser(null)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleChangeRole} 
+              disabled={editRoleUser?.role === editRoleValue}
+            >
+              Update Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

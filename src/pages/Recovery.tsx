@@ -7,7 +7,7 @@ import {
   CreditCard,
   User,
   MapPin,
-  Calendar,
+  Calendar as CalendarIcon,
   GripVertical,
   Loader2,
 } from "lucide-react";
@@ -54,6 +54,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -106,6 +107,7 @@ const RecoveryPage = () => {
   const [includePreviousBalance, setIncludePreviousBalance] = useState(true);
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [draggedCity, setDraggedCity] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   // Recovery category selection
   const [recoveryCategory, setRecoveryCategory] = useState<"client" | "city">("client");
@@ -261,11 +263,16 @@ const RecoveryPage = () => {
     );
   }, [cityClientRecoveries, cityClientSearch]);
 
-  const filteredRecoveries = recoveries.filter(
-    (recovery) =>
+  const filteredRecoveries = recoveries.filter((recovery) => {
+    const matchesSearch =
       recovery.clientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recovery.city?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      recovery.city?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesDate = !selectedDate || 
+      format(recovery.date, "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd");
+    
+    return matchesSearch && matchesDate;
+  });
 
   const handleSelectClient = (client: Client) => {
     setClientRecovery({
@@ -578,7 +585,7 @@ const RecoveryPage = () => {
         </div>
       </motion.div>
 
-      {/* Search */}
+      {/* Search and Date Filter */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -594,6 +601,36 @@ const RecoveryPage = () => {
             className="pl-9"
           />
         </div>
+        
+        {/* Date Filter */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={cn("gap-2", selectedDate && "text-primary")}>
+              <CalendarIcon className="w-4 h-4" />
+              {selectedDate ? format(selectedDate, "dd MMM yyyy") : "Filter by date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              initialFocus
+            />
+            {selectedDate && (
+              <div className="p-2 border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setSelectedDate(undefined)}
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
       </motion.div>
 
       {/* Recoveries Table */}
