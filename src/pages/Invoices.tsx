@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,6 +12,8 @@ import {
   Printer,
   Send,
   Trash2,
+  Calendar,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +23,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Invoice {
   id: string;
@@ -29,33 +40,77 @@ interface Invoice {
   client: string;
   clientEmail: string;
   amount: number;
-  status: "paid" | "pending" | "overdue" | "draft";
+  status: "paid" | "pending" | "overdue" | "draft" | "partial";
   date: string;
   dueDate: string;
   items: number;
 }
-
-const initialInvoices: Invoice[] = [
-  { id: "1", number: "INV-2024-001", client: "Acme Corp", clientEmail: "billing@acme.com", amount: 2500, status: "paid", date: "2024-01-15", dueDate: "2024-02-15", items: 5 },
-  { id: "2", number: "INV-2024-002", client: "Stark Industries", clientEmail: "accounts@stark.com", amount: 8750, status: "pending", date: "2024-01-18", dueDate: "2024-02-18", items: 12 },
-  { id: "3", number: "INV-2024-003", client: "Wayne Enterprises", clientEmail: "finance@wayne.com", amount: 4200, status: "overdue", date: "2024-01-05", dueDate: "2024-01-20", items: 8 },
-  { id: "4", number: "INV-2024-004", client: "Oscorp", clientEmail: "billing@oscorp.com", amount: 1890, status: "paid", date: "2024-01-20", dueDate: "2024-02-20", items: 3 },
-  { id: "5", number: "INV-2024-005", client: "Umbrella Corp", clientEmail: "payments@umbrella.com", amount: 3650, status: "pending", date: "2024-01-22", dueDate: "2024-02-22", items: 6 },
-  { id: "6", number: "INV-2024-006", client: "Cyberdyne Systems", clientEmail: "accounts@cyberdyne.com", amount: 12400, status: "draft", date: "2024-01-25", dueDate: "2024-02-25", items: 15 },
-];
 
 const statusStyles = {
   paid: "status-badge-success",
   pending: "status-badge-warning",
   overdue: "status-badge-danger",
   draft: "status-badge-default",
+  partial: "status-badge-warning",
 };
 
 const Invoices = () => {
   const navigate = useNavigate();
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const { toast } = useToast();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+
+  // Fetch invoices from Supabase
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from("invoices")
+        .select(`
+          id,
+          invoice_number,
+          total,
+          status,
+          created_at,
+          clients (name, email),
+          invoice_items (id)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const formattedInvoices: Invoice[] = (data || []).map((inv: any) => ({
+        id: inv.id,
+        number: inv.invoice_number,
+        client: inv.clients?.name || "Unknown Client",
+        clientEmail: inv.clients?.email || "",
+        amount: inv.total,
+        status: inv.status as Invoice["status"],
+        date: inv.created_at,
+        dueDate: inv.created_at, // Could add due_date column later
+        items: inv.invoice_items?.length || 0,
+      }));
+
+      setInvoices(formattedInvoices);
+    } catch (error: any) {
+      console.error("Error fetching invoices:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load invoices",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter((invoice) => {
@@ -63,21 +118,51 @@ const Invoices = () => {
         invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         invoice.client.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      
+      // Date filter
+      const matchesDate = !selectedDate || 
+        format(new Date(invoice.date), "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd");
+      
+      return matchesSearch && matchesStatus && matchesDate;
     });
-  }, [invoices, searchQuery, statusFilter]);
+  }, [invoices, searchQuery, statusFilter, selectedDate]);
 
-  const handleDeleteInvoice = (id: string) => {
-    setInvoices(invoices.filter((inv) => inv.id !== id));
+  const handleDeleteInvoice = async (id: string) => {
+    try {
+      // Delete invoice items first
+      await supabase.from("invoice_items").delete().eq("invoice_id", id);
+      
+      // Delete invoice
+      const { error } = await supabase.from("invoices").delete().eq("id", id);
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Invoice deleted" });
+      fetchInvoices();
+    } catch (error: any) {
+      console.error("Error deleting invoice:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete invoice",
+        variant: "destructive",
+      });
+    }
   };
 
   const stats = useMemo(() => {
     const total = invoices.reduce((sum, inv) => sum + inv.amount, 0);
     const paid = invoices.filter((inv) => inv.status === "paid").reduce((sum, inv) => sum + inv.amount, 0);
-    const pending = invoices.filter((inv) => inv.status === "pending").reduce((sum, inv) => sum + inv.amount, 0);
+    const pending = invoices.filter((inv) => inv.status === "pending" || inv.status === "partial").reduce((sum, inv) => sum + inv.amount, 0);
     const overdue = invoices.filter((inv) => inv.status === "overdue").reduce((sum, inv) => sum + inv.amount, 0);
     return { total, paid, pending, overdue };
   }, [invoices]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -114,19 +199,19 @@ const Invoices = () => {
       >
         <div className="bg-card rounded-xl p-4 shadow-card">
           <p className="text-sm text-muted-foreground mb-1">Total Invoiced</p>
-          <p className="text-2xl font-bold text-foreground">${stats.total.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-foreground">Rs {stats.total.toLocaleString()}</p>
         </div>
         <div className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-success">
           <p className="text-sm text-muted-foreground mb-1">Paid</p>
-          <p className="text-2xl font-bold text-success">${stats.paid.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-success">Rs {stats.paid.toLocaleString()}</p>
         </div>
         <div className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-warning">
           <p className="text-sm text-muted-foreground mb-1">Pending</p>
-          <p className="text-2xl font-bold text-warning">${stats.pending.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-warning">Rs {stats.pending.toLocaleString()}</p>
         </div>
         <div className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-destructive">
           <p className="text-sm text-muted-foreground mb-1">Overdue</p>
-          <p className="text-2xl font-bold text-destructive">${stats.overdue.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-destructive">Rs {stats.overdue.toLocaleString()}</p>
         </div>
       </motion.div>
 
@@ -147,6 +232,36 @@ const Invoices = () => {
           />
         </div>
         <div className="flex gap-2">
+          {/* Date Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("gap-2", selectedDate && "text-primary")}>
+                <Calendar className="w-4 h-4" />
+                {selectedDate ? format(selectedDate, "dd MMM yyyy") : "Filter by date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <CalendarComponent
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                initialFocus
+              />
+              {selectedDate && (
+                <div className="p-2 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setSelectedDate(undefined)}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+          
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -155,13 +270,10 @@ const Invoices = () => {
             <option value="all">All Status</option>
             <option value="paid">Paid</option>
             <option value="pending">Pending</option>
+            <option value="partial">Partial</option>
             <option value="overdue">Overdue</option>
             <option value="draft">Draft</option>
           </select>
-          <Button variant="outline" className="gap-2">
-            <Filter className="w-4 h-4" />
-            More Filters
-          </Button>
         </div>
       </motion.div>
 
@@ -181,7 +293,6 @@ const Invoices = () => {
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Date</th>
-                <th>Due Date</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
@@ -216,7 +327,7 @@ const Invoices = () => {
                     </div>
                   </td>
                   <td className="font-semibold text-foreground">
-                    ${invoice.amount.toLocaleString()}
+                    Rs {invoice.amount.toLocaleString()}
                   </td>
                   <td>
                     <span className={cn("status-badge capitalize", statusStyles[invoice.status])}>
@@ -224,10 +335,7 @@ const Invoices = () => {
                     </span>
                   </td>
                   <td className="text-muted-foreground">
-                    {new Date(invoice.date).toLocaleDateString()}
-                  </td>
-                  <td className="text-muted-foreground">
-                    {new Date(invoice.dueDate).toLocaleDateString()}
+                    {format(new Date(invoice.date), "dd MMM yyyy")}
                   </td>
                   <td>
                     <DropdownMenu>
