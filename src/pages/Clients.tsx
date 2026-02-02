@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -20,7 +20,9 @@ import {
   Calendar,
   Eye,
   Printer,
-  Share2,
+  Download as DownloadIcon,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,18 +51,51 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { Client, Invoice, Recovery } from "@/types";
-import { initialClients, initialInvoices, initialRecoveries } from "@/data/mockData";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  openingBalance: number;
+  currentBalance: number;
+  totalSpent: number;
+  invoiceCount: number;
+}
+
+interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  createdAt: Date;
+  total: number;
+  subtotal: number;
+  totalDiscount: number;
+  status: string;
+  items: any[];
+}
+
+interface RecoveryRecord {
+  id: string;
+  date: Date;
+  amount: number;
+  notes: string | null;
+  isFromCity: boolean;
+}
 
 const Clients = () => {
-  const [clients, setClients] = useState<Client[]>(initialClients);
-  const [invoices] = useState<Invoice[]>(initialInvoices);
-  const [recoveries] = useState<Recovery[]>(initialRecoveries);
+  const { toast } = useToast();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -68,6 +103,9 @@ const Clients = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
   const [showAddClientConfirm, setShowAddClientConfirm] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [clientInvoices, setClientInvoices] = useState<Invoice[]>([]);
+  const [clientRecoveries, setClientRecoveries] = useState<RecoveryRecord[]>([]);
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
@@ -78,75 +116,236 @@ const Clients = () => {
     notes: "",
   });
 
+  // Fetch clients from Supabase
+  const fetchClients = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+
+      const formattedClients: Client[] = (data || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        email: c.email || "N/A",
+        phone: c.phone || "N/A",
+        address: c.address || "N/A",
+        city: c.city || "N/A",
+        openingBalance: c.opening_balance || 0,
+        currentBalance: c.current_balance || 0,
+        totalSpent: c.total_spent || 0,
+        invoiceCount: c.invoice_count || 0,
+      }));
+
+      setClients(formattedClients);
+    } catch (error: any) {
+      console.error("Error fetching clients:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load clients",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  // Fetch client details when selected
+  useEffect(() => {
+    if (selectedClient) {
+      fetchClientDetails(selectedClient.id);
+    }
+  }, [selectedClient?.id]);
+
+  const fetchClientDetails = async (clientId: string) => {
+    try {
+      // Fetch invoices
+      const { data: invoicesData, error: invoicesError } = await supabase
+        .from("invoices")
+        .select(`
+          id, invoice_number, created_at, total, subtotal, total_discount, status,
+          invoice_items (*)
+        `)
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false });
+
+      if (invoicesError) throw invoicesError;
+
+      const formattedInvoices: Invoice[] = (invoicesData || []).map((inv) => ({
+        id: inv.id,
+        invoiceNumber: inv.invoice_number,
+        createdAt: new Date(inv.created_at),
+        total: inv.total,
+        subtotal: inv.subtotal,
+        totalDiscount: inv.total_discount,
+        status: inv.status,
+        items: (inv.invoice_items || []).map((item: any) => ({
+          id: item.id,
+          productName: item.product_name,
+          articleNumber: item.article_number,
+          sizeRange: item.size_range,
+          totalPairs: item.total_pairs,
+          pricePerPair: item.price_per_pair,
+          discountPerPair: item.discount_per_pair,
+          total: item.total,
+        })),
+      }));
+
+      setClientInvoices(formattedInvoices);
+
+      // Fetch direct recoveries
+      const { data: directRecoveries, error: directRecoveriesError } = await supabase
+        .from("recoveries")
+        .select("*")
+        .eq("client_id", clientId)
+        .eq("type", "client")
+        .order("date", { ascending: false });
+
+      if (directRecoveriesError) throw directRecoveriesError;
+
+      // Fetch city recoveries that include this client
+      const { data: cityRecoveryAmounts, error: cityRecoveryError } = await supabase
+        .from("recovery_client_amounts")
+        .select(`
+          amount,
+          recoveries (id, date, notes, city)
+        `)
+        .eq("client_id", clientId);
+
+      if (cityRecoveryError) throw cityRecoveryError;
+
+      const formattedRecoveries: RecoveryRecord[] = [
+        ...(directRecoveries || []).map((r) => ({
+          id: r.id,
+          date: new Date(r.date),
+          amount: r.amount,
+          notes: r.notes,
+          isFromCity: false,
+        })),
+        ...(cityRecoveryAmounts || []).map((rca: any) => ({
+          id: rca.recoveries?.id || "",
+          date: new Date(rca.recoveries?.date || new Date()),
+          amount: rca.amount,
+          notes: `City: ${rca.recoveries?.city || "Unknown"}`,
+          isFromCity: true,
+        })),
+      ].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+      setClientRecoveries(formattedRecoveries);
+    } catch (error: any) {
+      console.error("Error fetching client details:", error);
+    }
+  };
+
+  // Filter clients including phone number search
   const filteredClients = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.city.toLowerCase().includes(searchQuery.toLowerCase())
+      client.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.phone.includes(searchQuery)
   );
 
-  const handleAddClient = () => {
-    if (newClient.name) {
-      // Check for duplicate client by name or phone
-      const isDuplicate = clients.some(
-        (c) =>
-          c.name.toLowerCase() === newClient.name.toLowerCase() ||
-          (newClient.phone && c.phone === newClient.phone)
-      );
+  const checkDuplicateClient = () => {
+    const duplicate = clients.find(
+      (c) =>
+        c.name.toLowerCase() === newClient.name.toLowerCase() ||
+        (newClient.phone && c.phone === newClient.phone)
+    );
 
-      if (isDuplicate) {
-        alert("A client with this name or phone number already exists!");
-        return;
-      }
-
-      const client: Client = {
-        id: Date.now().toString(),
-        name: newClient.name,
-        email: newClient.email || "N/A",
-        phone: newClient.phone || "N/A",
-        address: newClient.address || "N/A",
-        city: newClient.city || "N/A",
-        openingBalance: parseFloat(newClient.openingBalance) || 0,
-        currentBalance: parseFloat(newClient.openingBalance) || 0,
-        totalSpent: 0,
-        invoiceCount: 0,
-        notes: newClient.notes,
-      };
-      setClients([client, ...clients]);
-      setNewClient({ name: "", email: "", phone: "", address: "", city: "", openingBalance: "", notes: "" });
-      setShowAddClientConfirm(false);
-      setIsAddDialogOpen(false);
+    if (duplicate) {
+      const reason = duplicate.name.toLowerCase() === newClient.name.toLowerCase()
+        ? `name "${duplicate.name}"`
+        : `phone number "${newClient.phone}"`;
+      setDuplicateWarning(`A client with this ${reason} already exists.`);
+      return true;
     }
+    setDuplicateWarning(null);
+    return false;
   };
 
-  const handleDeleteClient = () => {
-    if (deleteClientId) {
-      setClients(clients.filter((c) => c.id !== deleteClientId));
-      setDeleteClientId(null);
+  const handleAddClient = async () => {
+    if (!newClient.name || !newClient.phone) {
+      toast({
+        title: "Missing Information",
+        description: "Name and phone are required",
+        variant: "destructive",
+      });
+      return;
     }
-  };
 
-  const getClientInvoices = (clientId: string) => {
-    return invoices.filter((inv) => inv.clientId === clientId);
-  };
+    try {
+      const openingBalance = parseFloat(newClient.openingBalance) || 0;
+      
+      const { data, error } = await supabase
+        .from("clients")
+        .insert({
+          name: newClient.name,
+          email: newClient.email || null,
+          phone: newClient.phone,
+          address: newClient.address || null,
+          city: newClient.city || null,
+          opening_balance: openingBalance,
+          current_balance: openingBalance,
+        })
+        .select()
+        .single();
 
-  const getClientRecoveries = (clientId: string) => {
-    // Get direct client recoveries
-    const directRecoveries = recoveries.filter((rec) => rec.clientId === clientId);
-    
-    // Get recoveries from city-wise that include this client
-    const cityRecoveries = recoveries
-      .filter((rec) => rec.type === "city" && rec.clientAmounts?.some(ca => ca.clientId === clientId))
-      .map((rec) => {
-        const clientAmount = rec.clientAmounts?.find(ca => ca.clientId === clientId);
-        return {
-          ...rec,
-          amount: clientAmount?.amount || 0,
-          isFromCity: true,
-        };
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Client added successfully",
       });
 
-    return [...directRecoveries.map(r => ({ ...r, isFromCity: false })), ...cityRecoveries];
+      setNewClient({ name: "", email: "", phone: "", address: "", city: "", openingBalance: "", notes: "" });
+      setDuplicateWarning(null);
+      setShowAddClientConfirm(false);
+      setIsAddDialogOpen(false);
+      fetchClients();
+    } catch (error: any) {
+      console.error("Error adding client:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add client",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteClient = async () => {
+    if (!deleteClientId) return;
+
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .delete()
+        .eq("id", deleteClientId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Client deleted successfully",
+      });
+
+      setDeleteClientId(null);
+      fetchClients();
+    } catch (error: any) {
+      console.error("Error deleting client:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete client",
+        variant: "destructive",
+      });
+    }
   };
 
   const generatePrintContent = (type: "bills" | "recoveries", clientName: string, data: any[]) => {
@@ -190,7 +389,7 @@ const Clients = () => {
             </tr>
           </thead>
           <tbody>
-            ${data.map((recovery: any) => `
+            ${data.map((recovery: RecoveryRecord) => `
               <tr>
                 <td>${format(recovery.date, "dd MMM yyyy, hh:mm a")}</td>
                 <td>Rs ${recovery.amount.toLocaleString()}</td>
@@ -230,7 +429,7 @@ const Clients = () => {
 
   const handlePrint = (type: "bills" | "recoveries") => {
     if (!selectedClient) return;
-    const data = type === "bills" ? getClientInvoices(selectedClient.id) : getClientRecoveries(selectedClient.id);
+    const data = type === "bills" ? clientInvoices : clientRecoveries;
     const content = generatePrintContent(type, selectedClient.name, data);
     const printWindow = window.open("", "_blank");
     if (printWindow) {
@@ -239,16 +438,16 @@ const Clients = () => {
     }
   };
 
-  const handleDownloadPDF = (type: "bills" | "recoveries") => {
-    // For now, we'll use print functionality for PDF
-    handlePrint(type);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // Client Detail View
   if (selectedClient) {
-    const clientInvoices = getClientInvoices(selectedClient.id);
-    const clientRecoveries = getClientRecoveries(selectedClient.id);
-
     return (
       <div className="space-y-6">
         <motion.div
@@ -344,8 +543,8 @@ const Clients = () => {
                 <Printer className="w-4 h-4" />
                 Print
               </Button>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => handleDownloadPDF("bills")}>
-                <Download className="w-4 h-4" />
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint("bills")}>
+                <DownloadIcon className="w-4 h-4" />
                 Download PDF
               </Button>
             </div>
@@ -417,8 +616,8 @@ const Clients = () => {
                 <Printer className="w-4 h-4" />
                 Print
               </Button>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => handleDownloadPDF("recoveries")}>
-                <Download className="w-4 h-4" />
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint("recoveries")}>
+                <DownloadIcon className="w-4 h-4" />
                 Download PDF
               </Button>
             </div>
@@ -438,7 +637,7 @@ const Clients = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {clientRecoveries.map((recovery: any) => (
+                    {clientRecoveries.map((recovery) => (
                       <tr key={recovery.id}>
                         <td>
                           <div className="flex items-center gap-2 text-muted-foreground">
@@ -559,7 +758,12 @@ const Clients = () => {
             <Download className="w-4 h-4" />
             Export
           </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+            setIsAddDialogOpen(open);
+            if (!open) {
+              setDuplicateWarning(null);
+            }
+          }}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />
@@ -574,15 +778,23 @@ const Clients = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                {duplicateWarning && (
+                  <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Duplicate Client</AlertTitle>
+                    <AlertDescription>{duplicateWarning}</AlertDescription>
+                  </Alert>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Client Name *</Label>
                     <Input
                       id="name"
                       value={newClient.name}
-                      onChange={(e) =>
-                        setNewClient({ ...newClient, name: e.target.value })
-                      }
+                      onChange={(e) => {
+                        setNewClient({ ...newClient, name: e.target.value });
+                        setDuplicateWarning(null);
+                      }}
                       placeholder="Enter client name"
                     />
                   </div>
@@ -601,13 +813,14 @@ const Clients = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="phone">Phone *</Label>
                     <Input
                       id="phone"
                       value={newClient.phone}
-                      onChange={(e) =>
-                        setNewClient({ ...newClient, phone: e.target.value })
-                      }
+                      onChange={(e) => {
+                        setNewClient({ ...newClient, phone: e.target.value });
+                        setDuplicateWarning(null);
+                      }}
                       placeholder="Enter phone"
                     />
                   </div>
@@ -646,24 +859,15 @@ const Clients = () => {
                     placeholder="Enter email"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    value={newClient.notes}
-                    onChange={(e) =>
-                      setNewClient({ ...newClient, notes: e.target.value })
-                    }
-                    placeholder="Add any notes about this client..."
-                    rows={3}
-                  />
-                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={() => setShowAddClientConfirm(true)}>Add Client</Button>
+                <Button onClick={() => {
+                  if (checkDuplicateClient()) return;
+                  setShowAddClientConfirm(true);
+                }}>Add Client</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -680,7 +884,7 @@ const Clients = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search clients by name, email, or city..."
+            placeholder="Search by name, email, city, or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
