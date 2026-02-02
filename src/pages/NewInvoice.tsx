@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,6 +14,7 @@ import {
   Calculator,
   Check,
   Minus,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,8 +51,39 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { Client, Product, InvoiceItem, SizeBundlePricing } from "@/types";
-import { initialClients, initialProducts, paymentAccounts } from "@/data/mockData";
+import { InvoiceItem } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Client {
+  id: string;
+  name: string;
+  phone: string;
+  city: string | null;
+  current_balance: number;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  article_number: string;
+  brand_name: string;
+  category: string;
+  stock_dozens: number;
+  pairs_per_dozen: number;
+  size_bundles: SizeBundlePricing[];
+}
+
+interface SizeBundlePricing {
+  size_range: string;
+  price_per_pair: number;
+  pairs_per_bundle: number;
+}
+
+interface PaymentAccount {
+  id: string;
+  name: string;
+}
 
 interface SizeBundleSelection {
   sizeRange: string;
@@ -62,9 +94,14 @@ interface SizeBundleSelection {
 
 const NewInvoice = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [clients] = useState<Client[]>(initialClients);
-  const [products] = useState<Product[]>(initialProducts);
+  
+  const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientOpen, setClientOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
@@ -81,6 +118,69 @@ const NewInvoice = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [sizeSelections, setSizeSelections] = useState<SizeBundleSelection[]>([]);
 
+  // Fetch data from Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch clients
+        const { data: clientsData, error: clientsError } = await supabase
+          .from("clients")
+          .select("id, name, phone, city, current_balance")
+          .order("name");
+
+        if (clientsError) throw clientsError;
+        setClients(clientsData || []);
+
+        // Fetch products with size bundles
+        const { data: productsData, error: productsError } = await supabase
+          .from("products")
+          .select(`
+            id, name, article_number, category, stock_dozens, pairs_per_dozen,
+            brands (name),
+            product_size_bundles (size_range, price_per_pair, pairs_per_bundle)
+          `)
+          .order("article_number");
+
+        if (productsError) throw productsError;
+
+        const formattedProducts: Product[] = (productsData || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          article_number: p.article_number,
+          brand_name: p.brands?.name || "Unknown",
+          category: p.category,
+          stock_dozens: p.stock_dozens,
+          pairs_per_dozen: p.pairs_per_dozen,
+          size_bundles: p.product_size_bundles || [],
+        }));
+
+        setProducts(formattedProducts);
+
+        // Fetch payment accounts
+        const { data: accountsData, error: accountsError } = await supabase
+          .from("payment_accounts")
+          .select("*")
+          .order("name");
+
+        if (accountsError) throw accountsError;
+        setPaymentAccounts(accountsData || []);
+      } catch (error: any) {
+        console.error("Error fetching data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [toast]);
+
   // Initialize size selections when product is selected
   const handleProductSelect = useCallback((product: Product) => {
     if (selectedProduct?.id === product.id) {
@@ -89,11 +189,11 @@ const NewInvoice = () => {
     } else {
       setSelectedProduct(product);
       setSizeSelections(
-        product.sizeBundles.map((sb) => ({
-          sizeRange: sb.sizeRange,
+        product.size_bundles.map((sb) => ({
+          sizeRange: sb.size_range,
           bundles: 0,
-          pairsPerBundle: sb.pairsPerBundle,
-          pricePerPair: sb.pricePerPair,
+          pairsPerBundle: sb.pairs_per_bundle,
+          pricePerPair: sb.price_per_pair,
         }))
       );
     }
@@ -148,8 +248,8 @@ const NewInvoice = () => {
             id: itemId,
             productId: selectedProduct.id,
             productName: selectedProduct.name,
-            articleNumber: selectedProduct.articleNumber,
-            brandName: selectedProduct.brandName,
+            articleNumber: selectedProduct.article_number,
+            brandName: selectedProduct.brand_name,
             sizeRange: selection.sizeRange,
             quantity: selection.bundles,
             totalPairs,
@@ -253,12 +353,20 @@ const NewInvoice = () => {
     return products.filter(
       (p) =>
         p.name.toLowerCase().includes(search) ||
-        p.articleNumber.toLowerCase().includes(search) ||
-        p.brandName.toLowerCase().includes(search)
+        p.article_number.toLowerCase().includes(search) ||
+        p.brand_name.toLowerCase().includes(search)
     );
   }, [products, productSearch]);
 
   const totalSelectedBundles = sizeSelections.reduce((sum, s) => sum + s.bundles, 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
@@ -323,7 +431,7 @@ const NewInvoice = () => {
                     <div className="text-left">
                       <p className="font-medium">{selectedClient.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {selectedClient.city} • Balance: Rs {selectedClient.currentBalance.toLocaleString()}
+                        {selectedClient.city} • Balance: Rs {selectedClient.current_balance.toLocaleString()}
                       </p>
                     </div>
                   ) : (
@@ -350,7 +458,7 @@ const NewInvoice = () => {
                           <div>
                             <p className="font-medium">{client.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {client.phone} • {client.city} • Balance: Rs {client.currentBalance.toLocaleString()}
+                              {client.phone} • {client.city} • Balance: Rs {client.current_balance.toLocaleString()}
                             </p>
                           </div>
                         </CommandItem>
@@ -495,7 +603,7 @@ const NewInvoice = () => {
                     <CommandEmpty>No product found.</CommandEmpty>
                     <CommandGroup>
                       {filteredProducts
-                        .sort((a, b) => a.articleNumber.localeCompare(b.articleNumber))
+                        .sort((a, b) => a.article_number.localeCompare(b.article_number))
                         .map((product) => (
                           <div key={product.id} className="border-b last:border-b-0">
                             <div
@@ -509,8 +617,8 @@ const NewInvoice = () => {
                             >
                               <p className="font-medium">{product.name}</p>
                               <p className="text-xs text-muted-foreground">
-                                {product.brandName} • {product.articleNumber} • Stock:{" "}
-                                {product.stockDozens * product.pairsPerDozen} pairs
+                                {product.brand_name} • {product.article_number} • Stock:{" "}
+                                {product.stock_dozens * product.pairs_per_dozen} pairs
                               </p>
                             </div>
 
