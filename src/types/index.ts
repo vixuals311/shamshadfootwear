@@ -1,6 +1,6 @@
 // Shared types for the application
 
-export type UserRole = "admin" | "biller" | "cashier";
+export type UserRole = "admin" | "biller" | "cashier" | "biller_cashier";
 
 export interface User {
   id: string;
@@ -58,6 +58,18 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManageClients: false,
     canCreateInvoices: false,
     canEditInvoices: false,
+    canDeleteInvoices: false,
+    canRecordPayments: true,
+    canManageRecoveries: true,
+  },
+  biller_cashier: {
+    canManageUsers: false,
+    canManageSettings: false,
+    canViewReports: false,
+    canManageInventory: true,
+    canManageClients: true,
+    canCreateInvoices: true,
+    canEditInvoices: true,
     canDeleteInvoices: false,
     canRecordPayments: true,
     canManageRecoveries: true,
