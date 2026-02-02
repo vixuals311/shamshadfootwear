@@ -87,6 +87,18 @@ const Clients = () => {
 
   const handleAddClient = () => {
     if (newClient.name) {
+      // Check for duplicate client by name or phone
+      const isDuplicate = clients.some(
+        (c) =>
+          c.name.toLowerCase() === newClient.name.toLowerCase() ||
+          (newClient.phone && c.phone === newClient.phone)
+      );
+
+      if (isDuplicate) {
+        alert("A client with this name or phone number already exists!");
+        return;
+      }
+
       const client: Client = {
         id: Date.now().toString(),
         name: newClient.name,
@@ -493,7 +505,7 @@ const Clients = () => {
                           </div>
                         </td>
                         <td>{item.sizeRange}</td>
-                        <td>{item.quantity} × {item.pairsPerBundle}</td>
+                        <td>{item.totalPairs} pairs</td>
                         <td>Rs {item.pricePerPair}</td>
                         <td className="text-destructive">
                           {item.discountPerPair > 0 ? `- Rs ${item.discountPerPair}` : "-"}

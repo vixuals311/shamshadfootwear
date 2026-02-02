@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,11 +12,13 @@ import {
   User,
   Package,
   Calculator,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -53,6 +55,7 @@ import { initialClients, initialProducts, paymentAccounts } from "@/data/mockDat
 
 const NewInvoice = () => {
   const navigate = useNavigate();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [clients] = useState<Client[]>(initialClients);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -65,6 +68,12 @@ const NewInvoice = () => {
   const [amountReceived, setAmountReceived] = useState("");
   const [notes, setNotes] = useState("");
   const [removeItemId, setRemoveItemId] = useState<string | null>(null);
+  const [productSearch, setProductSearch] = useState("");
+  
+  // Multi-size selection state
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [bundleQuantity, setBundleQuantity] = useState(1);
 
   const addProduct = (product: Product, sizeBundle: SizeBundlePricing) => {
     // Check if same product with same size already exists
@@ -77,13 +86,14 @@ const NewInvoice = () => {
       const updatedItems = [...items];
       const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.quantity + 1;
-      const totalPairs = newQuantity * existingItem.pairsPerBundle;
+      const totalPairs = newQuantity * sizeBundle.pairsPerBundle;
       const discountTotal = totalPairs * existingItem.discountPerPair;
       const total = totalPairs * existingItem.pricePerPair - discountTotal;
       
       updatedItems[existingItemIndex] = {
         ...existingItem,
         quantity: newQuantity,
+        totalPairs,
         total: Math.max(0, total),
       };
       setItems(updatedItems);
@@ -91,8 +101,7 @@ const NewInvoice = () => {
       // Add new item
       const itemId = `${product.id}-${sizeBundle.sizeRange}-${Date.now()}`;
       const quantity = 1;
-      const pairsPerBundle = product.defaultPairsPerBundle;
-      const totalPairs = quantity * pairsPerBundle;
+      const totalPairs = sizeBundle.pairsPerBundle;
       const total = totalPairs * sizeBundle.pricePerPair;
 
       setItems([
@@ -105,14 +114,37 @@ const NewInvoice = () => {
           brandName: product.brandName,
           sizeRange: sizeBundle.sizeRange,
           quantity,
-          pairsPerBundle,
+          totalPairs,
           pricePerPair: sizeBundle.pricePerPair,
           discountPerPair: 0,
           total,
         },
       ]);
     }
+  };
+
+  const addMultipleSizes = () => {
+    if (!selectedProduct || selectedSizes.length === 0) return;
+    
+    selectedSizes.forEach((sizeRange) => {
+      const sizeBundle = selectedProduct.sizeBundles.find((sb) => sb.sizeRange === sizeRange);
+      if (sizeBundle) {
+        for (let i = 0; i < bundleQuantity; i++) {
+          addProduct(selectedProduct, sizeBundle);
+        }
+      }
+    });
+
+    // Reset and keep product picker open for easy addition
+    setSelectedProduct(null);
+    setSelectedSizes([]);
+    setBundleQuantity(1);
     setProductOpen(false);
+    
+    // Auto-focus search for next product
+    setTimeout(() => {
+      setProductOpen(true);
+    }, 100);
   };
 
   const updateItemQuantity = (id: string, quantity: number) => {
@@ -123,25 +155,26 @@ const NewInvoice = () => {
     setItems(
       items.map((item) => {
         if (item.id === id) {
-          const totalPairs = quantity * item.pairsPerBundle;
+          // Keep same pairs per bundle ratio
+          const pairsPerBundle = Math.ceil(item.totalPairs / item.quantity);
+          const totalPairs = quantity * pairsPerBundle;
           const discountTotal = totalPairs * item.discountPerPair;
           const total = totalPairs * item.pricePerPair - discountTotal;
-          return { ...item, quantity, total: Math.max(0, total) };
+          return { ...item, quantity, totalPairs, total: Math.max(0, total) };
         }
         return item;
       })
     );
   };
 
-  const updateItemPairs = (id: string, pairsPerBundle: number) => {
-    if (pairsPerBundle < 1) return;
+  const updateItemTotalPairs = (id: string, totalPairs: number) => {
+    if (totalPairs < 1) return;
     setItems(
       items.map((item) => {
         if (item.id === id) {
-          const totalPairs = item.quantity * pairsPerBundle;
           const discountTotal = totalPairs * item.discountPerPair;
           const total = totalPairs * item.pricePerPair - discountTotal;
-          return { ...item, pairsPerBundle, total: Math.max(0, total) };
+          return { ...item, totalPairs, total: Math.max(0, total) };
         }
         return item;
       })
@@ -152,9 +185,8 @@ const NewInvoice = () => {
     setItems(
       items.map((item) => {
         if (item.id === id) {
-          const totalPairs = item.quantity * item.pairsPerBundle;
-          const discountTotal = totalPairs * discountPerPair;
-          const total = totalPairs * item.pricePerPair - discountTotal;
+          const discountTotal = item.totalPairs * discountPerPair;
+          const total = item.totalPairs * item.pricePerPair - discountTotal;
           return { ...item, discountPerPair, total: Math.max(0, total) };
         }
         return item;
@@ -171,11 +203,11 @@ const NewInvoice = () => {
 
   const calculations = useMemo(() => {
     const subtotal = items.reduce(
-      (sum, item) => sum + item.quantity * item.pairsPerBundle * item.pricePerPair,
+      (sum, item) => sum + item.totalPairs * item.pricePerPair,
       0
     );
     const totalDiscount = items.reduce(
-      (sum, item) => sum + item.quantity * item.pairsPerBundle * item.discountPerPair,
+      (sum, item) => sum + item.totalPairs * item.discountPerPair,
       0
     );
     const afterDiscount = subtotal - totalDiscount;
@@ -188,13 +220,21 @@ const NewInvoice = () => {
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
+  const toggleSizeSelection = (sizeRange: string) => {
+    setSelectedSizes((prev) =>
+      prev.includes(sizeRange)
+        ? prev.filter((s) => s !== sizeRange)
+        : [...prev, sizeRange]
+    );
+  };
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto pb-20">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4">
           <Button
@@ -205,22 +245,22 @@ const NewInvoice = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h2 className="text-2xl font-bold text-foreground">New Invoice</h2>
-            <p className="text-muted-foreground">{invoiceNumber}</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">New Invoice</h2>
+            <p className="text-muted-foreground text-sm">{invoiceNumber}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-none">
             <Save className="w-4 h-4" />
-            Save Draft
+            <span className="hidden sm:inline">Save Draft</span>
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-none">
             <Printer className="w-4 h-4" />
-            Print
+            <span className="hidden sm:inline">Print</span>
           </Button>
-          <Button className="gap-2">
+          <Button size="sm" className="gap-2 flex-1 sm:flex-none">
             <Send className="w-4 h-4" />
-            Send Invoice
+            <span className="hidden sm:inline">Send</span>
           </Button>
         </div>
       </motion.div>
@@ -234,7 +274,7 @@ const NewInvoice = () => {
           className="lg:col-span-2 space-y-6"
         >
           {/* Client Selection */}
-          <div className="bg-card rounded-xl p-6 shadow-card">
+          <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
               Client Information
@@ -260,7 +300,7 @@ const NewInvoice = () => {
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0" align="start">
+              <PopoverContent className="w-[350px] sm:w-[400px] p-0" align="start">
                 <Command>
                   <CommandInput placeholder="Search clients..." />
                   <CommandList>
@@ -291,74 +331,28 @@ const NewInvoice = () => {
           </div>
 
           {/* Products */}
-          <div className="bg-card rounded-xl p-6 shadow-card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                <Package className="w-5 h-5 text-primary" />
-                Products
-              </h3>
-              <Popover open={productOpen} onOpenChange={setProductOpen}>
-                <PopoverTrigger asChild>
-                  <Button size="sm" className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Add Product
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[500px] p-0" align="end">
-                  <Command>
-                    <CommandInput placeholder="Search products..." />
-                    <CommandList className="max-h-[400px]">
-                      <CommandEmpty>No product found.</CommandEmpty>
-                      <CommandGroup>
-                        {products.map((product) => (
-                          <div key={product.id} className="border-b last:border-b-0">
-                            <div className="px-3 py-2 bg-muted/30">
-                              <p className="font-medium">{product.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {product.brandName} • {product.articleNumber} • Stock: {product.stockDozens * product.pairsPerDozen} pairs
-                              </p>
-                            </div>
-                            <div className="p-2 grid grid-cols-3 gap-2">
-                              {product.sizeBundles.map((sb) => (
-                                <Button
-                                  key={sb.sizeRange}
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex flex-col h-auto py-2"
-                                  onClick={() => addProduct(product, sb)}
-                                >
-                                  <span className="font-medium">Size {sb.sizeRange}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    Rs {sb.pricePerPair}/pair
-                                  </span>
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
+          <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Package className="w-5 h-5 text-primary" />
+              Products
+            </h3>
 
+            {/* Items List */}
             {items.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3 mb-4">
                 {items.map((item) => {
-                  const totalPairs = item.quantity * item.pairsPerBundle;
-                  const discountTotal = totalPairs * item.discountPerPair;
+                  const discountTotal = item.totalPairs * item.discountPerPair;
                   return (
                     <motion.div
                       key={item.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="p-4 rounded-lg bg-muted/30 border border-border/50"
+                      className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border/50"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <p className="font-medium text-foreground">{item.productName}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             {item.brandName} • {item.articleNumber} • Size {item.sizeRange}
                           </p>
                         </div>
@@ -371,7 +365,7 @@ const NewInvoice = () => {
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-5 gap-3 items-end">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
                         <div>
                           <Label className="text-xs text-muted-foreground">Bundles</Label>
                           <div className="flex items-center gap-1 mt-1">
@@ -402,26 +396,18 @@ const NewInvoice = () => {
                           </div>
                         </div>
                         <div>
-                          <Label className="text-xs text-muted-foreground">Pairs/Bundle</Label>
+                          <Label className="text-xs text-muted-foreground">Total Pairs</Label>
                           <Input
                             type="number"
-                            value={item.pairsPerBundle}
+                            value={item.totalPairs}
                             onChange={(e) =>
-                              updateItemPairs(item.id, parseInt(e.target.value) || 0)
+                              updateItemTotalPairs(item.id, parseInt(e.target.value) || 0)
                             }
                             className="h-8 mt-1"
                           />
                         </div>
                         <div>
-                          <Label className="text-xs text-muted-foreground">
-                            Rate ({totalPairs} × Rs {item.pricePerPair})
-                          </Label>
-                          <p className="font-medium mt-1 h-8 flex items-center">
-                            Rs {(totalPairs * item.pricePerPair).toLocaleString()}
-                          </p>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Discount/Pair (Rs)</Label>
+                          <Label className="text-xs text-muted-foreground">Disc/Pair (Rs)</Label>
                           <Input
                             type="number"
                             value={item.discountPerPair || ""}
@@ -431,17 +417,17 @@ const NewInvoice = () => {
                             className="h-8 mt-1"
                             placeholder="0"
                           />
-                          {discountTotal > 0 && (
-                            <p className="text-xs text-destructive mt-1">
-                              Total: -Rs {discountTotal.toLocaleString()}
-                            </p>
-                          )}
                         </div>
                         <div className="text-right">
                           <Label className="text-xs text-muted-foreground">Total</Label>
-                          <p className="font-semibold text-lg mt-1">
+                          <p className="font-semibold text-base sm:text-lg mt-1">
                             Rs {item.total.toLocaleString()}
                           </p>
+                          {discountTotal > 0 && (
+                            <p className="text-xs text-destructive">
+                              -Rs {discountTotal.toLocaleString()}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -449,17 +435,120 @@ const NewInvoice = () => {
                 })}
               </div>
             ) : (
-              <div className="py-12 text-center border-2 border-dashed border-border rounded-lg">
+              <div className="py-8 text-center border-2 border-dashed border-border rounded-lg mb-4">
                 <Package className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">
-                  No products added yet. Click "Add Product" to get started.
+                <p className="text-muted-foreground text-sm">
+                  No products added yet. Click "Add Product" below.
                 </p>
               </div>
             )}
+
+            {/* Add Product Button - Below items */}
+            <Popover open={productOpen} onOpenChange={setProductOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add Product
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[350px] sm:w-[500px] p-0" align="start">
+                <Command>
+                  <CommandInput 
+                    placeholder="Search products by name or article..." 
+                    value={productSearch}
+                    onValueChange={setProductSearch}
+                    ref={searchInputRef}
+                  />
+                  <CommandList className="max-h-[400px]">
+                    <CommandEmpty>No product found.</CommandEmpty>
+                    <CommandGroup>
+                      {products
+                        .sort((a, b) => a.articleNumber.localeCompare(b.articleNumber))
+                        .map((product) => (
+                        <div key={product.id} className="border-b last:border-b-0">
+                          <div 
+                            className={cn(
+                              "px-3 py-2 cursor-pointer transition-colors",
+                              selectedProduct?.id === product.id ? "bg-primary/10" : "bg-muted/30 hover:bg-muted/50"
+                            )}
+                            onClick={() => {
+                              if (selectedProduct?.id === product.id) {
+                                setSelectedProduct(null);
+                                setSelectedSizes([]);
+                              } else {
+                                setSelectedProduct(product);
+                                setSelectedSizes([]);
+                              }
+                            }}
+                          >
+                            <p className="font-medium">{product.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {product.brandName} • {product.articleNumber} • Stock: {product.stockDozens * product.pairsPerDozen} pairs
+                            </p>
+                          </div>
+                          
+                          {selectedProduct?.id === product.id && (
+                            <div className="p-3 space-y-3 bg-background">
+                              <div className="grid grid-cols-3 gap-2">
+                                {product.sizeBundles.map((sb) => (
+                                  <div
+                                    key={sb.sizeRange}
+                                    onClick={() => toggleSizeSelection(sb.sizeRange)}
+                                    className={cn(
+                                      "flex flex-col items-center p-2 rounded-lg border cursor-pointer transition-colors",
+                                      selectedSizes.includes(sb.sizeRange)
+                                        ? "border-primary bg-primary/10"
+                                        : "border-border hover:border-primary/50"
+                                    )}
+                                  >
+                                    {selectedSizes.includes(sb.sizeRange) && (
+                                      <Check className="w-3 h-3 text-primary absolute top-1 right-1" />
+                                    )}
+                                    <span className="font-medium text-sm">Size {sb.sizeRange}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      Rs {sb.pricePerPair}/pair
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      ({sb.pairsPerBundle} pairs/bundle)
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              {selectedSizes.length > 0 && (
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1">
+                                    <Label className="text-xs">Bundles per size</Label>
+                                    <Input
+                                      type="number"
+                                      value={bundleQuantity}
+                                      onChange={(e) => setBundleQuantity(parseInt(e.target.value) || 1)}
+                                      min={1}
+                                      className="h-8"
+                                    />
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    onClick={addMultipleSizes}
+                                    className="mt-4"
+                                  >
+                                    Add {selectedSizes.length} size{selectedSizes.length > 1 ? "s" : ""}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Notes */}
-          <div className="bg-card rounded-xl p-6 shadow-card">
+          <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
             <Label htmlFor="notes" className="text-sm font-medium">
               Notes (Optional)
             </Label>
@@ -482,7 +571,7 @@ const NewInvoice = () => {
           className="space-y-6"
         >
           {/* Calculations */}
-          <div className="bg-card rounded-xl p-6 shadow-card">
+          <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Calculator className="w-5 h-5 text-primary" />
               Summary
@@ -530,7 +619,7 @@ const NewInvoice = () => {
           </div>
 
           {/* Payment Method */}
-          <div className="bg-card rounded-xl p-6 shadow-card">
+          <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
             <h3 className="text-sm font-semibold text-foreground mb-4">
               Payment Method
             </h3>

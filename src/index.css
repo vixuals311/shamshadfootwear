@@ -249,3 +249,45 @@
     to { opacity: 1; transform: translateX(0); }
   }
 }
+
+/* Mobile-first responsive utilities */
+@media (max-width: 640px) {
+  .data-table {
+    @apply text-xs;
+  }
+
+  .data-table th,
+  .data-table td {
+    @apply py-2 px-2;
+  }
+
+  .metric-card {
+    @apply p-4;
+  }
+
+  /* Make dialogs full-width on mobile */
+  [role="dialog"] {
+    @apply max-w-[95vw] mx-2;
+  }
+
+  /* Improve touch targets */
+  button, 
+  [role="button"],
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  /* Stack grid items on mobile */
+  .mobile-stack {
+    @apply flex flex-col gap-2;
+  }
+}
+
+/* Improve input visibility on mobile */
+@media (max-width: 768px) {
+  input[type="number"] {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
