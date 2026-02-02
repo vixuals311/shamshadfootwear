@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useAudit } from "@/context/AuditContext";
-import { useAuth } from "@/context/AuthContext";
+import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { AuditAction, AuditEntity } from "@/types";
 import { format } from "date-fns";
 
@@ -49,7 +49,7 @@ const entityIcons: Record<AuditEntity, typeof User> = {
 
 const AuditLogs = () => {
   const { logs, getRecentLogs } = useAudit();
-  const { hasPermission } = useAuth();
+  const { hasPermission } = useSupabaseAuthContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterEntity, setFilterEntity] = useState<string>("all");
   const [filterAction, setFilterAction] = useState<string>("all");

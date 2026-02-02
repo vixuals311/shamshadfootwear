@@ -54,7 +54,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
-type AppRole = "admin" | "biller" | "cashier";
+type AppRole = "admin" | "biller" | "cashier" | "biller_cashier";
 
 interface UserWithRole {
   id: string;
@@ -71,6 +71,7 @@ const roleLabels: Record<UserRole, { label: string; color: string }> = {
   admin: { label: "Admin", color: "status-badge-danger" },
   biller: { label: "Biller", color: "status-badge-success" },
   cashier: { label: "Cashier", color: "status-badge-warning" },
+  biller_cashier: { label: "Biller + Cashier", color: "status-badge-default" },
 };
 
 const UserManagement = () => {
@@ -412,7 +413,7 @@ const UserManagement = () => {
         animate={{ opacity: 1, y: 0 }}
         className="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
-        {(["admin", "biller", "cashier"] as UserRole[]).map((role) => (
+        {(["admin", "biller", "cashier", "biller_cashier"] as UserRole[]).map((role) => (
           <div key={role} className="bg-card rounded-xl p-4 shadow-card">
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-5 h-5 text-primary" />
@@ -627,6 +628,7 @@ const UserManagement = () => {
                   <SelectItem value="admin">Admin - Full Access</SelectItem>
                   <SelectItem value="biller">Biller - Invoices & Inventory</SelectItem>
                   <SelectItem value="cashier">Cashier - Payments & Recoveries</SelectItem>
+                  <SelectItem value="biller_cashier">Biller + Cashier - Combined Access</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -729,6 +731,12 @@ const UserManagement = () => {
                       <div className="flex flex-col items-start">
                         <span className="font-medium">Cashier</span>
                         <span className="text-xs text-muted-foreground">Payments & recoveries</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="biller_cashier">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">Biller + Cashier</span>
+                        <span className="text-xs text-muted-foreground">Combined billing & payment access</span>
                       </div>
                     </SelectItem>
                   </SelectContent>
