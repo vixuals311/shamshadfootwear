@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   Tag,
   X,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,10 +48,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { Brand, Product, SizeBundlePricing, DEFAULT_SIZE_BUNDLES } from "@/types";
+import { Brand, Product, SizeBundlePricing } from "@/types";
 import { initialBrands, initialProducts } from "@/data/mockData";
+import { useDefaultSizeRanges, ProductCategory } from "@/hooks/useDefaultSizeRanges";
 
 interface SizeBundleInput {
   sizeRange: string;
@@ -59,15 +62,34 @@ interface SizeBundleInput {
   isCustom: boolean;
 }
 
+type GenderCategory = "men" | "women" | "children" | "unisex";
+
+const GENDER_OPTIONS: { value: GenderCategory; label: string }[] = [
+  { value: "men", label: "Men" },
+  { value: "women", label: "Women" },
+  { value: "children", label: "Children" },
+  { value: "unisex", label: "Unisex" },
+];
+
 const Inventory = () => {
   const [brands, setBrands] = useState<Brand[]>(initialBrands);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState("");
+  const [genderFilter, setGenderFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [isAddBrandDialogOpen, setIsAddBrandDialogOpen] = useState(false);
+  const [isSizeRangeDialogOpen, setIsSizeRangeDialogOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [customSizeRange, setCustomSizeRange] = useState("");
-  
+
+  const { sizeRanges, getSizeRangesForCategory, addSizeRange, deleteSizeRange } = useDefaultSizeRanges();
+
+  // Size range management
+  const [newSizeRangeCategory, setNewSizeRangeCategory] = useState<ProductCategory>("men");
+  const [newSizeRangeValue, setNewSizeRangeValue] = useState("");
+  const [newSizeRangePairs, setNewSizeRangePairs] = useState("6");
+
   // Confirmation dialogs
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [deleteBrandId, setDeleteBrandId] = useState<string | null>(null);
@@ -79,21 +101,32 @@ const Inventory = () => {
     articleNumber: "",
     brandId: "",
     category: "",
+    gender: "unisex" as GenderCategory,
     stockDozens: "",
     pairsPerDozen: "12",
     defaultPairsPerBundle: "6",
     supplier: "",
-    sizeBundles: [{ sizeRange: "7-10", pricePerPair: "", pairsPerBundle: "6", isCustom: false }] as SizeBundleInput[],
+    sizeBundles: [] as SizeBundleInput[],
   });
 
+  // Get unique categories
+  const categories = useMemo(() => {
+    return [...new Set(products.map((p) => p.category))];
+  }, [products]);
+
   const filteredProducts = products
-    .filter(
-      (product) =>
+    .filter((product) => {
+      const matchesSearch =
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.articleNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+        product.category.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesGender = genderFilter === "all" || (product as any).gender === genderFilter;
+      const matchesCategory = categoryFilter === "all" || product.category === categoryFilter;
+
+      return matchesSearch && matchesGender && matchesCategory;
+    })
     .sort((a, b) => a.articleNumber.localeCompare(b.articleNumber));
 
   const handleAddBrand = () => {
@@ -112,20 +145,24 @@ const Inventory = () => {
     if (newProduct.name && newProduct.articleNumber && newProduct.brandId) {
       const selectedBrand = brands.find((b) => b.id === newProduct.brandId);
       const sizeBundles: SizeBundlePricing[] = newProduct.sizeBundles
-        .filter(sb => sb.sizeRange && sb.pricePerPair)
+        .filter((sb) => sb.sizeRange && sb.pricePerPair)
         .map((sb) => ({
           sizeRange: sb.sizeRange,
           pricePerPair: parseFloat(sb.pricePerPair) || 0,
-          pairsPerBundle: parseInt(sb.pairsPerBundle) || parseInt(newProduct.defaultPairsPerBundle) || 6,
+          pairsPerBundle:
+            parseInt(sb.pairsPerBundle) ||
+            parseInt(newProduct.defaultPairsPerBundle) ||
+            6,
         }));
 
-      const product: Product = {
+      const product: Product & { gender: GenderCategory } = {
         id: Date.now().toString(),
         name: newProduct.name,
         articleNumber: newProduct.articleNumber,
         brandId: newProduct.brandId,
         brandName: selectedBrand?.name || "Unknown",
         category: newProduct.category || "Uncategorized",
+        gender: newProduct.gender,
         stockDozens: parseInt(newProduct.stockDozens) || 0,
         pairsPerDozen: parseInt(newProduct.pairsPerDozen) || 12,
         sizeBundles,
@@ -138,11 +175,12 @@ const Inventory = () => {
         articleNumber: "",
         brandId: "",
         category: "",
+        gender: "unisex",
         stockDozens: "",
         pairsPerDozen: "12",
         defaultPairsPerBundle: "6",
         supplier: "",
-        sizeBundles: [{ sizeRange: "7-10", pricePerPair: "", pairsPerBundle: "6", isCustom: false }],
+        sizeBundles: [],
       });
       setShowAddProductConfirm(false);
       setIsAddProductDialogOpen(false);
@@ -165,7 +203,8 @@ const Inventory = () => {
 
   const getStockStatus = (stockDozens: number, pairsPerDozen: number) => {
     const totalPairs = stockDozens * pairsPerDozen;
-    if (totalPairs <= 24) return { label: "Critical", class: "status-badge-danger" };
+    if (totalPairs <= 24)
+      return { label: "Critical", class: "status-badge-danger" };
     if (totalPairs <= 60) return { label: "Low", class: "status-badge-warning" };
     return { label: "In Stock", class: "status-badge-success" };
   };
@@ -176,7 +215,11 @@ const Inventory = () => {
     setNewProduct({ ...newProduct, sizeBundles: updated });
   };
 
-  const updateSizeBundleRange = (index: number, range: string, isCustom: boolean = false) => {
+  const updateSizeBundleRange = (
+    index: number,
+    range: string,
+    isCustom: boolean = false
+  ) => {
     const updated = [...newProduct.sizeBundles];
     updated[index] = { ...updated[index], sizeRange: range, isCustom };
     setNewProduct({ ...newProduct, sizeBundles: updated });
@@ -185,22 +228,31 @@ const Inventory = () => {
   const addSizeBundle = () => {
     setNewProduct({
       ...newProduct,
-      sizeBundles: [...newProduct.sizeBundles, { sizeRange: "", pricePerPair: "", pairsPerBundle: "6", isCustom: false }],
+      sizeBundles: [
+        ...newProduct.sizeBundles,
+        { sizeRange: "", pricePerPair: "", pairsPerBundle: "6", isCustom: false },
+      ],
     });
   };
 
   const removeSizeBundle = (index: number) => {
-    if (newProduct.sizeBundles.length > 1) {
-      const updated = newProduct.sizeBundles.filter((_, i) => i !== index);
-      setNewProduct({ ...newProduct, sizeBundles: updated });
-    }
+    const updated = newProduct.sizeBundles.filter((_, i) => i !== index);
+    setNewProduct({ ...newProduct, sizeBundles: updated });
   };
 
   const addCustomSizeBundle = () => {
     if (customSizeRange.trim()) {
       setNewProduct({
         ...newProduct,
-        sizeBundles: [...newProduct.sizeBundles, { sizeRange: customSizeRange.trim(), pricePerPair: "", pairsPerBundle: "6", isCustom: true }],
+        sizeBundles: [
+          ...newProduct.sizeBundles,
+          {
+            sizeRange: customSizeRange.trim(),
+            pricePerPair: "",
+            pairsPerBundle: "6",
+            isCustom: true,
+          },
+        ],
       });
       setCustomSizeRange("");
     }
@@ -210,6 +262,44 @@ const Inventory = () => {
     const updated = [...newProduct.sizeBundles];
     updated[index] = { ...updated[index], pairsPerBundle: pairs };
     setNewProduct({ ...newProduct, sizeBundles: updated });
+  };
+
+  // Add default size ranges based on gender selection
+  const addDefaultSizeRangesForGender = (gender: GenderCategory) => {
+    setNewProduct((prev) => ({ ...prev, gender }));
+    
+    // Get size ranges for selected gender
+    const defaultRanges = getSizeRangesForCategory(gender as ProductCategory);
+    
+    if (defaultRanges.length > 0) {
+      const newSizeBundles: SizeBundleInput[] = defaultRanges.map((sr) => ({
+        sizeRange: sr.size_range,
+        pricePerPair: "",
+        pairsPerBundle: sr.pairs_per_bundle.toString(),
+        isCustom: false,
+      }));
+      setNewProduct((prev) => ({
+        ...prev,
+        gender,
+        sizeBundles: newSizeBundles,
+      }));
+    }
+  };
+
+  const handleAddDefaultSizeRange = async () => {
+    if (newSizeRangeValue.trim()) {
+      try {
+        await addSizeRange(
+          newSizeRangeCategory,
+          newSizeRangeValue.trim(),
+          parseInt(newSizeRangePairs) || 6
+        );
+        setNewSizeRangeValue("");
+        setNewSizeRangePairs("6");
+      } catch (error) {
+        console.error("Failed to add size range:", error);
+      }
+    }
   };
 
   return (
@@ -227,12 +317,94 @@ const Inventory = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Size Range Management */}
+          <Dialog open={isSizeRangeDialogOpen} onOpenChange={setIsSizeRangeDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Settings2 className="w-4 h-4" />
+                Size Ranges
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Default Size Ranges</DialogTitle>
+                <DialogDescription>
+                  Manage default size ranges for Men, Women, and Children
+                </DialogDescription>
+              </DialogHeader>
+              <Tabs defaultValue="men" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="men">Men</TabsTrigger>
+                  <TabsTrigger value="women">Women</TabsTrigger>
+                  <TabsTrigger value="children">Children</TabsTrigger>
+                </TabsList>
+                {(["men", "women", "children"] as ProductCategory[]).map((cat) => (
+                  <TabsContent key={cat} value={cat} className="space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="e.g., 7-10"
+                        value={newSizeRangeCategory === cat ? newSizeRangeValue : ""}
+                        onChange={(e) => {
+                          setNewSizeRangeCategory(cat);
+                          setNewSizeRangeValue(e.target.value);
+                        }}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Pairs"
+                        value={newSizeRangeCategory === cat ? newSizeRangePairs : "6"}
+                        onChange={(e) => {
+                          setNewSizeRangeCategory(cat);
+                          setNewSizeRangePairs(e.target.value);
+                        }}
+                        className="w-20"
+                      />
+                      <Button onClick={handleAddDefaultSizeRange}>Add</Button>
+                    </div>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {getSizeRangesForCategory(cat).map((sr) => (
+                        <div
+                          key={sr.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                        >
+                          <div>
+                            <span className="font-medium">Size {sr.size_range}</span>
+                            <span className="text-sm text-muted-foreground ml-2">
+                              ({sr.pairs_per_bundle} pairs/bundle)
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => deleteSizeRange(sr.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      {getSizeRangesForCategory(cat).length === 0 && (
+                        <p className="text-center text-muted-foreground py-4 text-sm">
+                          No size ranges configured for {cat}
+                        </p>
+                      )}
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </DialogContent>
+          </Dialog>
+
           {/* Brand Management Dialog */}
-          <Dialog open={isAddBrandDialogOpen} onOpenChange={setIsAddBrandDialogOpen}>
+          <Dialog
+            open={isAddBrandDialogOpen}
+            onOpenChange={setIsAddBrandDialogOpen}
+          >
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Tag className="w-4 h-4" />
-                Manage Brands
+                Brands
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
@@ -248,9 +420,14 @@ const Inventory = () => {
                     placeholder="Enter brand name"
                     value={newBrandName}
                     onChange={(e) => setNewBrandName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && setShowAddBrandConfirm(true)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && setShowAddBrandConfirm(true)
+                    }
                   />
-                  <Button onClick={() => setShowAddBrandConfirm(true)} disabled={!newBrandName.trim()}>
+                  <Button
+                    onClick={() => setShowAddBrandConfirm(true)}
+                    disabled={!newBrandName.trim()}
+                  >
                     Add
                   </Button>
                 </div>
@@ -286,7 +463,10 @@ const Inventory = () => {
           </Button>
 
           {/* Add Product Dialog */}
-          <Dialog open={isAddProductDialogOpen} onOpenChange={setIsAddProductDialogOpen}>
+          <Dialog
+            open={isAddProductDialogOpen}
+            onOpenChange={setIsAddProductDialogOpen}
+          >
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />
@@ -319,14 +499,17 @@ const Inventory = () => {
                       id="articleNumber"
                       value={newProduct.articleNumber}
                       onChange={(e) =>
-                        setNewProduct({ ...newProduct, articleNumber: e.target.value })
+                        setNewProduct({
+                          ...newProduct,
+                          articleNumber: e.target.value,
+                        })
                       }
                       placeholder="e.g., CC-001"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="brand">Brand</Label>
                     <Select
@@ -358,14 +541,39 @@ const Inventory = () => {
                       placeholder="e.g., Shoes, Sandals"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Gender/Type</Label>
+                    <Select
+                      value={newProduct.gender}
+                      onValueChange={(value: GenderCategory) =>
+                        addDefaultSizeRangesForGender(value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GENDER_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {/* Stock in Dozens */}
                 <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                  <Label className="text-base font-semibold mb-3 block">Stock Quantity</Label>
+                  <Label className="text-base font-semibold mb-3 block">
+                    Stock Quantity
+                  </Label>
                   <div className="grid grid-cols-3 gap-4 items-end">
                     <div className="space-y-2">
-                      <Label htmlFor="stockDozens" className="text-sm text-muted-foreground">
+                      <Label
+                        htmlFor="stockDozens"
+                        className="text-sm text-muted-foreground"
+                      >
                         Quantity (Dozens)
                       </Label>
                       <Input
@@ -373,13 +581,19 @@ const Inventory = () => {
                         type="number"
                         value={newProduct.stockDozens}
                         onChange={(e) =>
-                          setNewProduct({ ...newProduct, stockDozens: e.target.value })
+                          setNewProduct({
+                            ...newProduct,
+                            stockDozens: e.target.value,
+                          })
                         }
                         placeholder="0"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="pairsPerDozen" className="text-sm text-muted-foreground">
+                      <Label
+                        htmlFor="pairsPerDozen"
+                        className="text-sm text-muted-foreground"
+                      >
                         Pairs per Dozen
                       </Label>
                       <Input
@@ -387,108 +601,124 @@ const Inventory = () => {
                         type="number"
                         value={newProduct.pairsPerDozen}
                         onChange={(e) =>
-                          setNewProduct({ ...newProduct, pairsPerDozen: e.target.value })
+                          setNewProduct({
+                            ...newProduct,
+                            pairsPerDozen: e.target.value,
+                          })
                         }
                         placeholder="12"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">Total Pairs</Label>
+                      <Label className="text-sm text-muted-foreground">
+                        Total Pairs
+                      </Label>
                       <div className="h-10 px-3 py-2 rounded-md border border-input bg-background flex items-center font-semibold text-primary">
-                        {(parseInt(newProduct.stockDozens) || 0) * (parseInt(newProduct.pairsPerDozen) || 12)} pairs
+                        {(parseInt(newProduct.stockDozens) || 0) *
+                          (parseInt(newProduct.pairsPerDozen) || 12)}{" "}
+                        pairs
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="pairsPerBundle">Default Pairs per Bundle</Label>
-                  <Input
-                    id="pairsPerBundle"
-                    type="number"
-                    value={newProduct.defaultPairsPerBundle}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, defaultPairsPerBundle: e.target.value })
-                    }
-                    placeholder="6"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="supplier">Supplier</Label>
-                  <Input
-                    id="supplier"
-                    value={newProduct.supplier}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, supplier: e.target.value })
-                    }
-                    placeholder="Enter supplier name"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pairsPerBundle">Default Pairs per Bundle</Label>
+                    <Input
+                      id="pairsPerBundle"
+                      type="number"
+                      value={newProduct.defaultPairsPerBundle}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          defaultPairsPerBundle: e.target.value,
+                        })
+                      }
+                      placeholder="6"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="supplier">Supplier</Label>
+                    <Input
+                      id="supplier"
+                      value={newProduct.supplier}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, supplier: e.target.value })
+                      }
+                      placeholder="Enter supplier name"
+                    />
+                  </div>
                 </div>
 
                 {/* Size Bundle Pricing */}
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold">Size Bundle Pricing</Label>
-                  
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold">
+                      Size Bundle Pricing
+                    </Label>
+                    {newProduct.gender !== "unisex" && (
+                      <span className="text-xs text-muted-foreground">
+                        Default sizes loaded for {newProduct.gender}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Existing Size Bundles */}
                   <div className="space-y-3">
                     {newProduct.sizeBundles.map((sb, index) => (
-                      <div key={index} className="p-3 rounded-lg bg-muted/30 border border-border/50">
-                        <div className="flex items-end gap-3 mb-2">
+                      <div
+                        key={index}
+                        className="p-3 rounded-lg bg-muted/30 border border-border/50"
+                      >
+                        <div className="flex items-end gap-3">
                           <div className="flex-1 space-y-2">
-                            <Label className="text-xs text-muted-foreground">Size Range</Label>
-                            {sb.isCustom ? (
-                              <Input
-                                value={sb.sizeRange}
-                                onChange={(e) => updateSizeBundleRange(index, e.target.value, true)}
-                                placeholder="e.g., 11-13"
-                              />
-                            ) : (
-                              <Select
-                                value={sb.sizeRange}
-                                onValueChange={(value) => updateSizeBundleRange(index, value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select size range" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {DEFAULT_SIZE_BUNDLES.map((size) => (
-                                    <SelectItem key={size} value={size}>
-                                      Size {size}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
+                            <Label className="text-xs text-muted-foreground">
+                              Size Range
+                            </Label>
+                            <Input
+                              value={sb.sizeRange}
+                              onChange={(e) =>
+                                updateSizeBundleRange(index, e.target.value, true)
+                              }
+                              placeholder="e.g., 7-10"
+                            />
                           </div>
                           <div className="flex-1 space-y-2">
-                            <Label className="text-xs text-muted-foreground">Price/Pair (Rs)</Label>
+                            <Label className="text-xs text-muted-foreground">
+                              Price/Pair (Rs)
+                            </Label>
                             <Input
                               type="number"
                               value={sb.pricePerPair}
-                              onChange={(e) => updateSizeBundlePrice(index, e.target.value)}
+                              onChange={(e) =>
+                                updateSizeBundlePrice(index, e.target.value)
+                              }
                               placeholder="0"
                             />
                           </div>
                           <div className="w-24 space-y-2">
-                            <Label className="text-xs text-muted-foreground">Pairs/Bundle</Label>
+                            <Label className="text-xs text-muted-foreground">
+                              Pairs/Bundle
+                            </Label>
                             <Input
                               type="number"
                               value={sb.pairsPerBundle}
-                              onChange={(e) => updateSizeBundlePairs(index, e.target.value)}
+                              onChange={(e) =>
+                                updateSizeBundlePairs(index, e.target.value)
+                              }
                               placeholder="6"
                             />
                           </div>
-                          {newProduct.sizeBundles.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 text-destructive hover:text-destructive"
-                              onClick={() => removeSizeBundle(index)}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 text-destructive hover:text-destructive"
+                            onClick={() => removeSizeBundle(index)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -497,7 +727,9 @@ const Inventory = () => {
                   {/* Add Bundle Button - Below list */}
                   <div className="flex gap-2 items-end">
                     <div className="flex-1 space-y-2">
-                      <Label className="text-xs text-muted-foreground">Add Custom Size Range</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Add Custom Size Range
+                      </Label>
                       <Input
                         value={customSizeRange}
                         onChange={(e) => setCustomSizeRange(e.target.value)}
@@ -513,17 +745,27 @@ const Inventory = () => {
                       Add Custom
                     </Button>
                   </div>
-                  <Button type="button" variant="outline" onClick={addSizeBundle} className="w-full gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addSizeBundle}
+                    className="w-full gap-2"
+                  >
                     <Plus className="w-4 h-4" />
                     Add Size Bundle
                   </Button>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddProductDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddProductDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button onClick={() => setShowAddProductConfirm(true)}>Add Product</Button>
+                <Button onClick={() => setShowAddProductConfirm(true)}>
+                  Add Product
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -546,10 +788,32 @@ const Inventory = () => {
             className="pl-9"
           />
         </div>
-        <Button variant="outline" className="gap-2">
-          <Filter className="w-4 h-4" />
-          Filters
-        </Button>
+        <Select value={genderFilter} onValueChange={setGenderFilter}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Gender" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {GENDER_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </motion.div>
 
       {/* Products Table */}
@@ -566,6 +830,7 @@ const Inventory = () => {
                 <th>Product</th>
                 <th>Article #</th>
                 <th>Brand</th>
+                <th>Type</th>
                 <th>Size Pricing (Rs/pair)</th>
                 <th>Stock (Dozens)</th>
                 <th>Total Pairs</th>
@@ -575,7 +840,11 @@ const Inventory = () => {
             <tbody>
               {filteredProducts.map((product, index) => {
                 const totalPairs = product.stockDozens * product.pairsPerDozen;
-                const stockStatus = getStockStatus(product.stockDozens, product.pairsPerDozen);
+                const stockStatus = getStockStatus(
+                  product.stockDozens,
+                  product.pairsPerDozen
+                );
+                const gender = (product as any).gender || "unisex";
                 return (
                   <motion.tr
                     key={product.id}
@@ -608,10 +877,18 @@ const Inventory = () => {
                       </span>
                     </td>
                     <td>
+                      <span className="text-xs capitalize text-muted-foreground">
+                        {gender}
+                      </span>
+                    </td>
+                    <td>
                       <div className="flex flex-col gap-1 text-xs">
                         {product.sizeBundles.map((sb) => (
                           <span key={sb.sizeRange} className="text-muted-foreground">
-                            <span className="font-medium text-foreground">{sb.sizeRange}:</span> Rs {sb.pricePerPair}
+                            <span className="font-medium text-foreground">
+                              {sb.sizeRange}:
+                            </span>{" "}
+                            Rs {sb.pricePerPair} ({sb.pairsPerBundle}p)
                           </span>
                         ))}
                       </div>
@@ -678,41 +955,58 @@ const Inventory = () => {
       </motion.div>
 
       {/* Confirmation Dialogs */}
-      <AlertDialog open={!!deleteProductId} onOpenChange={() => setDeleteProductId(null)}>
+      <AlertDialog
+        open={!!deleteProductId}
+        onOpenChange={() => setDeleteProductId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Product</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this product? This action cannot be undone.
+              Are you sure you want to delete this product? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDeleteProduct}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!deleteBrandId} onOpenChange={() => setDeleteBrandId(null)}>
+      <AlertDialog
+        open={!!deleteBrandId}
+        onOpenChange={() => setDeleteBrandId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Brand</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this brand? Products using this brand will remain unchanged.
+              Are you sure you want to delete this brand? Products using this
+              brand will remain unchanged.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteBrand} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDeleteBrand}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={showAddProductConfirm} onOpenChange={setShowAddProductConfirm}>
+      <AlertDialog
+        open={showAddProductConfirm}
+        onOpenChange={setShowAddProductConfirm}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Add Product</AlertDialogTitle>
@@ -722,12 +1016,17 @@ const Inventory = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAddProduct}>Add Product</AlertDialogAction>
+            <AlertDialogAction onClick={handleAddProduct}>
+              Add Product
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={showAddBrandConfirm} onOpenChange={setShowAddBrandConfirm}>
+      <AlertDialog
+        open={showAddBrandConfirm}
+        onOpenChange={setShowAddBrandConfirm}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Add Brand</AlertDialogTitle>

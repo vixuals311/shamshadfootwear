@@ -8,7 +8,6 @@ import {
   User,
   MapPin,
   Calendar,
-  Download,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +39,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Client, Recovery } from "@/types";
@@ -62,13 +74,15 @@ const RecoveryPage = () => {
   const [isAddCityRecoveryOpen, setIsAddCityRecoveryOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
-  
+  const [clientSearchOpen, setClientSearchOpen] = useState(false);
+
   // Confirmation dialogs
   const [showAddClientRecoveryConfirm, setShowAddClientRecoveryConfirm] = useState(false);
   const [showAddCityRecoveryConfirm, setShowAddCityRecoveryConfirm] = useState(false);
-  
+
   const [clientRecovery, setClientRecovery] = useState({
     clientId: "",
+    clientName: "",
     amount: "",
     notes: "",
   });
@@ -76,6 +90,7 @@ const RecoveryPage = () => {
   const [cityRecoveryCity, setCityRecoveryCity] = useState("");
   const [cityRecoveryNotes, setCityRecoveryNotes] = useState("");
   const [cityClientRecoveries, setCityClientRecoveries] = useState<CityClientRecovery[]>([]);
+  const [cityClientSearch, setCityClientSearch] = useState("");
 
   // Get unique cities
   const cities = useMemo(() => {
@@ -88,49 +103,58 @@ const RecoveryPage = () => {
     return clients
       .filter((c) => selectedCities.includes(c.city))
       .sort((a, b) => {
-        // Sort by city first, then by name
         const cityCompare = a.city.localeCompare(b.city);
         if (cityCompare !== 0) return cityCompare;
         return a.name.localeCompare(b.name);
       });
   }, [clients, selectedCities]);
 
-  // Get clients by city for city recovery
-  const clientsForCityRecovery = useMemo(() => {
-    if (!cityRecoveryCity) return [];
-    return clients.filter((c) => c.city === cityRecoveryCity).map(c => ({
-      clientId: c.id,
-      clientName: c.name,
-      phone: c.phone,
-      currentBalance: c.currentBalance,
-      recoveryAmount: "",
-    }));
-  }, [clients, cityRecoveryCity]);
-
   // Update city client recoveries when city changes
   const handleCityChange = (city: string) => {
     setCityRecoveryCity(city);
-    const cityClients = clients.filter((c) => c.city === city).map(c => ({
-      clientId: c.id,
-      clientName: c.name,
-      phone: c.phone,
-      currentBalance: c.currentBalance,
-      recoveryAmount: "",
-    }));
+    const cityClients = clients
+      .filter((c) => c.city === city)
+      .map((c) => ({
+        clientId: c.id,
+        clientName: c.name,
+        phone: c.phone,
+        currentBalance: c.currentBalance,
+        recoveryAmount: "",
+      }));
     setCityClientRecoveries(cityClients);
   };
 
   const updateClientRecoveryAmount = (clientId: string, amount: string) => {
-    setCityClientRecoveries(prev => 
-      prev.map(c => c.clientId === clientId ? { ...c, recoveryAmount: amount } : c)
+    setCityClientRecoveries((prev) =>
+      prev.map((c) => (c.clientId === clientId ? { ...c, recoveryAmount: amount } : c))
     );
   };
+
+  // Filter city clients by search
+  const filteredCityClients = useMemo(() => {
+    if (!cityClientSearch.trim()) return cityClientRecoveries;
+    const search = cityClientSearch.toLowerCase();
+    return cityClientRecoveries.filter(
+      (c) =>
+        c.clientName.toLowerCase().includes(search) ||
+        c.phone.includes(search)
+    );
+  }, [cityClientRecoveries, cityClientSearch]);
 
   const filteredRecoveries = recoveries.filter(
     (recovery) =>
       recovery.clientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       recovery.city?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleSelectClient = (client: Client) => {
+    setClientRecovery({
+      ...clientRecovery,
+      clientId: client.id,
+      clientName: client.name,
+    });
+    setClientSearchOpen(false);
+  };
 
   const handleAddClientRecovery = () => {
     if (clientRecovery.clientId && clientRecovery.amount) {
@@ -145,7 +169,7 @@ const RecoveryPage = () => {
         type: "client",
       };
       setRecoveries([newRecovery, ...recoveries]);
-      setClientRecovery({ clientId: "", amount: "", notes: "" });
+      setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "" });
       setShowAddClientRecoveryConfirm(false);
       setIsAddClientRecoveryOpen(false);
     }
@@ -154,8 +178,8 @@ const RecoveryPage = () => {
   const handleAddCityRecovery = () => {
     if (cityRecoveryCity) {
       const clientAmounts = cityClientRecoveries
-        .filter(c => parseFloat(c.recoveryAmount) > 0)
-        .map(c => ({
+        .filter((c) => parseFloat(c.recoveryAmount) > 0)
+        .map((c) => ({
           clientId: c.clientId,
           clientName: c.clientName,
           amount: parseFloat(c.recoveryAmount),
@@ -191,10 +215,9 @@ const RecoveryPage = () => {
 
   const handlePrintRecoveryList = () => {
     if (selectedCities.length === 0) return;
-    
+
     const citiesTitle = selectedCities.join(", ");
-    
-    // Create print content
+
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -210,11 +233,7 @@ const RecoveryPage = () => {
           .amount-col { width: 150px; }
           .recovery-input { width: 100%; border: none; border-bottom: 1px solid #999; padding: 5px 0; min-height: 20px; }
           .pending { color: #dc2626; font-weight: bold; }
-          .city-header { background-color: #e5e7eb; font-weight: bold; font-size: 14px; }
-          @media print { 
-            button { display: none; }
-            .no-print { display: none; }
-          }
+          @media print { button { display: none; } }
         </style>
       </head>
       <body>
@@ -232,7 +251,9 @@ const RecoveryPage = () => {
             </tr>
           </thead>
           <tbody>
-            ${clientsByCities.map((client, index) => `
+            ${clientsByCities
+              .map(
+                (client, index) => `
               <tr>
                 <td>${index + 1}</td>
                 <td>${client.city}</td>
@@ -241,14 +262,16 @@ const RecoveryPage = () => {
                 <td class="pending">Rs ${client.currentBalance.toLocaleString()}</td>
                 <td><div class="recovery-input"></div></td>
               </tr>
-            `).join("")}
+            `
+              )
+              .join("")}
           </tbody>
         </table>
         <script>window.print();</script>
       </body>
       </html>
     `;
-    
+
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(printContent);
@@ -264,7 +287,10 @@ const RecoveryPage = () => {
   }, [recoveries]);
 
   const cityRecoveryTotal = useMemo(() => {
-    return cityClientRecoveries.reduce((sum, c) => sum + (parseFloat(c.recoveryAmount) || 0), 0);
+    return cityClientRecoveries.reduce(
+      (sum, c) => sum + (parseFloat(c.recoveryAmount) || 0),
+      0
+    );
   }, [cityClientRecoveries]);
 
   return (
@@ -277,9 +303,7 @@ const RecoveryPage = () => {
       >
         <div>
           <h2 className="text-2xl font-bold text-foreground">Recovery</h2>
-          <p className="text-muted-foreground">
-            Manage client payments and recoveries
-          </p>
+          <p className="text-muted-foreground">Manage client payments and recoveries</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button
@@ -414,10 +438,14 @@ const RecoveryPage = () => {
                       </div>
                     </td>
                     <td>
-                      <span className={cn(
-                        "status-badge",
-                        recovery.type === "client" ? "status-badge-success" : "status-badge-warning"
-                      )}>
+                      <span
+                        className={cn(
+                          "status-badge",
+                          recovery.type === "client"
+                            ? "status-badge-success"
+                            : "status-badge-warning"
+                        )}
+                      >
                         {recovery.type === "client" ? "Client" : "City"}
                       </span>
                     </td>
@@ -539,29 +567,44 @@ const RecoveryPage = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Select Client</Label>
-              <Select
-                value={clientRecovery.clientId}
-                onValueChange={(value) =>
-                  setClientRecovery({ ...clientRecovery, clientId: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      <div className="flex justify-between items-center w-full">
-                        <span>{client.name}</span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          Balance: Rs {client.currentBalance.toLocaleString()}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Search & Select Client</Label>
+              <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between"
+                  >
+                    {clientRecovery.clientName || "Select a client..."}
+                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search by name, phone, city..." />
+                    <CommandList>
+                      <CommandEmpty>No client found.</CommandEmpty>
+                      <CommandGroup>
+                        {clients.map((client) => (
+                          <CommandItem
+                            key={client.id}
+                            value={`${client.name} ${client.phone} ${client.city}`}
+                            onSelect={() => handleSelectClient(client)}
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium">{client.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {client.phone} • {client.city} • Balance: Rs{" "}
+                                {client.currentBalance.toLocaleString()}
+                              </p>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label>Amount (Rs)</Label>
@@ -590,7 +633,9 @@ const RecoveryPage = () => {
             <Button variant="outline" onClick={() => setIsAddClientRecoveryOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setShowAddClientRecoveryConfirm(true)}>Add Recovery</Button>
+            <Button onClick={() => setShowAddClientRecoveryConfirm(true)}>
+              Add Recovery
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -607,10 +652,7 @@ const RecoveryPage = () => {
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label>Select City</Label>
-              <Select
-                value={cityRecoveryCity}
-                onValueChange={handleCityChange}
-              >
+              <Select value={cityRecoveryCity} onValueChange={handleCityChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a city" />
                 </SelectTrigger>
@@ -626,7 +668,18 @@ const RecoveryPage = () => {
 
             {cityClientRecoveries.length > 0 && (
               <div className="space-y-3">
-                <Label>Client Recoveries</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Client Recoveries</Label>
+                  <div className="relative w-48">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search clients..."
+                      value={cityClientSearch}
+                      onChange={(e) => setCityClientSearch(e.target.value)}
+                      className="pl-8 h-8 text-sm"
+                    />
+                  </div>
+                </div>
                 <div className="border rounded-lg overflow-hidden">
                   <table className="data-table">
                     <thead>
@@ -638,7 +691,7 @@ const RecoveryPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {cityClientRecoveries.map((client) => (
+                      {filteredCityClients.map((client) => (
                         <tr key={client.clientId}>
                           <td className="font-medium">{client.clientName}</td>
                           <td className="text-muted-foreground text-sm">{client.phone}</td>
@@ -649,7 +702,9 @@ const RecoveryPage = () => {
                             <Input
                               type="number"
                               value={client.recoveryAmount}
-                              onChange={(e) => updateClientRecoveryAmount(client.clientId, e.target.value)}
+                              onChange={(e) =>
+                                updateClientRecoveryAmount(client.clientId, e.target.value)
+                              }
                               placeholder="0"
                               className="h-8 w-32"
                             />
@@ -684,7 +739,7 @@ const RecoveryPage = () => {
             <Button variant="outline" onClick={() => setIsAddCityRecoveryOpen(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={() => setShowAddCityRecoveryConfirm(true)}
               disabled={cityRecoveryTotal === 0}
             >
@@ -732,17 +787,29 @@ const RecoveryPage = () => {
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-sm text-muted-foreground">
                   This will print a list of {clientsByCities.length} clients in{" "}
-                  <span className="font-medium text-foreground">{selectedCities.join(", ")}</span>{" "}
+                  <span className="font-medium text-foreground">
+                    {selectedCities.join(", ")}
+                  </span>{" "}
                   sorted by city and name.
                 </p>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsPrintDialogOpen(false); setSelectedCities([]); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsPrintDialogOpen(false);
+                setSelectedCities([]);
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={handlePrintRecoveryList} disabled={selectedCities.length === 0} className="gap-2">
+            <Button
+              onClick={handlePrintRecoveryList}
+              disabled={selectedCities.length === 0}
+              className="gap-2"
+            >
               <Printer className="w-4 h-4" />
               Print List
             </Button>
@@ -751,34 +818,47 @@ const RecoveryPage = () => {
       </Dialog>
 
       {/* Confirmation Dialogs */}
-      <AlertDialog open={showAddClientRecoveryConfirm} onOpenChange={setShowAddClientRecoveryConfirm}>
+      <AlertDialog
+        open={showAddClientRecoveryConfirm}
+        onOpenChange={setShowAddClientRecoveryConfirm}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Add Client Recovery</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to add a recovery of Rs {parseFloat(clientRecovery.amount || "0").toLocaleString()} for{" "}
-              {clients.find(c => c.id === clientRecovery.clientId)?.name}?
+              Are you sure you want to add a recovery of Rs{" "}
+              {parseFloat(clientRecovery.amount || "0").toLocaleString()} for{" "}
+              {clientRecovery.clientName}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAddClientRecovery}>Add Recovery</AlertDialogAction>
+            <AlertDialogAction onClick={handleAddClientRecovery}>
+              Add Recovery
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={showAddCityRecoveryConfirm} onOpenChange={setShowAddCityRecoveryConfirm}>
+      <AlertDialog
+        open={showAddCityRecoveryConfirm}
+        onOpenChange={setShowAddCityRecoveryConfirm}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Add City Recovery</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to add a total recovery of Rs {cityRecoveryTotal.toLocaleString()} for{" "}
-              {cityClientRecoveries.filter(c => parseFloat(c.recoveryAmount) > 0).length} clients in {cityRecoveryCity}?
+              Are you sure you want to add a total recovery of Rs{" "}
+              {cityRecoveryTotal.toLocaleString()} for{" "}
+              {cityClientRecoveries.filter((c) => parseFloat(c.recoveryAmount) > 0).length}{" "}
+              clients in {cityRecoveryCity}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAddCityRecovery}>Add Recovery</AlertDialogAction>
+            <AlertDialogAction onClick={handleAddCityRecovery}>
+              Add Recovery
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

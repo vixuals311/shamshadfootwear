@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -13,12 +13,12 @@ import {
   Package,
   Calculator,
   Check,
+  Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -53,11 +53,18 @@ import { cn } from "@/lib/utils";
 import { Client, Product, InvoiceItem, SizeBundlePricing } from "@/types";
 import { initialClients, initialProducts, paymentAccounts } from "@/data/mockData";
 
+interface SizeBundleSelection {
+  sizeRange: string;
+  bundles: number;
+  pairsPerBundle: number;
+  pricePerPair: number;
+}
+
 const NewInvoice = () => {
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [clients] = useState<Client[]>(initialClients);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products] = useState<Product[]>(initialProducts);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientOpen, setClientOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
@@ -69,79 +76,99 @@ const NewInvoice = () => {
   const [notes, setNotes] = useState("");
   const [removeItemId, setRemoveItemId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
-  
-  // Multi-size selection state
+
+  // Multi-size selection with individual bundle counts
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-  const [bundleQuantity, setBundleQuantity] = useState(1);
+  const [sizeSelections, setSizeSelections] = useState<SizeBundleSelection[]>([]);
 
-  const addProduct = (product: Product, sizeBundle: SizeBundlePricing) => {
-    // Check if same product with same size already exists
-    const existingItemIndex = items.findIndex(
-      (item) => item.productId === product.id && item.sizeRange === sizeBundle.sizeRange
-    );
-
-    if (existingItemIndex !== -1) {
-      // Increment bundle quantity for existing item
-      const updatedItems = [...items];
-      const existingItem = updatedItems[existingItemIndex];
-      const newQuantity = existingItem.quantity + 1;
-      const totalPairs = newQuantity * sizeBundle.pairsPerBundle;
-      const discountTotal = totalPairs * existingItem.discountPerPair;
-      const total = totalPairs * existingItem.pricePerPair - discountTotal;
-      
-      updatedItems[existingItemIndex] = {
-        ...existingItem,
-        quantity: newQuantity,
-        totalPairs,
-        total: Math.max(0, total),
-      };
-      setItems(updatedItems);
+  // Initialize size selections when product is selected
+  const handleProductSelect = useCallback((product: Product) => {
+    if (selectedProduct?.id === product.id) {
+      setSelectedProduct(null);
+      setSizeSelections([]);
     } else {
-      // Add new item
-      const itemId = `${product.id}-${sizeBundle.sizeRange}-${Date.now()}`;
-      const quantity = 1;
-      const totalPairs = sizeBundle.pairsPerBundle;
-      const total = totalPairs * sizeBundle.pricePerPair;
-
-      setItems([
-        ...items,
-        {
-          id: itemId,
-          productId: product.id,
-          productName: product.name,
-          articleNumber: product.articleNumber,
-          brandName: product.brandName,
-          sizeRange: sizeBundle.sizeRange,
-          quantity,
-          totalPairs,
-          pricePerPair: sizeBundle.pricePerPair,
-          discountPerPair: 0,
-          total,
-        },
-      ]);
+      setSelectedProduct(product);
+      setSizeSelections(
+        product.sizeBundles.map((sb) => ({
+          sizeRange: sb.sizeRange,
+          bundles: 0,
+          pairsPerBundle: sb.pairsPerBundle,
+          pricePerPair: sb.pricePerPair,
+        }))
+      );
     }
+  }, [selectedProduct]);
+
+  const updateSizeBundles = (sizeRange: string, bundles: number) => {
+    setSizeSelections((prev) =>
+      prev.map((s) =>
+        s.sizeRange === sizeRange ? { ...s, bundles: Math.max(0, bundles) } : s
+      )
+    );
   };
 
-  const addMultipleSizes = () => {
-    if (!selectedProduct || selectedSizes.length === 0) return;
-    
-    selectedSizes.forEach((sizeRange) => {
-      const sizeBundle = selectedProduct.sizeBundles.find((sb) => sb.sizeRange === sizeRange);
-      if (sizeBundle) {
-        for (let i = 0; i < bundleQuantity; i++) {
-          addProduct(selectedProduct, sizeBundle);
+  const addSelectedSizesToInvoice = () => {
+    if (!selectedProduct) return;
+
+    const selectedSizes = sizeSelections.filter((s) => s.bundles > 0);
+    if (selectedSizes.length === 0) return;
+
+    setItems((prevItems) => {
+      let newItems = [...prevItems];
+
+      selectedSizes.forEach((selection) => {
+        const existingItemIndex = newItems.findIndex(
+          (item) =>
+            item.productId === selectedProduct.id &&
+            item.sizeRange === selection.sizeRange
+        );
+
+        const totalPairs = selection.bundles * selection.pairsPerBundle;
+
+        if (existingItemIndex !== -1) {
+          // Merge with existing item - add bundles and pairs
+          const existingItem = newItems[existingItemIndex];
+          const newQuantity = existingItem.quantity + selection.bundles;
+          const newTotalPairs = existingItem.totalPairs + totalPairs;
+          const discountTotal = newTotalPairs * existingItem.discountPerPair;
+          const total = newTotalPairs * existingItem.pricePerPair - discountTotal;
+
+          newItems[existingItemIndex] = {
+            ...existingItem,
+            quantity: newQuantity,
+            totalPairs: newTotalPairs,
+            total: Math.max(0, total),
+          };
+        } else {
+          // Add new item
+          const itemId = `${selectedProduct.id}-${selection.sizeRange}-${Date.now()}`;
+          const total = totalPairs * selection.pricePerPair;
+
+          newItems.push({
+            id: itemId,
+            productId: selectedProduct.id,
+            productName: selectedProduct.name,
+            articleNumber: selectedProduct.articleNumber,
+            brandName: selectedProduct.brandName,
+            sizeRange: selection.sizeRange,
+            quantity: selection.bundles,
+            totalPairs,
+            pricePerPair: selection.pricePerPair,
+            discountPerPair: 0,
+            total,
+          });
         }
-      }
+      });
+
+      return newItems;
     });
 
-    // Reset and keep product picker open for easy addition
+    // Reset and auto-focus search
     setSelectedProduct(null);
-    setSelectedSizes([]);
-    setBundleQuantity(1);
+    setSizeSelections([]);
     setProductOpen(false);
+    setProductSearch("");
     
-    // Auto-focus search for next product
     setTimeout(() => {
       setProductOpen(true);
     }, 100);
@@ -155,7 +182,6 @@ const NewInvoice = () => {
     setItems(
       items.map((item) => {
         if (item.id === id) {
-          // Keep same pairs per bundle ratio
           const pairsPerBundle = Math.ceil(item.totalPairs / item.quantity);
           const totalPairs = quantity * pairsPerBundle;
           const discountTotal = totalPairs * item.discountPerPair;
@@ -220,13 +246,19 @@ const NewInvoice = () => {
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
-  const toggleSizeSelection = (sizeRange: string) => {
-    setSelectedSizes((prev) =>
-      prev.includes(sizeRange)
-        ? prev.filter((s) => s !== sizeRange)
-        : [...prev, sizeRange]
+  // Filter products based on search
+  const filteredProducts = useMemo(() => {
+    if (!productSearch.trim()) return products;
+    const search = productSearch.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(search) ||
+        p.articleNumber.toLowerCase().includes(search) ||
+        p.brandName.toLowerCase().includes(search)
     );
-  };
+  }, [products, productSearch]);
+
+  const totalSelectedBundles = sizeSelections.reduce((sum, s) => sum + s.bundles, 0);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
@@ -302,14 +334,14 @@ const NewInvoice = () => {
               </PopoverTrigger>
               <PopoverContent className="w-[350px] sm:w-[400px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Search clients..." />
+                  <CommandInput placeholder="Search clients by name, phone, city..." />
                   <CommandList>
                     <CommandEmpty>No client found.</CommandEmpty>
                     <CommandGroup>
                       {clients.map((client) => (
                         <CommandItem
                           key={client.id}
-                          value={client.name}
+                          value={`${client.name} ${client.phone} ${client.city}`}
                           onSelect={() => {
                             setSelectedClient(client);
                             setClientOpen(false);
@@ -318,7 +350,7 @@ const NewInvoice = () => {
                           <div>
                             <p className="font-medium">{client.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {client.city} • Balance: Rs {client.currentBalance.toLocaleString()}
+                              {client.phone} • {client.city} • Balance: Rs {client.currentBalance.toLocaleString()}
                             </p>
                           </div>
                         </CommandItem>
@@ -452,9 +484,9 @@ const NewInvoice = () => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[350px] sm:w-[500px] p-0" align="start">
-                <Command>
-                  <CommandInput 
-                    placeholder="Search products by name or article..." 
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Search products by name or article..."
                     value={productSearch}
                     onValueChange={setProductSearch}
                     ref={searchInputRef}
@@ -462,84 +494,114 @@ const NewInvoice = () => {
                   <CommandList className="max-h-[400px]">
                     <CommandEmpty>No product found.</CommandEmpty>
                     <CommandGroup>
-                      {products
+                      {filteredProducts
                         .sort((a, b) => a.articleNumber.localeCompare(b.articleNumber))
                         .map((product) => (
-                        <div key={product.id} className="border-b last:border-b-0">
-                          <div 
-                            className={cn(
-                              "px-3 py-2 cursor-pointer transition-colors",
-                              selectedProduct?.id === product.id ? "bg-primary/10" : "bg-muted/30 hover:bg-muted/50"
-                            )}
-                            onClick={() => {
-                              if (selectedProduct?.id === product.id) {
-                                setSelectedProduct(null);
-                                setSelectedSizes([]);
-                              } else {
-                                setSelectedProduct(product);
-                                setSelectedSizes([]);
-                              }
-                            }}
-                          >
-                            <p className="font-medium">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {product.brandName} • {product.articleNumber} • Stock: {product.stockDozens * product.pairsPerDozen} pairs
-                            </p>
-                          </div>
-                          
-                          {selectedProduct?.id === product.id && (
-                            <div className="p-3 space-y-3 bg-background">
-                              <div className="grid grid-cols-3 gap-2">
-                                {product.sizeBundles.map((sb) => (
-                                  <div
-                                    key={sb.sizeRange}
-                                    onClick={() => toggleSizeSelection(sb.sizeRange)}
-                                    className={cn(
-                                      "flex flex-col items-center p-2 rounded-lg border cursor-pointer transition-colors",
-                                      selectedSizes.includes(sb.sizeRange)
-                                        ? "border-primary bg-primary/10"
-                                        : "border-border hover:border-primary/50"
-                                    )}
-                                  >
-                                    {selectedSizes.includes(sb.sizeRange) && (
-                                      <Check className="w-3 h-3 text-primary absolute top-1 right-1" />
-                                    )}
-                                    <span className="font-medium text-sm">Size {sb.sizeRange}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      Rs {sb.pricePerPair}/pair
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      ({sb.pairsPerBundle} pairs/bundle)
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                              
-                              {selectedSizes.length > 0 && (
-                                <div className="flex items-center gap-3">
-                                  <div className="flex-1">
-                                    <Label className="text-xs">Bundles per size</Label>
-                                    <Input
-                                      type="number"
-                                      value={bundleQuantity}
-                                      onChange={(e) => setBundleQuantity(parseInt(e.target.value) || 1)}
-                                      min={1}
-                                      className="h-8"
-                                    />
-                                  </div>
+                          <div key={product.id} className="border-b last:border-b-0">
+                            <div
+                              className={cn(
+                                "px-3 py-2 cursor-pointer transition-colors",
+                                selectedProduct?.id === product.id
+                                  ? "bg-primary/10"
+                                  : "bg-muted/30 hover:bg-muted/50"
+                              )}
+                              onClick={() => handleProductSelect(product)}
+                            >
+                              <p className="font-medium">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {product.brandName} • {product.articleNumber} • Stock:{" "}
+                                {product.stockDozens * product.pairsPerDozen} pairs
+                              </p>
+                            </div>
+
+                            {selectedProduct?.id === product.id && (
+                              <div className="p-3 space-y-3 bg-background border-t">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Select bundles per size:
+                                </p>
+                                <div className="space-y-2">
+                                  {sizeSelections.map((selection) => (
+                                    <div
+                                      key={selection.sizeRange}
+                                      className={cn(
+                                        "flex items-center justify-between p-2 rounded-lg border",
+                                        selection.bundles > 0
+                                          ? "border-primary bg-primary/5"
+                                          : "border-border"
+                                      )}
+                                    >
+                                      <div className="flex-1">
+                                        <span className="font-medium text-sm">
+                                          Size {selection.sizeRange}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground ml-2">
+                                          Rs {selection.pricePerPair}/pair •{" "}
+                                          {selection.pairsPerBundle}p/bundle
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="outline"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateSizeBundles(
+                                              selection.sizeRange,
+                                              selection.bundles - 1
+                                            )
+                                          }
+                                        >
+                                          <Minus className="w-3 h-3" />
+                                        </Button>
+                                        <Input
+                                          type="number"
+                                          value={selection.bundles}
+                                          onChange={(e) =>
+                                            updateSizeBundles(
+                                              selection.sizeRange,
+                                              parseInt(e.target.value) || 0
+                                            )
+                                          }
+                                          className="w-12 h-7 text-center text-sm"
+                                        />
+                                        <Button
+                                          variant="outline"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateSizeBundles(
+                                              selection.sizeRange,
+                                              selection.bundles + 1
+                                            )
+                                          }
+                                        >
+                                          <Plus className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {totalSelectedBundles > 0 && (
                                   <Button
                                     size="sm"
-                                    onClick={addMultipleSizes}
-                                    className="mt-4"
+                                    onClick={addSelectedSizesToInvoice}
+                                    className="w-full gap-2"
                                   >
-                                    Add {selectedSizes.length} size{selectedSizes.length > 1 ? "s" : ""}
+                                    <Check className="w-4 h-4" />
+                                    Add {totalSelectedBundles} bundle
+                                    {totalSelectedBundles > 1 ? "s" : ""} (
+                                    {sizeSelections.filter((s) => s.bundles > 0).length} size
+                                    {sizeSelections.filter((s) => s.bundles > 0).length > 1
+                                      ? "s"
+                                      : ""}
+                                    )
                                   </Button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                     </CommandGroup>
                   </CommandList>
                 </Command>
@@ -620,9 +682,7 @@ const NewInvoice = () => {
 
           {/* Payment Method */}
           <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
-            <h3 className="text-sm font-semibold text-foreground mb-4">
-              Payment Method
-            </h3>
+            <h3 className="text-sm font-semibold text-foreground mb-4">Payment Method</h3>
             <div className="space-y-4">
               <Select
                 value={paymentMethod}
@@ -688,7 +748,10 @@ const NewInvoice = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRemoveItem} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmRemoveItem}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>
