@@ -1,17 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
   Plus,
   User,
   Shield,
-  Mail,
-  Phone,
   MoreHorizontal,
-  Edit2,
   Trash2,
   UserCheck,
   UserX,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,10 +46,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
+import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { useAudit } from "@/context/AuditContext";
 import { UserRole, ROLE_PERMISSIONS } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+
+type AppRole = "admin" | "biller" | "cashier";
+
+interface UserWithRole {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  is_active: boolean;
+  created_at: string;
+  role: AppRole;
+}
 
 const roleLabels: Record<UserRole, { label: string; color: string }> = {
   admin: { label: "Admin", color: "status-badge-danger" },
@@ -60,86 +73,241 @@ const roleLabels: Record<UserRole, { label: string; color: string }> = {
 };
 
 const UserManagement = () => {
-  const { currentUser, users, createUser, updateUser, deleteUser, hasPermission } = useAuth();
+  const { user, profile, hasPermission } = useSupabaseAuthContext();
   const { addLog } = useAudit();
+  const { toast } = useToast();
+  
+  const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<string | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [showAddConfirm, setShowAddConfirm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
     phone: "",
-    role: "biller" as UserRole,
+    password: "",
+    role: "biller" as AppRole,
   });
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Fetch all users with their roles
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-  const handleAddUser = () => {
-    if (newUser.name && newUser.email) {
-      const success = createUser({
-        name: newUser.name,
-        email: newUser.email,
-        phone: newUser.phone,
-        role: newUser.role,
-        isActive: true,
+      if (profilesError) throw profilesError;
+
+      // Fetch roles
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("*");
+
+      if (rolesError) throw rolesError;
+
+      // Combine profiles with roles
+      const usersWithRoles: UserWithRole[] = (profiles || []).map((p) => {
+        const userRole = roles?.find((r) => r.user_id === p.user_id);
+        return {
+          id: p.id,
+          user_id: p.user_id,
+          name: p.name,
+          email: p.email,
+          phone: p.phone,
+          is_active: p.is_active,
+          created_at: p.created_at,
+          role: (userRole?.role as AppRole) || "biller",
+        };
       });
 
-      if (success && currentUser) {
-        addLog(
-          currentUser.id,
-          currentUser.name,
-          "create",
-          "user",
-          undefined,
-          newUser.name,
-          `Created new ${newUser.role} user`
-        );
-        setNewUser({ name: "", email: "", phone: "", role: "biller" });
+      setUsers(usersWithRoles);
+    } catch (error: any) {
+      console.error("Error fetching users:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load users",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Sign up the new user (they will be auto-confirmed since we disabled email confirmation)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newUser.email,
+        password: newUser.password,
+        options: {
+          data: {
+            name: newUser.name,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Update the profile with phone if provided
+        if (newUser.phone) {
+          await supabase
+            .from("profiles")
+            .update({ phone: newUser.phone })
+            .eq("user_id", authData.user.id);
+        }
+
+        // Update the role if not the default biller
+        if (newUser.role !== "biller") {
+          await supabase
+            .from("user_roles")
+            .update({ role: newUser.role })
+            .eq("user_id", authData.user.id);
+        }
+
+        if (profile) {
+          addLog(
+            user?.id || "",
+            profile.name,
+            "create",
+            "user",
+            undefined,
+            newUser.name,
+            `Created new ${newUser.role} user`
+          );
+        }
+
+        toast({
+          title: "User created",
+          description: `${newUser.name} has been added as a ${newUser.role}`,
+        });
+
+        setNewUser({ name: "", email: "", phone: "", password: "", role: "biller" });
         setShowAddConfirm(false);
         setIsAddDialogOpen(false);
+        fetchUsers();
       }
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleToggleActive = (userId: string) => {
-    const user = users.find((u) => u.id === userId);
-    if (user && currentUser) {
-      updateUser(userId, { isActive: !user.isActive });
-      addLog(
-        currentUser.id,
-        currentUser.name,
-        "update",
-        "user",
-        userId,
-        user.name,
-        `${user.isActive ? "Deactivated" : "Activated"} user`
-      );
-    }
-  };
+  const handleToggleActive = async (userId: string) => {
+    const targetUser = users.find((u) => u.user_id === userId);
+    if (!targetUser) return;
 
-  const handleDeleteUser = () => {
-    if (deleteUserId && currentUser) {
-      const user = users.find((u) => u.id === deleteUserId);
-      const success = deleteUser(deleteUserId);
-      if (success && user) {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_active: !targetUser.is_active })
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      if (profile) {
         addLog(
-          currentUser.id,
-          currentUser.name,
+          user?.id || "",
+          profile.name,
+          "update",
+          "user",
+          userId,
+          targetUser.name,
+          `${targetUser.is_active ? "Deactivated" : "Activated"} user`
+        );
+      }
+
+      toast({
+        title: targetUser.is_active ? "User deactivated" : "User activated",
+        description: `${targetUser.name} has been ${targetUser.is_active ? "deactivated" : "activated"}`,
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error toggling user status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update user status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserId) return;
+
+    const targetUser = users.find((u) => u.user_id === deleteUserId);
+    if (!targetUser) return;
+
+    try {
+      // Note: We can't delete from auth.users directly, so we just deactivate
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_active: false })
+        .eq("user_id", deleteUserId);
+
+      if (error) throw error;
+
+      if (profile) {
+        addLog(
+          user?.id || "",
+          profile.name,
           "delete",
           "user",
           deleteUserId,
-          user.name,
-          "Deleted user"
+          targetUser.name,
+          "Deactivated user (marked as deleted)"
         );
       }
+
+      toast({
+        title: "User removed",
+        description: `${targetUser.name} has been deactivated`,
+      });
+
       setDeleteUserId(null);
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
     }
   };
 
@@ -153,6 +321,14 @@ const UserManagement = () => {
             You don't have permission to manage users.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -241,37 +417,37 @@ const UserManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="group">
+            {filteredUsers.map((u) => (
+              <tr key={u.id} className="group">
                 <td>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <User className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      <p className="font-medium">{u.name}</p>
+                      <p className="text-sm text-muted-foreground">{u.email}</p>
                     </div>
                   </div>
                 </td>
                 <td>
-                  <span className={cn("status-badge", roleLabels[user.role].color)}>
-                    {roleLabels[user.role].label}
+                  <span className={cn("status-badge", roleLabels[u.role].color)}>
+                    {roleLabels[u.role].label}
                   </span>
                 </td>
-                <td className="text-muted-foreground">{user.phone || "-"}</td>
+                <td className="text-muted-foreground">{u.phone || "-"}</td>
                 <td>
                   <span
                     className={cn(
                       "status-badge",
-                      user.isActive ? "status-badge-success" : "status-badge-danger"
+                      u.is_active ? "status-badge-success" : "status-badge-danger"
                     )}
                   >
-                    {user.isActive ? "Active" : "Inactive"}
+                    {u.is_active ? "Active" : "Inactive"}
                   </span>
                 </td>
                 <td className="text-muted-foreground">
-                  {format(user.createdAt, "dd MMM yyyy")}
+                  {format(new Date(u.created_at), "dd MMM yyyy")}
                 </td>
                 <td>
                   <DropdownMenu>
@@ -280,7 +456,7 @@ const UserManagement = () => {
                         variant="ghost"
                         size="icon"
                         className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        disabled={user.id === currentUser?.id}
+                        disabled={u.user_id === user?.id}
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
@@ -288,9 +464,9 @@ const UserManagement = () => {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         className="gap-2"
-                        onClick={() => handleToggleActive(user.id)}
+                        onClick={() => handleToggleActive(u.user_id)}
                       >
-                        {user.isActive ? (
+                        {u.is_active ? (
                           <>
                             <UserX className="w-4 h-4" />
                             Deactivate
@@ -304,7 +480,7 @@ const UserManagement = () => {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="gap-2 text-destructive"
-                        onClick={() => setDeleteUserId(user.id)}
+                        onClick={() => setDeleteUserId(u.user_id)}
                       >
                         <Trash2 className="w-4 h-4" />
                         Delete
@@ -314,6 +490,13 @@ const UserManagement = () => {
                 </td>
               </tr>
             ))}
+            {filteredUsers.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                  No users found
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </motion.div>
@@ -329,7 +512,7 @@ const UserManagement = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="name">Full Name *</Label>
               <Input
                 id="name"
                 value={newUser.name}
@@ -338,13 +521,23 @@ const UserManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
                 type="email"
                 value={newUser.email}
                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                 placeholder="user@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder="Min 8 characters"
               />
             </div>
             <div className="space-y-2">
@@ -360,7 +553,7 @@ const UserManagement = () => {
               <Label>Role</Label>
               <Select
                 value={newUser.role}
-                onValueChange={(value: UserRole) =>
+                onValueChange={(value: AppRole) =>
                   setNewUser({ ...newUser, role: value })
                 }
               >
@@ -379,7 +572,10 @@ const UserManagement = () => {
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setShowAddConfirm(true)}>Add User</Button>
+            <Button onClick={() => setShowAddConfirm(true)} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Add User
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -395,7 +591,10 @@ const UserManagement = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAddUser}>Add User</AlertDialogAction>
+            <AlertDialogAction onClick={handleAddUser} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Add User
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
