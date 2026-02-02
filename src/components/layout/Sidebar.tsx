@@ -11,30 +11,36 @@ import {
   ChevronLeft,
   ChevronRight,
   Wallet,
+  UserCog,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: Package, label: "Inventory", path: "/inventory" },
-  { icon: Users, label: "Clients", path: "/clients" },
-  { icon: FileText, label: "Invoices", path: "/invoices" },
-  { icon: CreditCard, label: "Payments", path: "/payments" },
-  { icon: Wallet, label: "Recovery", path: "/recovery" },
-  { icon: BarChart3, label: "Reports", path: "/reports" },
-];
-
-const bottomNavItems = [
-  { icon: Settings, label: "Settings", path: "/settings" },
-];
-
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
+  const { hasPermission } = useAuth();
+
+  const navItems = [
+    { icon: LayoutDashboard, label: "Dashboard", path: "/", show: true },
+    { icon: Package, label: "Inventory", path: "/inventory", show: hasPermission("canManageInventory") },
+    { icon: Users, label: "Clients", path: "/clients", show: hasPermission("canManageClients") },
+    { icon: FileText, label: "Invoices", path: "/invoices", show: hasPermission("canCreateInvoices") },
+    { icon: CreditCard, label: "Payments", path: "/payments", show: hasPermission("canRecordPayments") },
+    { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPermission("canManageRecoveries") },
+    { icon: BarChart3, label: "Reports", path: "/reports", show: hasPermission("canViewReports") },
+  ].filter((item) => item.show);
+
+  const bottomNavItems = [
+    { icon: UserCog, label: "Users", path: "/users", show: hasPermission("canManageUsers") },
+    { icon: History, label: "Audit Logs", path: "/audit-logs", show: hasPermission("canManageSettings") },
+    { icon: Settings, label: "Settings", path: "/settings", show: hasPermission("canManageSettings") },
+  ].filter((item) => item.show);
 
   return (
     <motion.aside
@@ -111,7 +117,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="py-4 px-2 border-t border-sidebar-border">
+      <div className="py-4 px-2 border-t border-sidebar-border space-y-1">
         {bottomNavItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (

@@ -1,26 +1,91 @@
 // Shared types for the application
 
+export type UserRole = "admin" | "biller" | "cashier";
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  phone?: string;
+  createdAt: Date;
+  isActive: boolean;
+}
+
+export interface RolePermissions {
+  canManageUsers: boolean;
+  canManageSettings: boolean;
+  canViewReports: boolean;
+  canManageInventory: boolean;
+  canManageClients: boolean;
+  canCreateInvoices: boolean;
+  canEditInvoices: boolean;
+  canDeleteInvoices: boolean;
+  canRecordPayments: boolean;
+  canManageRecoveries: boolean;
+}
+
+export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
+  admin: {
+    canManageUsers: true,
+    canManageSettings: true,
+    canViewReports: true,
+    canManageInventory: true,
+    canManageClients: true,
+    canCreateInvoices: true,
+    canEditInvoices: true,
+    canDeleteInvoices: true,
+    canRecordPayments: true,
+    canManageRecoveries: true,
+  },
+  biller: {
+    canManageUsers: false,
+    canManageSettings: false,
+    canViewReports: false,
+    canManageInventory: true,
+    canManageClients: true,
+    canCreateInvoices: true,
+    canEditInvoices: true,
+    canDeleteInvoices: false,
+    canRecordPayments: false,
+    canManageRecoveries: false,
+  },
+  cashier: {
+    canManageUsers: false,
+    canManageSettings: false,
+    canViewReports: false,
+    canManageInventory: false,
+    canManageClients: false,
+    canCreateInvoices: false,
+    canEditInvoices: false,
+    canDeleteInvoices: false,
+    canRecordPayments: true,
+    canManageRecoveries: true,
+  },
+};
+
 export interface Brand {
   id: string;
   name: string;
 }
 
 export interface SizeBundlePricing {
-  sizeRange: string; // Now can be custom like "7-10", "4-6", "1-3" or any custom range
+  sizeRange: string;
   pricePerPair: number;
+  pairsPerBundle: number; // Editable per bundle
 }
 
 export interface Product {
   id: string;
   name: string;
-  articleNumber: string; // SKU
+  articleNumber: string;
   brandId: string;
   brandName: string;
   category: string;
-  stockDozens: number; // Stock in dozens
-  pairsPerDozen: number; // Usually 12, but editable
+  stockDozens: number;
+  pairsPerDozen: number;
   sizeBundles: SizeBundlePricing[];
-  defaultPairsPerBundle: number; // usually 6
+  defaultPairsPerBundle: number;
   supplier: string;
 }
 
@@ -36,6 +101,8 @@ export interface Client {
   totalSpent: number;
   invoiceCount: number;
   notes?: string;
+  // For client portal login
+  loginPin?: string;
 }
 
 export interface InvoiceItem {
@@ -45,10 +112,10 @@ export interface InvoiceItem {
   articleNumber: string;
   brandName: string;
   sizeRange: string;
-  quantity: number; // number of bundles
-  pairsPerBundle: number; // editable pairs in this bundle (can be less than default)
+  quantity: number;
+  totalPairs: number; // Editable total pairs
   pricePerPair: number;
-  discountPerPair: number; // discount per pair in Rs
+  discountPerPair: number;
   total: number;
 }
 
@@ -69,6 +136,7 @@ export interface Invoice {
   status: "draft" | "sent" | "paid" | "partial" | "overdue";
   notes?: string;
   createdAt: Date;
+  createdBy?: string;
 }
 
 export interface Recovery {
@@ -80,13 +148,44 @@ export interface Recovery {
   date: Date;
   notes?: string;
   type: "client" | "city";
-  // For city recoveries, track individual client amounts
   clientAmounts?: { clientId: string; clientName: string; amount: number }[];
+  createdBy?: string;
 }
 
 export interface PaymentAccount {
   id: string;
   name: string;
+}
+
+export type AuditAction = 
+  | "login" 
+  | "logout" 
+  | "create" 
+  | "update" 
+  | "delete" 
+  | "view";
+
+export type AuditEntity = 
+  | "user" 
+  | "product" 
+  | "brand" 
+  | "client" 
+  | "invoice" 
+  | "recovery" 
+  | "payment" 
+  | "settings";
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: AuditAction;
+  entity: AuditEntity;
+  entityId?: string;
+  entityName?: string;
+  details?: string;
+  timestamp: Date;
+  ipAddress?: string;
 }
 
 // Default size bundles for dropdown

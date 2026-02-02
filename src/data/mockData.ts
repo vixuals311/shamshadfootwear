@@ -19,9 +19,9 @@ export const initialProducts: Product[] = [
     stockDozens: 5,
     pairsPerDozen: 12,
     sizeBundles: [
-      { sizeRange: "7-10", pricePerPair: 450 },
-      { sizeRange: "4-6", pricePerPair: 400 },
-      { sizeRange: "1-3", pricePerPair: 350 },
+      { sizeRange: "7-10", pricePerPair: 450, pairsPerBundle: 6 },
+      { sizeRange: "4-6", pricePerPair: 400, pairsPerBundle: 6 },
+      { sizeRange: "1-3", pricePerPair: 350, pairsPerBundle: 6 },
     ],
     defaultPairsPerBundle: 6,
     supplier: "Bata Factory",
@@ -36,9 +36,9 @@ export const initialProducts: Product[] = [
     stockDozens: 3,
     pairsPerDozen: 12,
     sizeBundles: [
-      { sizeRange: "7-10", pricePerPair: 850 },
-      { sizeRange: "4-6", pricePerPair: 750 },
-      { sizeRange: "1-3", pricePerPair: 650 },
+      { sizeRange: "7-10", pricePerPair: 850, pairsPerBundle: 6 },
+      { sizeRange: "4-6", pricePerPair: 750, pairsPerBundle: 6 },
+      { sizeRange: "1-3", pricePerPair: 650, pairsPerBundle: 6 },
     ],
     defaultPairsPerBundle: 6,
     supplier: "Service Industries",
@@ -53,9 +53,9 @@ export const initialProducts: Product[] = [
     stockDozens: 2,
     pairsPerDozen: 12,
     sizeBundles: [
-      { sizeRange: "7-10", pricePerPair: 1200 },
-      { sizeRange: "4-6", pricePerPair: 1100 },
-      { sizeRange: "1-3", pricePerPair: 950 },
+      { sizeRange: "7-10", pricePerPair: 1200, pairsPerBundle: 6 },
+      { sizeRange: "4-6", pricePerPair: 1100, pairsPerBundle: 6 },
+      { sizeRange: "1-3", pricePerPair: 950, pairsPerBundle: 6 },
     ],
     defaultPairsPerBundle: 6,
     supplier: "Metro Shoes Ltd",
@@ -70,9 +70,9 @@ export const initialProducts: Product[] = [
     stockDozens: 4,
     pairsPerDozen: 12,
     sizeBundles: [
-      { sizeRange: "7-10", pricePerPair: 550 },
-      { sizeRange: "4-6", pricePerPair: 500 },
-      { sizeRange: "1-3", pricePerPair: 450 },
+      { sizeRange: "7-10", pricePerPair: 550, pairsPerBundle: 6 },
+      { sizeRange: "4-6", pricePerPair: 500, pairsPerBundle: 6 },
+      { sizeRange: "1-3", pricePerPair: 450, pairsPerBundle: 6 },
     ],
     defaultPairsPerBundle: 6,
     supplier: "Urban Sole Factory",
@@ -87,9 +87,9 @@ export const initialProducts: Product[] = [
     stockDozens: 1,
     pairsPerDozen: 12,
     sizeBundles: [
-      { sizeRange: "7-10", pricePerPair: 1800 },
-      { sizeRange: "4-6", pricePerPair: 1600 },
-      { sizeRange: "1-3", pricePerPair: 1400 },
+      { sizeRange: "7-10", pricePerPair: 1800, pairsPerBundle: 6 },
+      { sizeRange: "4-6", pricePerPair: 1600, pairsPerBundle: 6 },
+      { sizeRange: "1-3", pricePerPair: 1400, pairsPerBundle: 6 },
     ],
     defaultPairsPerBundle: 6,
     supplier: "Service Industries",
@@ -186,14 +186,14 @@ export const initialInvoices: Invoice[] = [
         brandName: "Bata",
         sizeRange: "7-10",
         quantity: 2,
-        pairsPerBundle: 6,
+        totalPairs: 12, // 2 bundles × 6 pairs
         pricePerPair: 450,
         discountPerPair: 10,
-        total: 5280, // 2 * 6 * (450 - 10)
+        total: 5280, // 12 × (450 - 10)
       },
     ],
     subtotal: 5400,
-    totalDiscount: 120, // 2 * 6 * 10
+    totalDiscount: 120, // 12 × 10
     tax: 0,
     total: 5280,
     paymentMethod: "cash",
@@ -216,7 +216,7 @@ export const initialInvoices: Invoice[] = [
         brandName: "Service",
         sizeRange: "4-6",
         quantity: 3,
-        pairsPerBundle: 6,
+        totalPairs: 18, // 3 bundles × 6 pairs
         pricePerPair: 750,
         discountPerPair: 0,
         total: 13500,

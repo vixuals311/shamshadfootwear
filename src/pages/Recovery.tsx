@@ -61,7 +61,7 @@ const RecoveryPage = () => {
   const [isAddClientRecoveryOpen, setIsAddClientRecoveryOpen] = useState(false);
   const [isAddCityRecoveryOpen, setIsAddCityRecoveryOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
-  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
   
   // Confirmation dialogs
   const [showAddClientRecoveryConfirm, setShowAddClientRecoveryConfirm] = useState(false);
@@ -82,11 +82,18 @@ const RecoveryPage = () => {
     return [...new Set(clients.map((c) => c.city))];
   }, [clients]);
 
-  // Get clients by city for print
-  const clientsByCity = useMemo(() => {
-    if (!selectedCity) return [];
-    return clients.filter((c) => c.city === selectedCity);
-  }, [clients, selectedCity]);
+  // Get clients by selected cities for print
+  const clientsByCities = useMemo(() => {
+    if (selectedCities.length === 0) return [];
+    return clients
+      .filter((c) => selectedCities.includes(c.city))
+      .sort((a, b) => {
+        // Sort by city first, then by name
+        const cityCompare = a.city.localeCompare(b.city);
+        if (cityCompare !== 0) return cityCompare;
+        return a.name.localeCompare(b.name);
+      });
+  }, [clients, selectedCities]);
 
   // Get clients by city for city recovery
   const clientsForCityRecovery = useMemo(() => {
@@ -176,15 +183,23 @@ const RecoveryPage = () => {
     }
   };
 
+  const toggleCity = (city: string) => {
+    setSelectedCities((prev) =>
+      prev.includes(city) ? prev.filter((c) => c !== city) : [...prev, city]
+    );
+  };
+
   const handlePrintRecoveryList = () => {
-    if (!selectedCity) return;
+    if (selectedCities.length === 0) return;
+    
+    const citiesTitle = selectedCities.join(", ");
     
     // Create print content
     const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Recovery List - ${selectedCity}</title>
+        <title>Recovery List - ${citiesTitle}</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; }
           h1 { text-align: center; margin-bottom: 5px; }
@@ -195,6 +210,7 @@ const RecoveryPage = () => {
           .amount-col { width: 150px; }
           .recovery-input { width: 100%; border: none; border-bottom: 1px solid #999; padding: 5px 0; min-height: 20px; }
           .pending { color: #dc2626; font-weight: bold; }
+          .city-header { background-color: #e5e7eb; font-weight: bold; font-size: 14px; }
           @media print { 
             button { display: none; }
             .no-print { display: none; }
@@ -203,11 +219,12 @@ const RecoveryPage = () => {
       </head>
       <body>
         <h1>Recovery List</h1>
-        <h3>${selectedCity} - ${format(new Date(), "dd MMM yyyy")}</h3>
+        <h3>${citiesTitle} - ${format(new Date(), "dd MMM yyyy")}</h3>
         <table>
           <thead>
             <tr>
               <th>#</th>
+              <th>City</th>
               <th>Client Name</th>
               <th>Phone</th>
               <th>Pending Balance</th>
@@ -215,9 +232,10 @@ const RecoveryPage = () => {
             </tr>
           </thead>
           <tbody>
-            ${clientsByCity.map((client, index) => `
+            ${clientsByCities.map((client, index) => `
               <tr>
                 <td>${index + 1}</td>
+                <td>${client.city}</td>
                 <td>${client.name}</td>
                 <td>${client.phone}</td>
                 <td class="pending">Rs ${client.currentBalance.toLocaleString()}</td>
@@ -237,6 +255,7 @@ const RecoveryPage = () => {
       printWindow.document.close();
     }
     setIsPrintDialogOpen(false);
+    setSelectedCities([]);
   };
 
   // Calculate totals
@@ -679,42 +698,51 @@ const RecoveryPage = () => {
       <Dialog open={isPrintDialogOpen} onOpenChange={setIsPrintDialogOpen}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>Print Recovery List by City</DialogTitle>
+            <DialogTitle>Print Recovery List by Cities</DialogTitle>
             <DialogDescription>
-              Select a city to print a recovery list with client balances.
+              Select one or more cities to print a recovery list with client balances.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Select City</Label>
-              <Select value={selectedCity} onValueChange={setSelectedCity}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a city" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cities.map((city) => (
-                    <SelectItem key={city} value={city}>
-                      {city} ({clients.filter((c) => c.city === city).length} clients)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Select Cities</Label>
+              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
+                {cities.map((city) => (
+                  <div
+                    key={city}
+                    onClick={() => toggleCity(city)}
+                    className={cn(
+                      "p-2 rounded-lg border cursor-pointer transition-colors text-sm",
+                      selectedCities.includes(city)
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{city}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {clients.filter((c) => c.city === city).length}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            {selectedCity && (
+            {selectedCities.length > 0 && (
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-sm text-muted-foreground">
-                  This will print a list of {clientsByCity.length} clients in{" "}
-                  <span className="font-medium text-foreground">{selectedCity}</span>{" "}
-                  with their pending balances and a column for writing recovery amounts.
+                  This will print a list of {clientsByCities.length} clients in{" "}
+                  <span className="font-medium text-foreground">{selectedCities.join(", ")}</span>{" "}
+                  sorted by city and name.
                 </p>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPrintDialogOpen(false)}>
+            <Button variant="outline" onClick={() => { setIsPrintDialogOpen(false); setSelectedCities([]); }}>
               Cancel
             </Button>
-            <Button onClick={handlePrintRecoveryList} disabled={!selectedCity} className="gap-2">
+            <Button onClick={handlePrintRecoveryList} disabled={selectedCities.length === 0} className="gap-2">
               <Printer className="w-4 h-4" />
               Print List
             </Button>

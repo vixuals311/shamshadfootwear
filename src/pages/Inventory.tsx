@@ -55,6 +55,7 @@ import { initialBrands, initialProducts } from "@/data/mockData";
 interface SizeBundleInput {
   sizeRange: string;
   pricePerPair: string;
+  pairsPerBundle: string;
   isCustom: boolean;
 }
 
@@ -82,16 +83,18 @@ const Inventory = () => {
     pairsPerDozen: "12",
     defaultPairsPerBundle: "6",
     supplier: "",
-    sizeBundles: [{ sizeRange: "7-10", pricePerPair: "", isCustom: false }] as SizeBundleInput[],
+    sizeBundles: [{ sizeRange: "7-10", pricePerPair: "", pairsPerBundle: "6", isCustom: false }] as SizeBundleInput[],
   });
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.articleNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = products
+    .filter(
+      (product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.articleNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => a.articleNumber.localeCompare(b.articleNumber));
 
   const handleAddBrand = () => {
     if (newBrandName.trim()) {
@@ -113,6 +116,7 @@ const Inventory = () => {
         .map((sb) => ({
           sizeRange: sb.sizeRange,
           pricePerPair: parseFloat(sb.pricePerPair) || 0,
+          pairsPerBundle: parseInt(sb.pairsPerBundle) || parseInt(newProduct.defaultPairsPerBundle) || 6,
         }));
 
       const product: Product = {
@@ -138,7 +142,7 @@ const Inventory = () => {
         pairsPerDozen: "12",
         defaultPairsPerBundle: "6",
         supplier: "",
-        sizeBundles: [{ sizeRange: "7-10", pricePerPair: "", isCustom: false }],
+        sizeBundles: [{ sizeRange: "7-10", pricePerPair: "", pairsPerBundle: "6", isCustom: false }],
       });
       setShowAddProductConfirm(false);
       setIsAddProductDialogOpen(false);
@@ -181,7 +185,7 @@ const Inventory = () => {
   const addSizeBundle = () => {
     setNewProduct({
       ...newProduct,
-      sizeBundles: [...newProduct.sizeBundles, { sizeRange: "", pricePerPair: "", isCustom: false }],
+      sizeBundles: [...newProduct.sizeBundles, { sizeRange: "", pricePerPair: "", pairsPerBundle: "6", isCustom: false }],
     });
   };
 
@@ -196,10 +200,16 @@ const Inventory = () => {
     if (customSizeRange.trim()) {
       setNewProduct({
         ...newProduct,
-        sizeBundles: [...newProduct.sizeBundles, { sizeRange: customSizeRange.trim(), pricePerPair: "", isCustom: true }],
+        sizeBundles: [...newProduct.sizeBundles, { sizeRange: customSizeRange.trim(), pricePerPair: "", pairsPerBundle: "6", isCustom: true }],
       });
       setCustomSizeRange("");
     }
+  };
+
+  const updateSizeBundlePairs = (index: number, pairs: string) => {
+    const updated = [...newProduct.sizeBundles];
+    updated[index] = { ...updated[index], pairsPerBundle: pairs };
+    setNewProduct({ ...newProduct, sizeBundles: updated });
   };
 
   return (
@@ -418,74 +428,73 @@ const Inventory = () => {
 
                 {/* Size Bundle Pricing */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">Size Bundle Pricing (Rs per pair)</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addSizeBundle} className="gap-1">
-                      <Plus className="w-3 h-3" />
-                      Add Bundle
-                    </Button>
-                  </div>
+                  <Label className="text-base font-semibold">Size Bundle Pricing</Label>
                   
                   <div className="space-y-3">
                     {newProduct.sizeBundles.map((sb, index) => (
-                      <div key={index} className="flex items-end gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-                        <div className="flex-1 space-y-2">
-                          <Label className="text-xs text-muted-foreground">Size Range</Label>
-                          {sb.isCustom ? (
-                            <Input
-                              value={sb.sizeRange}
-                              onChange={(e) => updateSizeBundleRange(index, e.target.value, true)}
-                              placeholder="e.g., 11-13"
-                            />
-                          ) : (
-                            <Select
-                              value={sb.sizeRange}
-                              onValueChange={(value) => updateSizeBundleRange(index, value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select size range" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {DEFAULT_SIZE_BUNDLES.map((size) => (
-                                  <SelectItem key={size} value={size}>
-                                    Size {size}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                        <div className="flex-1 space-y-2">
-                          <Label className="text-xs text-muted-foreground">Price per Pair</Label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                              Rs
-                            </span>
+                      <div key={index} className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                        <div className="flex items-end gap-3 mb-2">
+                          <div className="flex-1 space-y-2">
+                            <Label className="text-xs text-muted-foreground">Size Range</Label>
+                            {sb.isCustom ? (
+                              <Input
+                                value={sb.sizeRange}
+                                onChange={(e) => updateSizeBundleRange(index, e.target.value, true)}
+                                placeholder="e.g., 11-13"
+                              />
+                            ) : (
+                              <Select
+                                value={sb.sizeRange}
+                                onValueChange={(value) => updateSizeBundleRange(index, value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select size range" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DEFAULT_SIZE_BUNDLES.map((size) => (
+                                    <SelectItem key={size} value={size}>
+                                      Size {size}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <Label className="text-xs text-muted-foreground">Price/Pair (Rs)</Label>
                             <Input
                               type="number"
                               value={sb.pricePerPair}
                               onChange={(e) => updateSizeBundlePrice(index, e.target.value)}
-                              className="pl-10"
                               placeholder="0"
                             />
                           </div>
+                          <div className="w-24 space-y-2">
+                            <Label className="text-xs text-muted-foreground">Pairs/Bundle</Label>
+                            <Input
+                              type="number"
+                              value={sb.pairsPerBundle}
+                              onChange={(e) => updateSizeBundlePairs(index, e.target.value)}
+                              placeholder="6"
+                            />
+                          </div>
+                          {newProduct.sizeBundles.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10 text-destructive hover:text-destructive"
+                              onClick={() => removeSizeBundle(index)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
-                        {newProduct.sizeBundles.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10 text-destructive hover:text-destructive"
-                            onClick={() => removeSizeBundle(index)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
                       </div>
                     ))}
                   </div>
 
-                  {/* Custom Size Bundle */}
+                  {/* Add Bundle Button - Below list */}
                   <div className="flex gap-2 items-end">
                     <div className="flex-1 space-y-2">
                       <Label className="text-xs text-muted-foreground">Add Custom Size Range</Label>
@@ -504,6 +513,10 @@ const Inventory = () => {
                       Add Custom
                     </Button>
                   </div>
+                  <Button type="button" variant="outline" onClick={addSizeBundle} className="w-full gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Size Bundle
+                  </Button>
                 </div>
               </div>
               <DialogFooter>
