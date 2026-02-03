@@ -115,6 +115,14 @@ const Clients = () => {
   const [confirmPin, setConfirmPin] = useState("");
   const [currentClientPin, setCurrentClientPin] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
+  
+  // Quick recovery states
+  const [isQuickRecoveryOpen, setIsQuickRecoveryOpen] = useState(false);
+  const [quickRecoveryAmount, setQuickRecoveryAmount] = useState("");
+  const [quickRecoveryNotes, setQuickRecoveryNotes] = useState("");
+  const [quickRecoveryLoading, setQuickRecoveryLoading] = useState(false);
+  const [showQuickRecoveryConfirm, setShowQuickRecoveryConfirm] = useState(false);
+  
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
@@ -639,6 +647,78 @@ const Clients = () => {
     toast({ title: "Success", description: "Clients exported successfully" });
   };
 
+  // Quick Recovery for selected client
+  const handleQuickRecovery = async () => {
+    if (!selectedClient || !quickRecoveryAmount) return;
+    
+    setQuickRecoveryLoading(true);
+    try {
+      const amount = parseFloat(quickRecoveryAmount);
+      
+      // Insert recovery
+      const { error: recoveryError } = await supabase.from("recoveries").insert({
+        client_id: selectedClient.id,
+        amount: amount,
+        notes: quickRecoveryNotes || null,
+        type: "client",
+      });
+
+      if (recoveryError) throw recoveryError;
+
+      // Update client balance
+      const { error: clientError } = await supabase
+        .from("clients")
+        .update({
+          current_balance: selectedClient.currentBalance - amount,
+        })
+        .eq("id", selectedClient.id);
+
+      if (clientError) throw clientError;
+
+      // Log audit event
+      await log({
+        action: "create",
+        entityType: "recovery",
+        entityId: selectedClient.id,
+        details: {
+          clientName: selectedClient.name,
+          amount: amount,
+          notes: quickRecoveryNotes,
+        },
+      });
+
+      toast({
+        title: "Success",
+        description: `Recovery of Rs ${amount.toLocaleString()} added for ${selectedClient.name}`,
+      });
+
+      // Update local state
+      setSelectedClient({
+        ...selectedClient,
+        currentBalance: selectedClient.currentBalance - amount,
+      });
+      
+      // Refresh client details
+      fetchClientDetails(selectedClient.id);
+      fetchClients();
+      
+      // Reset form
+      setQuickRecoveryAmount("");
+      setQuickRecoveryNotes("");
+      setShowQuickRecoveryConfirm(false);
+      setIsQuickRecoveryOpen(false);
+    } catch (error: any) {
+      console.error("Error adding recovery:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add recovery",
+        variant: "destructive",
+      });
+    } finally {
+      setQuickRecoveryLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -654,7 +734,7 @@ const Clients = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4"
+          className="flex flex-col sm:flex-row sm:items-center gap-4"
         >
           <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)}>
             <ArrowLeft className="w-5 h-5" />
@@ -663,11 +743,20 @@ const Clients = () => {
             <h2 className="text-2xl font-bold text-foreground">{selectedClient.name}</h2>
             <p className="text-muted-foreground">{selectedClient.city}</p>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground">Current Balance</p>
-            <p className="text-2xl font-bold text-primary">
-              Rs {selectedClient.currentBalance.toLocaleString()}
-            </p>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={() => setIsQuickRecoveryOpen(true)}
+              className="gap-2"
+            >
+              <CreditCard className="w-4 h-4" />
+              Add Recovery
+            </Button>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Current Balance</p>
+              <p className="text-2xl font-bold text-primary">
+                Rs {selectedClient.currentBalance.toLocaleString()}
+              </p>
+            </div>
           </div>
         </motion.div>
 
@@ -935,6 +1024,105 @@ const Clients = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Quick Recovery Dialog */}
+        <Dialog open={isQuickRecoveryOpen} onOpenChange={setIsQuickRecoveryOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-primary" />
+                Add Recovery
+              </DialogTitle>
+              <DialogDescription>
+                Record a payment from {selectedClient.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Current Balance</span>
+                  <span className="font-bold text-primary">
+                    Rs {selectedClient.currentBalance.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="quickAmount">Recovery Amount (Rs)</Label>
+                <Input
+                  id="quickAmount"
+                  type="number"
+                  value={quickRecoveryAmount}
+                  onChange={(e) => setQuickRecoveryAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  autoFocus
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="quickNotes">Notes (Optional)</Label>
+                <Textarea
+                  id="quickNotes"
+                  value={quickRecoveryNotes}
+                  onChange={(e) => setQuickRecoveryNotes(e.target.value)}
+                  placeholder="Add any notes..."
+                  rows={2}
+                />
+              </div>
+              
+              {quickRecoveryAmount && parseFloat(quickRecoveryAmount) > 0 && (
+                <div className="p-3 rounded-lg bg-success/10 border border-success/20">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Balance After Recovery</span>
+                    <span className="font-bold text-success">
+                      Rs {(selectedClient.currentBalance - parseFloat(quickRecoveryAmount)).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsQuickRecoveryOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => setShowQuickRecoveryConfirm(true)}
+                disabled={!quickRecoveryAmount || parseFloat(quickRecoveryAmount) <= 0}
+              >
+                Add Recovery
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Quick Recovery Confirmation */}
+        <AlertDialog open={showQuickRecoveryConfirm} onOpenChange={setShowQuickRecoveryConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Recovery</AlertDialogTitle>
+              <AlertDialogDescription>
+                Add recovery of Rs {parseFloat(quickRecoveryAmount || "0").toLocaleString()} for {selectedClient.name}?
+                <br />
+                <span className="text-sm mt-2 block">
+                  Balance will be updated from Rs {selectedClient.currentBalance.toLocaleString()} to Rs {(selectedClient.currentBalance - parseFloat(quickRecoveryAmount || "0")).toLocaleString()}
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={quickRecoveryLoading}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleQuickRecovery} disabled={quickRecoveryLoading}>
+                {quickRecoveryLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Confirm"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
