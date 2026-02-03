@@ -748,10 +748,10 @@ const RecoveryPage = () => {
               <tbody>
                 {filteredRecoveries.map((recovery) => (
                   <tr key={recovery.id}>
-                    <td>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Calendar className="w-4 h-4" />
-                        {format(recovery.date, "dd MMM yyyy, hh:mm a")}
+                    <td className="whitespace-nowrap min-w-[140px]">
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <CalendarIcon className="w-4 h-4 shrink-0" />
+                        <span>{format(recovery.date, "dd MMM yyyy")}</span>
                       </div>
                     </td>
                     <td>
@@ -810,10 +810,10 @@ const RecoveryPage = () => {
                   .filter((r) => r.type === "client")
                   .map((recovery) => (
                     <tr key={recovery.id}>
-                      <td>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Calendar className="w-4 h-4" />
-                          {format(recovery.date, "dd MMM yyyy, hh:mm a")}
+                      <td className="whitespace-nowrap min-w-[140px]">
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                          <CalendarIcon className="w-4 h-4 shrink-0" />
+                          <span>{format(recovery.date, "dd MMM yyyy")}</span>
                         </div>
                       </td>
                       <td className="font-medium">{recovery.clientName}</td>
@@ -843,10 +843,10 @@ const RecoveryPage = () => {
                   .filter((r) => r.type === "city")
                   .map((recovery) => (
                     <tr key={recovery.id}>
-                      <td>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Calendar className="w-4 h-4" />
-                          {format(recovery.date, "dd MMM yyyy, hh:mm a")}
+                      <td className="whitespace-nowrap min-w-[140px]">
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                          <CalendarIcon className="w-4 h-4 shrink-0" />
+                          <span>{format(recovery.date, "dd MMM yyyy")}</span>
                         </div>
                       </td>
                       <td className="font-medium">{recovery.city}</td>
