@@ -373,7 +373,7 @@ const Inventory = () => {
       ...newProduct,
       sizeBundles: [
         ...newProduct.sizeBundles,
-        { sizeRange: "", pricePerPair: "", pairsPerBundle: "6", quantity: "", isCustom: false },
+        { sizeRange: "", pricePerPair: "", pairsPerBundle: newProduct.defaultPairsPerBundle || "6", quantity: "", isCustom: false },
       ],
     });
   };
@@ -392,7 +392,7 @@ const Inventory = () => {
           {
             sizeRange: customSizeRange.trim(),
             pricePerPair: "",
-            pairsPerBundle: "6",
+            pairsPerBundle: newProduct.defaultPairsPerBundle || "6",
             quantity: "",
             isCustom: true,
           },

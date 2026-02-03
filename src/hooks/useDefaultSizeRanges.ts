@@ -21,8 +21,7 @@ export function useDefaultSizeRanges() {
         .from("default_size_ranges")
         .select("*")
         .order("category", { ascending: true })
-        .order("size_range", { ascending: true });
-
+        .order("display_order", { ascending: true });
       if (error) throw error;
       setSizeRanges(data || []);
     } catch (error) {
