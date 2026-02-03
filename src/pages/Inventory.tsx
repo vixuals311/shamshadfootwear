@@ -104,6 +104,8 @@ const Inventory = () => {
   const [deleteBrandId, setDeleteBrandId] = useState<string | null>(null);
   const [showAddProductConfirm, setShowAddProductConfirm] = useState(false);
   const [showAddBrandConfirm, setShowAddBrandConfirm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<(Product & { gender: GenderCategory }) | null>(null);
+  const [isEditProductDialogOpen, setIsEditProductDialogOpen] = useState(false);
 
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -366,6 +368,108 @@ const Inventory = () => {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  // Open edit product dialog
+  const handleEditProduct = (product: Product & { gender: GenderCategory }) => {
+    setEditingProduct(product);
+    setNewProduct({
+      name: product.name,
+      articleNumber: product.articleNumber,
+      brandId: product.brandId,
+      category: product.category,
+      gender: product.gender,
+      pairsPerDozen: product.pairsPerDozen.toString(),
+      defaultPairsPerBundle: "6",
+      supplier: product.supplier || "",
+      sizeBundles: product.sizeBundles.map((sb) => ({
+        sizeRange: sb.sizeRange,
+        pricePerPair: sb.pricePerPair.toString(),
+        pairsPerBundle: sb.pairsPerBundle.toString(),
+        quantity: "",
+        isCustom: false,
+      })),
+    });
+    setIsEditProductDialogOpen(true);
+  };
+
+  // Save edited product
+  const handleSaveEditProduct = async () => {
+    if (!editingProduct) return;
+    
+    try {
+      // Update product
+      const { error: productError } = await supabase
+        .from("products")
+        .update({
+          name: newProduct.name,
+          article_number: newProduct.articleNumber,
+          brand_id: newProduct.brandId,
+          category: newProduct.category || "General",
+          gender: newProduct.gender,
+          pairs_per_dozen: parseInt(newProduct.pairsPerDozen) || 12,
+          supplier: newProduct.supplier || null,
+        })
+        .eq("id", editingProduct.id);
+
+      if (productError) throw productError;
+
+      // Delete existing size bundles
+      await supabase.from("product_size_bundles").delete().eq("product_id", editingProduct.id);
+
+      // Insert updated size bundles
+      const sizeBundleInserts = newProduct.sizeBundles
+        .filter((sb) => sb.sizeRange && sb.pricePerPair)
+        .map((sb) => ({
+          product_id: editingProduct.id,
+          size_range: sb.sizeRange,
+          price_per_pair: parseFloat(sb.pricePerPair) || 0,
+          pairs_per_bundle: parseInt(sb.pairsPerBundle) || 6,
+        }));
+
+      if (sizeBundleInserts.length > 0) {
+        const { error: bundleError } = await supabase
+          .from("product_size_bundles")
+          .insert(sizeBundleInserts);
+
+        if (bundleError) throw bundleError;
+      }
+
+      // Log audit event
+      await log({
+        action: "update",
+        entityType: "product",
+        entityId: editingProduct.id,
+        details: {
+          name: newProduct.name,
+          article_number: newProduct.articleNumber,
+          gender: newProduct.gender,
+        },
+      });
+
+      toast({ title: "Success", description: "Product updated successfully" });
+      setEditingProduct(null);
+      setIsEditProductDialogOpen(false);
+      setNewProduct({
+        name: "",
+        articleNumber: "",
+        brandId: "",
+        category: "",
+        gender: "unisex",
+        pairsPerDozen: "12",
+        defaultPairsPerBundle: "6",
+        supplier: "",
+        sizeBundles: [],
+      });
+      fetchData();
+    } catch (error: any) {
+      console.error("Error updating product:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update product",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1218,7 +1322,10 @@ const Inventory = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem className="gap-2">
+                          <DropdownMenuItem 
+                            className="gap-2"
+                            onClick={() => handleEditProduct(product)}
+                          >
                             <Edit2 className="w-4 h-4" />
                             Edit
                           </DropdownMenuItem>
@@ -1331,6 +1438,175 @@ const Inventory = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={isEditProductDialogOpen} onOpenChange={(open) => {
+        setIsEditProductDialogOpen(open);
+        if (!open) {
+          setEditingProduct(null);
+          setNewProduct({
+            name: "",
+            articleNumber: "",
+            brandId: "",
+            category: "",
+            gender: "unisex",
+            pairsPerDozen: "12",
+            defaultPairsPerBundle: "6",
+            supplier: "",
+            sizeBundles: [],
+          });
+        }
+      }}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+            <DialogDescription>
+              Update the product details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Product Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={newProduct.name}
+                  onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                  placeholder="Enter product name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-article">Article Number *</Label>
+                <Input
+                  id="edit-article"
+                  value={newProduct.articleNumber}
+                  onChange={(e) => setNewProduct({ ...newProduct, articleNumber: e.target.value })}
+                  placeholder="e.g. SKU-001"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-brand">Brand *</Label>
+                <Select
+                  value={newProduct.brandId}
+                  onValueChange={(value) => setNewProduct({ ...newProduct, brandId: value })}
+                >
+                  <SelectTrigger id="edit-brand">
+                    <SelectValue placeholder="Select brand" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {brands.map((brand) => (
+                      <SelectItem key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Category</Label>
+                <Input
+                  id="edit-category"
+                  value={newProduct.category}
+                  onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                  placeholder="e.g. Formal, Casual"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-gender">Type *</Label>
+                <Select
+                  value={newProduct.gender}
+                  onValueChange={(v) => setNewProduct({ ...newProduct, gender: v as GenderCategory })}
+                >
+                  <SelectTrigger id="edit-gender">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDER_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-supplier">Supplier</Label>
+                <Input
+                  id="edit-supplier"
+                  value={newProduct.supplier}
+                  onChange={(e) => setNewProduct({ ...newProduct, supplier: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+
+            {/* Size Bundles */}
+            <div className="space-y-3">
+              <Label>Size Bundles & Pricing</Label>
+              {newProduct.sizeBundles.map((sb, idx) => (
+                <div key={idx} className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Label className="text-xs">Size Range</Label>
+                    <Input
+                      value={sb.sizeRange}
+                      onChange={(e) => updateSizeBundleRange(idx, e.target.value, true)}
+                      placeholder="e.g. 7-10"
+                    />
+                  </div>
+                  <div className="w-24">
+                    <Label className="text-xs">Rs/Pair</Label>
+                    <Input
+                      type="number"
+                      value={sb.pricePerPair}
+                      onChange={(e) => updateSizeBundlePrice(idx, e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="w-20">
+                    <Label className="text-xs">Pairs/Bundle</Label>
+                    <Input
+                      type="number"
+                      value={sb.pairsPerBundle}
+                      onChange={(e) => updateSizeBundlePairs(idx, e.target.value)}
+                      placeholder="6"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeSizeBundle(idx)}
+                    className="text-destructive"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addSizeBundle}
+                className="w-full gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Size Bundle
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditProductDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditProduct}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
