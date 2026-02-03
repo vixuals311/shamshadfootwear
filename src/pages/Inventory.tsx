@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -56,6 +56,8 @@ import { Brand, Product, SizeBundlePricing } from "@/types";
 import { useDefaultSizeRanges, ProductCategory } from "@/hooks/useDefaultSizeRanges";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
+import { exportToCSV } from "@/utils/exportUtils";
 
 interface SizeBundleInput {
   sizeRange: string;
@@ -76,6 +78,8 @@ const GENDER_OPTIONS: { value: GenderCategory; label: string }[] = [
 
 const Inventory = () => {
   const { toast } = useToast();
+  const { log } = useAuditLog();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [products, setProducts] = useState<(Product & { gender: GenderCategory })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -456,6 +460,133 @@ const Inventory = () => {
     }, 0);
   }, [newProduct.sizeBundles]);
 
+  // Export inventory to CSV
+  const handleExportInventory = () => {
+    exportToCSV(
+      filteredProducts,
+      [
+        { key: "articleNumber", header: "Article Number" },
+        { key: "name", header: "Product Name" },
+        { key: "brandName", header: "Brand" },
+        { key: "category", header: "Category" },
+        { key: "gender", header: "Gender" },
+        { key: "stockDozens", header: "Stock (Dozens)" },
+        { key: "pairsPerDozen", header: "Pairs/Dozen" },
+        { 
+          key: "sizeBundles", 
+          header: "Size Ranges", 
+          format: (bundles: SizeBundlePricing[]) => 
+            bundles.map(b => `${b.sizeRange}: Rs${b.pricePerPair}`).join("; ")
+        },
+      ],
+      "inventory"
+    );
+    
+    log({
+      action: "export",
+      entityType: "product",
+      details: { count: filteredProducts.length, type: "csv" },
+    });
+    
+    toast({ title: "Success", description: "Inventory exported successfully" });
+  };
+
+  // Import inventory from CSV
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        toast({
+          title: "Invalid File",
+          description: "CSV file must have headers and at least one data row",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Import Started",
+        description: `Processing ${lines.length - 1} products...`,
+      });
+
+      // Parse CSV (basic implementation - assumes standard format)
+      const headers = lines[0].split(",").map(h => h.replace(/"/g, "").trim().toLowerCase());
+      const nameIdx = headers.findIndex(h => h.includes("name") || h.includes("product"));
+      const articleIdx = headers.findIndex(h => h.includes("article") || h.includes("sku"));
+      const brandIdx = headers.findIndex(h => h.includes("brand"));
+
+      if (nameIdx === -1 || articleIdx === -1) {
+        toast({
+          title: "Invalid Format",
+          description: "CSV must have 'Product Name' and 'Article Number' columns",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",").map(v => v.replace(/"/g, "").trim());
+        const name = values[nameIdx];
+        const articleNumber = values[articleIdx];
+        
+        if (!name || !articleNumber) continue;
+
+        // Find or create brand
+        let brandId = null;
+        if (brandIdx !== -1 && values[brandIdx]) {
+          const brandName = values[brandIdx];
+          const existingBrand = brands.find(b => b.name.toLowerCase() === brandName.toLowerCase());
+          if (existingBrand) {
+            brandId = existingBrand.id;
+          }
+        }
+
+        const { error } = await supabase.from("products").insert({
+          name,
+          article_number: articleNumber,
+          brand_id: brandId,
+          category: "Imported",
+          gender: "unisex",
+        });
+
+        if (!error) imported++;
+      }
+
+      log({
+        action: "import",
+        entityType: "product",
+        details: { count: imported, filename: file.name },
+      });
+
+      toast({
+        title: "Import Complete",
+        description: `Successfully imported ${imported} products`,
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error("Import error:", error);
+      toast({
+        title: "Import Failed",
+        description: "Failed to parse CSV file",
+        variant: "destructive",
+      });
+    }
+
+    // Reset input
+    e.target.value = "";
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -615,11 +746,18 @@ const Inventory = () => {
             </DialogContent>
           </Dialog>
 
-          <Button variant="outline" size="sm" className="gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".csv"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleImportClick}>
             <Upload className="w-4 h-4" />
             Import
           </Button>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportInventory}>
             <Download className="w-4 h-4" />
             Export
           </Button>

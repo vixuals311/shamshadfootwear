@@ -33,6 +33,8 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
+import { exportToCSV } from "@/utils/exportUtils";
 
 interface Invoice {
   id: string;
@@ -57,6 +59,7 @@ const statusStyles = {
 const Invoices = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { log } = useAuditLog();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -156,6 +159,39 @@ const Invoices = () => {
     return { total, paid, pending, overdue };
   }, [invoices]);
 
+  // Export invoices to CSV
+  const handleExportInvoices = () => {
+    exportToCSV(
+      filteredInvoices,
+      [
+        { key: "number", header: "Invoice #" },
+        { key: "client", header: "Client Name" },
+        { key: "clientEmail", header: "Client Email" },
+        { 
+          key: "amount", 
+          header: "Amount", 
+          format: (val: number) => `Rs ${val.toLocaleString()}` 
+        },
+        { key: "status", header: "Status" },
+        { 
+          key: "date", 
+          header: "Date", 
+          format: (val: string) => format(new Date(val), "dd MMM yyyy") 
+        },
+        { key: "items", header: "Items Count" },
+      ],
+      "invoices"
+    );
+    
+    log({
+      action: "export",
+      entityType: "invoice",
+      details: { count: filteredInvoices.length, type: "csv" },
+    });
+    
+    toast({ title: "Success", description: "Invoices exported successfully" });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -179,7 +215,7 @@ const Invoices = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportInvoices}>
             <Download className="w-4 h-4" />
             Export
           </Button>
