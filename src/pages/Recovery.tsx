@@ -10,6 +10,12 @@ import {
   Calendar as CalendarIcon,
   GripVertical,
   Loader2,
+  Save,
+  FileText,
+  Trash2,
+  Play,
+  Check,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +66,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRecoveryDrafts, DraftClientRecovery, RecoveryDraft } from "@/hooks/useRecoveryDrafts";
 
 interface Client {
   id: string;
@@ -87,6 +94,7 @@ interface CityClientRecovery {
   phone: string;
   currentBalance: number;
   recoveryAmount: string;
+  isCollected?: boolean;
 }
 
 interface SortableCityItem {
@@ -96,18 +104,23 @@ interface SortableCityItem {
 
 const RecoveryPage = () => {
   const { toast } = useToast();
+  const { drafts, saveDraft, deleteDraft, getDraftForCityDate } = useRecoveryDrafts();
   const [clients, setClients] = useState<Client[]>([]);
   const [recoveries, setRecoveries] = useState<Recovery[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddRecoveryOpen, setIsAddRecoveryOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
+  const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [sortedCities, setSortedCities] = useState<SortableCityItem[]>([]);
   const [includePreviousBalance, setIncludePreviousBalance] = useState(true);
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [draggedCity, setDraggedCity] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [showDeleteDraftConfirm, setShowDeleteDraftConfirm] = useState(false);
+  const [draftToDelete, setDraftToDelete] = useState<string | null>(null);
 
   // Recovery category selection
   const [recoveryCategory, setRecoveryCategory] = useState<"client" | "city">("client");
@@ -247,6 +260,29 @@ const RecoveryPage = () => {
     }
   };
 
+  // Check for existing draft when city/date changes
+  useEffect(() => {
+    if (cityRecoveryCity && cityRecoveryDate && !activeDraftId) {
+      const existingDraft = getDraftForCityDate(cityRecoveryCity, cityRecoveryDate);
+      if (existingDraft) {
+        // Prompt user to resume draft
+        toast({
+          title: "Draft found",
+          description: `Resume your saved progress for ${existingDraft.city}?`,
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleResumeDraft(existingDraft)}
+            >
+              Resume
+            </Button>
+          ),
+        });
+      }
+    }
+  }, [cityRecoveryCity, cityRecoveryDate]);
+
   // Load clients for a city with balances calculated for a specific date
   const loadCityClientsForDate = async (city: string, date: Date) => {
     setLoadingCityClients(true);
@@ -280,22 +316,21 @@ const RecoveryPage = () => {
         `)
         .in("client_id", cityClients.map(c => c.id));
 
+      // Check if there's a draft for this city/date
+      const existingDraft = getDraftForCityDate(city, date);
+
       // Calculate balance for each client as of the selected date
       const clientBalances = cityClients.map((client) => {
-        // Get opening balance
-        let balance = client.currentBalance; // Start with current balance
-        
-        // Actually, we should calculate from opening balance + invoices - recoveries
-        // For simplicity, we'll show current balance from the clients table
-        // The user can see the balance as of today
+        // Check if this client has saved data in draft
+        const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
 
         // Get client's invoices balance
         const clientInvoices = invoicesData?.filter(i => i.client_id === client.id) || [];
         const invoicesTotal = clientInvoices.reduce((sum, inv) => sum + (inv.balance_due || 0), 0);
 
         // Get client's individual recoveries
-        const clientRecoveries = recoveriesData?.filter(r => r.client_id === client.id) || [];
-        const recoveriesTotal = clientRecoveries.reduce((sum, rec) => sum + (rec.amount || 0), 0);
+        const clientRecoveriesList = recoveriesData?.filter(r => r.client_id === client.id) || [];
+        const recoveriesTotal = clientRecoveriesList.reduce((sum, rec) => sum + (rec.amount || 0), 0);
 
         // Get client's city recovery amounts
         const clientCityRecoveries = cityRecoveriesData?.filter((r: any) => 
@@ -305,18 +340,22 @@ const RecoveryPage = () => {
         ) || [];
         const cityRecoveriesTotal = clientCityRecoveries.reduce((sum: number, rec: any) => sum + (rec.amount || 0), 0);
 
-        // For display, we'll show the pending balance
-        // This is a simplified calculation - the actual balance comes from clients table
         return {
           clientId: client.id,
           clientName: client.name,
           phone: client.phone,
-          currentBalance: client.currentBalance, // Using current balance from clients table
-          recoveryAmount: "",
+          currentBalance: client.currentBalance,
+          recoveryAmount: draftClient?.recoveryAmount || "",
+          isCollected: draftClient?.isCollected || false,
         };
       });
 
       setCityClientRecoveries(clientBalances);
+      
+      if (existingDraft) {
+        setActiveDraftId(existingDraft.id);
+        setCityRecoveryNotes(existingDraft.notes);
+      }
     } catch (error) {
       console.error("Error loading city clients:", error);
       toast({
@@ -327,6 +366,93 @@ const RecoveryPage = () => {
     } finally {
       setLoadingCityClients(false);
     }
+  };
+
+  // Resume a draft
+  const handleResumeDraft = (draft: RecoveryDraft) => {
+    setRecoveryCategory("city");
+    setCityRecoveryCity(draft.city);
+    setCityRecoveryDate(new Date(draft.date));
+    setCityRecoveryNotes(draft.notes);
+    setActiveDraftId(draft.id);
+    
+    // Load the draft's client data
+    setCityClientRecoveries(draft.clients.map(c => ({
+      clientId: c.clientId,
+      clientName: c.clientName,
+      phone: c.phone,
+      currentBalance: c.currentBalance,
+      recoveryAmount: c.recoveryAmount,
+      isCollected: c.isCollected,
+    })));
+    
+    setIsAddRecoveryOpen(true);
+    setIsDraftsDialogOpen(false);
+    
+    toast({
+      title: "Draft loaded",
+      description: `Resumed ${draft.city} recovery from ${format(new Date(draft.updatedAt), "dd MMM, HH:mm")}`,
+    });
+  };
+
+  // Save current city recovery as draft
+  const handleSaveDraft = () => {
+    if (!cityRecoveryCity) {
+      toast({
+        title: "Select a city",
+        description: "Please select a city before saving draft",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const draftClients: DraftClientRecovery[] = cityClientRecoveries.map(c => ({
+      clientId: c.clientId,
+      clientName: c.clientName,
+      phone: c.phone,
+      currentBalance: c.currentBalance,
+      recoveryAmount: c.recoveryAmount,
+      isCollected: c.isCollected || false,
+    }));
+
+    const savedDraft = saveDraft({
+      city: cityRecoveryCity,
+      date: cityRecoveryDate.toISOString(),
+      notes: cityRecoveryNotes,
+      clients: draftClients,
+    });
+
+    if (savedDraft) {
+      setActiveDraftId(savedDraft.id);
+    }
+
+    toast({
+      title: "Draft saved",
+      description: `Progress saved for ${cityRecoveryCity}. You can close and resume later.`,
+    });
+  };
+
+  // Toggle client collected status
+  const toggleClientCollected = (clientId: string) => {
+    setCityClientRecoveries(prev =>
+      prev.map(c =>
+        c.clientId === clientId ? { ...c, isCollected: !c.isCollected } : c
+      )
+    );
+  };
+
+  // Delete a draft
+  const handleDeleteDraft = (draftId: string) => {
+    deleteDraft(draftId);
+    if (activeDraftId === draftId) {
+      setActiveDraftId(null);
+    }
+    setShowDeleteDraftConfirm(false);
+    setDraftToDelete(null);
+    toast({
+      title: "Draft deleted",
+      description: "The draft has been removed",
+    });
   };
 
   const updateClientRecoveryAmount = (clientId: string, amount: string) => {
@@ -456,6 +582,15 @@ const RecoveryPage = () => {
 
       setShowAddRecoveryConfirm(false);
       setIsAddRecoveryOpen(false);
+      setRecoveryCategory("client");
+      
+      // Delete the draft if recovery was successfully added
+      if (activeDraftId) {
+        deleteDraft(activeDraftId);
+        setActiveDraftId(null);
+      }
+      
+      fetchData();
       setRecoveryCategory("client");
       fetchData();
     } catch (error: any) {
@@ -602,6 +737,20 @@ const RecoveryPage = () => {
           <p className="text-muted-foreground">Manage client payments and recoveries</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {drafts.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 relative"
+              onClick={() => setIsDraftsDialogOpen(true)}
+            >
+              <FileText className="w-4 h-4" />
+              Drafts
+              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {drafts.length}
+              </span>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -1020,22 +1169,35 @@ const RecoveryPage = () => {
 
                 {!loadingCityClients && cityClientRecoveries.length > 0 && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label>Client Recoveries</Label>
-                      <div className="relative w-48">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search clients..."
-                          value={cityClientSearch}
-                          onChange={(e) => setCityClientSearch(e.target.value)}
-                          className="pl-8 h-8 text-sm"
-                        />
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <Label>Client Recoveries</Label>
+                        {activeDraftId && (
+                          <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full">
+                            Draft active
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="relative w-48">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search clients..."
+                            value={cityClientSearch}
+                            onChange={(e) => setCityClientSearch(e.target.value)}
+                            className="pl-8 h-8 text-sm"
+                          />
+                        </div>
                       </div>
                     </div>
+                    
+                    {/* Mobile-friendly cards for small screens, table for larger */}
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="data-table">
+                      {/* Desktop Table */}
+                      <table className="data-table hidden sm:table">
                         <thead>
                           <tr>
+                            <th className="w-10">✓</th>
                             <th>Client</th>
                             <th>Phone</th>
                             <th>Pending Balance</th>
@@ -1044,8 +1206,27 @@ const RecoveryPage = () => {
                         </thead>
                         <tbody>
                           {filteredCityClients.map((client) => (
-                            <tr key={client.clientId}>
-                              <td className="font-medium">{client.clientName}</td>
+                            <tr 
+                              key={client.clientId}
+                              className={cn(client.isCollected && "bg-success/5")}
+                            >
+                              <td>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleClientCollected(client.clientId)}
+                                  className={cn(
+                                    "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
+                                    client.isCollected
+                                      ? "bg-success border-success text-white"
+                                      : "border-muted-foreground/30 hover:border-success"
+                                  )}
+                                >
+                                  {client.isCollected && <Check className="w-4 h-4" />}
+                                </button>
+                              </td>
+                              <td className={cn("font-medium", client.isCollected && "text-muted-foreground line-through")}>
+                                {client.clientName}
+                              </td>
                               <td className="text-muted-foreground text-sm">{client.phone}</td>
                               <td className="text-destructive font-medium">
                                 Rs {client.currentBalance.toLocaleString()}
@@ -1065,8 +1246,65 @@ const RecoveryPage = () => {
                           ))}
                         </tbody>
                       </table>
+                      
+                      {/* Mobile Cards */}
+                      <div className="sm:hidden divide-y">
+                        {filteredCityClients.map((client) => (
+                          <div 
+                            key={client.clientId}
+                            className={cn(
+                              "p-3 flex items-start gap-3",
+                              client.isCollected && "bg-success/5"
+                            )}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleClientCollected(client.clientId)}
+                              className={cn(
+                                "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-1",
+                                client.isCollected
+                                  ? "bg-success border-success text-white"
+                                  : "border-muted-foreground/30 hover:border-success"
+                              )}
+                            >
+                              {client.isCollected && <Check className="w-5 h-5" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className={cn(
+                                "font-medium text-sm",
+                                client.isCollected && "text-muted-foreground line-through"
+                              )}>
+                                {client.clientName}
+                              </div>
+                              <div className="text-xs text-muted-foreground">{client.phone}</div>
+                              <div className="text-sm text-destructive font-medium mt-1">
+                                Balance: Rs {client.currentBalance.toLocaleString()}
+                              </div>
+                              <div className="mt-2">
+                                <Input
+                                  type="number"
+                                  value={client.recoveryAmount}
+                                  onChange={(e) =>
+                                    updateClientRecoveryAmount(client.clientId, e.target.value)
+                                  }
+                                  placeholder="Enter recovery amount"
+                                  className="h-10"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex justify-end p-3 bg-muted/30 rounded-lg">
+                    
+                    {/* Summary */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-3 bg-muted/30 rounded-lg">
+                      <div className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          {cityClientRecoveries.filter(c => c.isCollected).length}
+                        </span>
+                        {" "}of {cityClientRecoveries.length} collected
+                      </div>
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">Total Recovery</p>
                         <p className="text-xl font-bold text-success">
@@ -1089,10 +1327,22 @@ const RecoveryPage = () => {
               </>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddRecoveryOpen(false)}>
-              Cancel
-            </Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" onClick={() => setIsAddRecoveryOpen(false)}>
+                Cancel
+              </Button>
+              {recoveryCategory === "city" && cityClientRecoveries.length > 0 && (
+                <Button
+                  variant="secondary"
+                  onClick={handleSaveDraft}
+                  className="gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Draft
+                </Button>
+              )}
+            </div>
             <Button
               onClick={() => setShowAddRecoveryConfirm(true)}
               disabled={
@@ -1100,6 +1350,7 @@ const RecoveryPage = () => {
                   ? !clientRecovery.clientId || !clientRecovery.amount
                   : cityRecoveryTotal === 0
               }
+              className="w-full sm:w-auto"
             >
               Add Recovery
             </Button>
@@ -1219,6 +1470,120 @@ const RecoveryPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Drafts Dialog */}
+      <Dialog open={isDraftsDialogOpen} onOpenChange={setIsDraftsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Saved Drafts
+            </DialogTitle>
+            <DialogDescription>
+              Resume your saved recovery progress. Drafts are stored locally on this device.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {drafts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No drafts saved</p>
+              </div>
+            ) : (
+              drafts.map((draft) => {
+                const collectedCount = draft.clients.filter(c => c.isCollected).length;
+                const withAmountCount = draft.clients.filter(c => parseFloat(c.recoveryAmount) > 0).length;
+                const totalAmount = draft.clients.reduce(
+                  (sum, c) => sum + (parseFloat(c.recoveryAmount) || 0),
+                  0
+                );
+                
+                return (
+                  <div
+                    key={draft.id}
+                    className="p-4 border rounded-lg bg-card hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-foreground">{draft.city}</span>
+                          <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
+                            {format(new Date(draft.date), "dd MMM yyyy")}
+                          </span>
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-3 h-3 text-success" />
+                            <span>{collectedCount} of {draft.clients.length} visited</span>
+                          </div>
+                          {withAmountCount > 0 && (
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="w-3 h-3" />
+                              <span>Rs {totalAmount.toLocaleString()} from {withAmountCount} clients</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Last saved: {format(new Date(draft.updatedAt), "dd MMM, HH:mm")}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="gap-1"
+                          onClick={() => handleResumeDraft(draft)}
+                        >
+                          <Play className="w-3 h-3" />
+                          Resume
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="gap-1 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            setDraftToDelete(draft.id);
+                            setShowDeleteDraftConfirm(true);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDraftsDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Draft Confirmation */}
+      <AlertDialog open={showDeleteDraftConfirm} onOpenChange={setShowDeleteDraftConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Draft</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this draft? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDraftToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => draftToDelete && handleDeleteDraft(draftToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Confirmation Dialog */}
       <AlertDialog
