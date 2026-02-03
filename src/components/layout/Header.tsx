@@ -1,4 +1,4 @@
-import { Bell, Search, Plus } from "lucide-react";
+import { Menu, Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,18 +24,31 @@ const pageTitle: Record<string, string> = {
   "/audit-logs": "Audit Logs",
 };
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const location = useLocation();
   const title = pageTitle[location.pathname] || "Dashboard";
 
   return (
-    <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40 flex items-center justify-between px-4 sm:px-6">
-      <div className="flex items-center gap-4">
-        <h1 className="text-lg sm:text-xl font-semibold text-foreground">{title}</h1>
+    <header className="h-14 lg:h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40 flex items-center justify-between px-3 sm:px-4 lg:px-6">
+      <div className="flex items-center gap-3">
+        {/* Mobile Menu Button */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="lg:hidden shrink-0"
+          onClick={onMenuClick}
+        >
+          <Menu className="w-5 h-5" />
+        </Button>
+        <h1 className="text-base sm:text-lg lg:text-xl font-semibold text-foreground truncate">{title}</h1>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Search */}
+      <div className="flex items-center gap-2">
+        {/* Search - Desktop Only */}
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -47,7 +60,7 @@ export function Header() {
         {/* Quick Actions */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" className="gap-1 sm:gap-2">
+            <Button size="sm" className="gap-1.5 h-9 px-3">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">New</span>
             </Button>

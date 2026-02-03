@@ -388,36 +388,36 @@ const UserManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
       >
         <div>
-          <h2 className="text-2xl font-bold text-foreground">User Management</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl lg:text-2xl font-bold text-foreground">User Management</h2>
+          <p className="text-sm text-muted-foreground">
             Manage staff accounts and permissions
           </p>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
+        <Button size="sm" className="gap-2 w-full sm:w-auto" onClick={() => setIsAddDialogOpen(true)}>
           <Plus className="w-4 h-4" />
           Add User
         </Button>
       </motion.div>
 
-      {/* Role Permissions Info */}
+      {/* Role Permissions Info - Scrollable on mobile */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+        className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:grid lg:grid-cols-4 lg:overflow-visible"
       >
         {(["admin", "biller", "cashier", "biller_cashier"] as UserRole[]).map((role) => (
-          <div key={role} className="bg-card rounded-xl p-4 shadow-card">
+          <div key={role} className="bg-card rounded-xl p-4 shadow-card min-w-[200px] lg:min-w-0 shrink-0 lg:shrink">
             <div className="flex items-center gap-2 mb-3">
-              <Shield className="w-5 h-5 text-primary" />
-              <span className={cn("status-badge", roleLabels[role].color)}>
+              <Shield className="w-4 h-4 text-primary" />
+              <span className={cn("status-badge text-xs", roleLabels[role].color)}>
                 {roleLabels[role].label}
               </span>
             </div>
@@ -441,7 +441,7 @@ const UserManagement = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <div className="relative max-w-md">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search users..."
@@ -452,12 +452,12 @@ const UserManagement = () => {
         </div>
       </motion.div>
 
-      {/* Users Table */}
+      {/* Desktop Table */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-card rounded-xl shadow-card overflow-hidden"
+        className="bg-card rounded-xl shadow-card overflow-hidden hidden lg:block"
       >
         <table className="data-table">
           <thead>
@@ -563,6 +563,107 @@ const UserManagement = () => {
             )}
           </tbody>
         </table>
+      </motion.div>
+
+      {/* Mobile Card View */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="space-y-3 lg:hidden"
+      >
+        {filteredUsers.map((u) => (
+          <div 
+            key={u.id} 
+            className="bg-card rounded-xl p-4 shadow-card border border-border/50"
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground truncate">{u.name}</p>
+                  <p className="text-sm text-muted-foreground truncate">{u.email}</p>
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    disabled={u.user_id === user?.id}
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onClick={() => handleToggleActive(u.user_id)}
+                  >
+                    {u.is_active ? (
+                      <>
+                        <UserX className="w-4 h-4" />
+                        Deactivate
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="w-4 h-4" />
+                        Activate
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onClick={() => {
+                      setEditRoleUser(u);
+                      setEditRoleValue(u.role);
+                    }}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    Change Role
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="gap-2 text-destructive"
+                    onClick={() => setDeleteUserId(u.user_id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <span className="text-muted-foreground">Role:</span>
+                <span className={cn("ml-2 status-badge", roleLabels[u.role].color)}>
+                  {roleLabels[u.role].label}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Status:</span>
+                <span className={cn("ml-2 status-badge", u.is_active ? "status-badge-success" : "status-badge-danger")}>
+                  {u.is_active ? "Active" : "Inactive"}
+                </span>
+              </div>
+              <div className="col-span-2 pt-1 text-muted-foreground">
+                <span>Phone: </span>
+                <span className="text-foreground">{u.phone || "-"}</span>
+              </div>
+              <div className="col-span-2 text-muted-foreground">
+                <span>Created: </span>
+                <span className="text-foreground">{format(new Date(u.created_at), "dd MMM yyyy")}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+        {filteredUsers.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground bg-card rounded-xl">
+            No users found
+          </div>
+        )}
       </motion.div>
 
       {/* Add User Dialog */}
