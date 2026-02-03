@@ -23,6 +23,7 @@ import {
   Download as DownloadIcon,
   Loader2,
   AlertTriangle,
+  Key,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,6 +110,11 @@ const Clients = () => {
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [clientInvoices, setClientInvoices] = useState<Invoice[]>([]);
   const [clientRecoveries, setClientRecoveries] = useState<RecoveryRecord[]>([]);
+  const [pinDialogClient, setPinDialogClient] = useState<Client | null>(null);
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [currentClientPin, setCurrentClientPin] = useState<string | null>(null);
+  const [pinLoading, setPinLoading] = useState(false);
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
@@ -373,6 +379,132 @@ const Clients = () => {
       toast({
         title: "Error",
         description: error.message || "Failed to delete client",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle opening PIN dialog
+  const handleOpenPinDialog = async (client: Client) => {
+    setPinDialogClient(client);
+    setNewPin("");
+    setConfirmPin("");
+    setPinLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("portal_pin")
+        .eq("id", client.id)
+        .single();
+      
+      if (error) throw error;
+      setCurrentClientPin(data?.portal_pin || null);
+    } catch (error) {
+      console.error("Error fetching client PIN:", error);
+      setCurrentClientPin(null);
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
+  // Handle PIN save/update
+  const handleSavePin = async () => {
+    if (!pinDialogClient) return;
+    
+    if (!newPin || newPin.length < 4) {
+      toast({
+        title: "Invalid PIN",
+        description: "PIN must be at least 4 digits",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (newPin !== confirmPin) {
+      toast({
+        title: "PIN Mismatch",
+        description: "PINs do not match. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({ portal_pin: newPin })
+        .eq("id", pinDialogClient.id);
+      
+      if (error) throw error;
+      
+      // Log audit event
+      await log({
+        action: "update",
+        entityType: "client",
+        entityId: pinDialogClient.id,
+        details: {
+          name: pinDialogClient.name,
+          action: currentClientPin ? "PIN changed" : "PIN set",
+        },
+      });
+      
+      toast({
+        title: "Success",
+        description: currentClientPin ? "Client PIN updated successfully" : "Client PIN set successfully",
+      });
+      
+      setPinDialogClient(null);
+      setNewPin("");
+      setConfirmPin("");
+      setCurrentClientPin(null);
+    } catch (error: any) {
+      console.error("Error saving PIN:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save PIN",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle PIN removal
+  const handleRemovePin = async () => {
+    if (!pinDialogClient) return;
+    
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({ portal_pin: null })
+        .eq("id", pinDialogClient.id);
+      
+      if (error) throw error;
+      
+      // Log audit event
+      await log({
+        action: "update",
+        entityType: "client",
+        entityId: pinDialogClient.id,
+        details: {
+          name: pinDialogClient.name,
+          action: "PIN removed",
+        },
+      });
+      
+      toast({
+        title: "Success",
+        description: "Client PIN removed successfully",
+      });
+      
+      setPinDialogClient(null);
+      setNewPin("");
+      setConfirmPin("");
+      setCurrentClientPin(null);
+    } catch (error: any) {
+      console.error("Error removing PIN:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove PIN",
         variant: "destructive",
       });
     }
@@ -1039,6 +1171,16 @@ const Clients = () => {
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      className="gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenPinDialog(client);
+                      }}
+                    >
+                      <Key className="w-4 h-4" />
+                      Manage PIN
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       className="gap-2 text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1145,6 +1287,16 @@ const Clients = () => {
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          className="gap-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenPinDialog(client);
+                          }}
+                        >
+                          <Key className="w-4 h-4" />
+                          Manage PIN
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           className="gap-2 text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1208,6 +1360,84 @@ const Clients = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PIN Management Dialog */}
+      <Dialog open={!!pinDialogClient} onOpenChange={() => {
+        setPinDialogClient(null);
+        setNewPin("");
+        setConfirmPin("");
+        setCurrentClientPin(null);
+      }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5" />
+              Manage Client PIN
+            </DialogTitle>
+            <DialogDescription>
+              {pinDialogClient?.name} - Set or change the portal login PIN
+            </DialogDescription>
+          </DialogHeader>
+          {pinLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              {currentClientPin && (
+                <Alert>
+                  <Key className="h-4 w-4" />
+                  <AlertTitle>PIN Already Set</AlertTitle>
+                  <AlertDescription>
+                    This client already has a portal PIN. Enter a new PIN to change it.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="newPin">{currentClientPin ? "New PIN" : "PIN"} *</Label>
+                <Input
+                  id="newPin"
+                  type="password"
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Enter 4+ digit PIN"
+                  maxLength={8}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPin">Confirm PIN *</Label>
+                <Input
+                  id="confirmPin"
+                  type="password"
+                  value={confirmPin}
+                  onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Confirm PIN"
+                  maxLength={8}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {currentClientPin && (
+              <Button
+                variant="outline"
+                className="text-destructive border-destructive hover:bg-destructive/10"
+                onClick={handleRemovePin}
+              >
+                Remove PIN
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" onClick={() => setPinDialogClient(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSavePin} disabled={!newPin || !confirmPin}>
+                {currentClientPin ? "Update PIN" : "Set PIN"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
