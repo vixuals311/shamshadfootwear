@@ -258,7 +258,7 @@
 
   .data-table th,
   .data-table td {
-    @apply py-2 px-2;
+    @apply py-2.5 px-3;
   }
 
   .metric-card {
@@ -285,9 +285,27 @@
   }
 }
 
+/* Tablet breakpoint */
+@media (max-width: 1024px) {
+  .data-table th,
+  .data-table td {
+    @apply py-2.5 px-3;
+  }
+}
+
 /* Improve input visibility on mobile */
 @media (max-width: 768px) {
-  input[type="number"] {
+  input[type="number"],
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
     font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Safe area padding for mobile */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
