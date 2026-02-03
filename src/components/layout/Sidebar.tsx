@@ -31,7 +31,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { icon: Package, label: "Inventory", path: "/inventory", show: hasPermission("canManageInventory") || role === "admin" },
     { icon: Users, label: "Clients", path: "/clients", show: hasPermission("canManageClients") || role === "admin" },
     { icon: FileText, label: "Invoices", path: "/invoices", show: hasPermission("canCreateInvoices") || role === "admin" },
-    { icon: CreditCard, label: "Payments", path: "/payments", show: hasPermission("canRecordPayments") || role === "admin" || role === "cashier" },
+    { icon: CreditCard, label: "Payments", path: "/payments", show: hasPermission("canRecordPayments") || role === "admin" },
     { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPermission("canManageRecoveries") || role === "admin" || role === "cashier" },
     { icon: BarChart3, label: "Reports", path: "/reports", show: hasPermission("canViewReports") || role === "admin" },
   ].filter((item) => item.show);

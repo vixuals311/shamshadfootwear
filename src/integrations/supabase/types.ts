@@ -117,6 +117,7 @@ export type Database = {
         Row: {
           category: Database["public"]["Enums"]["product_category"]
           created_at: string
+          display_order: number
           id: string
           pairs_per_bundle: number
           size_range: string
@@ -124,6 +125,7 @@ export type Database = {
         Insert: {
           category: Database["public"]["Enums"]["product_category"]
           created_at?: string
+          display_order?: number
           id?: string
           pairs_per_bundle?: number
           size_range: string
@@ -131,6 +133,7 @@ export type Database = {
         Update: {
           category?: Database["public"]["Enums"]["product_category"]
           created_at?: string
+          display_order?: number
           id?: string
           pairs_per_bundle?: number
           size_range?: string
@@ -312,6 +315,27 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      product_categories: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
           id?: string
           name?: string
         }
