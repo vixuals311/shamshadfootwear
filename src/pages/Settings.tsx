@@ -11,6 +11,8 @@ import {
   Loader2,
   CreditCard,
   Ruler,
+  GripVertical,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,14 +53,19 @@ interface PaymentAccount {
   name: string;
 }
 
+interface ProductCategory {
+  id: string;
+  name: string;
+  display_order: number;
+}
+
 interface DefaultSizeRange {
   id: string;
   category: string;
   size_range: string;
   pairs_per_bundle: number;
+  display_order: number;
 }
-
-const CATEGORIES = ["men", "women", "children", "unisex"];
 
 const Settings = () => {
   const { toast } = useToast();
@@ -72,15 +79,23 @@ const Settings = () => {
   const [deleteAccountId, setDeleteAccountId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Product categories state
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
+  const [deleteCategoryName, setDeleteCategoryName] = useState("");
+
   // Size ranges state
   const [sizeRanges, setSizeRanges] = useState<DefaultSizeRange[]>([]);
   const [isAddSizeRangeOpen, setIsAddSizeRangeOpen] = useState(false);
   const [newSizeRange, setNewSizeRange] = useState({
-    category: "men",
+    category: "",
     size_range: "",
     pairs_per_bundle: 6,
   });
   const [deleteSizeRangeId, setDeleteSizeRangeId] = useState<string | null>(null);
+  const [draggedSizeRange, setDraggedSizeRange] = useState<string | null>(null);
 
   // Fetch data
   const fetchData = async () => {
@@ -101,12 +116,21 @@ const Settings = () => {
         }))
       );
 
+      // Fetch product categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("product_categories")
+        .select("*")
+        .order("display_order");
+
+      if (categoriesError) throw categoriesError;
+      setCategories(categoriesData || []);
+
       // Fetch size ranges
       const { data: sizeData, error: sizeError } = await supabase
         .from("default_size_ranges")
         .select("*")
         .order("category")
-        .order("size_range");
+        .order("display_order");
 
       if (sizeError) throw sizeError;
       setSizeRanges(sizeData || []);
@@ -178,22 +202,87 @@ const Settings = () => {
     }
   };
 
-  // Size range handlers
-  const handleAddSizeRange = async () => {
-    if (!newSizeRange.size_range.trim()) return;
+  // Category handlers
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
 
     setIsSubmitting(true);
     try {
+      const maxOrder = Math.max(...categories.map(c => c.display_order), 0);
+      const { error } = await supabase.from("product_categories").insert({
+        name: newCategoryName.trim().toLowerCase(),
+        display_order: maxOrder + 1,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Category added" });
+      setNewCategoryName("");
+      setIsAddCategoryOpen(false);
+      fetchData();
+    } catch (error: any) {
+      console.error("Error adding category:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add category",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deleteCategoryId) return;
+
+    try {
+      // First delete all size ranges for this category
+      await supabase
+        .from("default_size_ranges")
+        .delete()
+        .eq("category", deleteCategoryName as "men" | "women" | "children" | "unisex");
+
+      const { error } = await supabase
+        .from("product_categories")
+        .delete()
+        .eq("id", deleteCategoryId);
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Category deleted" });
+      setDeleteCategoryId(null);
+      setDeleteCategoryName("");
+      fetchData();
+    } catch (error: any) {
+      console.error("Error deleting category:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete category",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Size range handlers
+  const handleAddSizeRange = async () => {
+    if (!newSizeRange.size_range.trim() || !newSizeRange.category) return;
+
+    setIsSubmitting(true);
+    try {
+      const categorySizeRanges = sizeRanges.filter(sr => sr.category === newSizeRange.category);
+      const maxOrder = Math.max(...categorySizeRanges.map(sr => sr.display_order), 0);
+      
       const { error } = await supabase.from("default_size_ranges").insert({
         category: newSizeRange.category as "men" | "women" | "children" | "unisex",
         size_range: newSizeRange.size_range.trim(),
         pairs_per_bundle: newSizeRange.pairs_per_bundle,
+        display_order: maxOrder + 1,
       });
 
       if (error) throw error;
 
       toast({ title: "Success", description: "Size range added" });
-      setNewSizeRange({ category: "men", size_range: "", pairs_per_bundle: 6 });
+      setNewSizeRange({ category: categories[0]?.name || "", size_range: "", pairs_per_bundle: 6 });
       setIsAddSizeRangeOpen(false);
       fetchData();
     } catch (error: any) {
@@ -232,9 +321,68 @@ const Settings = () => {
     }
   };
 
+  // Drag and drop for size ranges
+  const handleDragStart = (id: string) => {
+    setDraggedSizeRange(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetId: string, category: string) => {
+    e.preventDefault();
+    if (!draggedSizeRange || draggedSizeRange === targetId) return;
+
+    const draggedItem = sizeRanges.find(sr => sr.id === draggedSizeRange);
+    if (!draggedItem || draggedItem.category !== category) return;
+
+    setSizeRanges(prev => {
+      const categorySizeRanges = prev.filter(sr => sr.category === category);
+      const otherSizeRanges = prev.filter(sr => sr.category !== category);
+      
+      const dragIdx = categorySizeRanges.findIndex(sr => sr.id === draggedSizeRange);
+      const targetIdx = categorySizeRanges.findIndex(sr => sr.id === targetId);
+      
+      if (dragIdx === -1 || targetIdx === -1) return prev;
+
+      const newOrder = [...categorySizeRanges];
+      const [dragged] = newOrder.splice(dragIdx, 1);
+      newOrder.splice(targetIdx, 0, dragged);
+
+      return [...otherSizeRanges, ...newOrder];
+    });
+  };
+
+  const handleDragEnd = async () => {
+    if (!draggedSizeRange) return;
+
+    const draggedItem = sizeRanges.find(sr => sr.id === draggedSizeRange);
+    if (!draggedItem) return;
+
+    const categorySizeRanges = sizeRanges.filter(sr => sr.category === draggedItem.category);
+    
+    // Update display_order for all items in this category
+    try {
+      for (let i = 0; i < categorySizeRanges.length; i++) {
+        await supabase
+          .from("default_size_ranges")
+          .update({ display_order: i + 1 })
+          .eq("id", categorySizeRanges[i].id);
+      }
+      toast({ title: "Success", description: "Order updated" });
+    } catch (error) {
+      console.error("Error updating order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save order",
+        variant: "destructive",
+      });
+      fetchData();
+    }
+
+    setDraggedSizeRange(null);
+  };
+
   // Group size ranges by category
-  const sizeRangesByCategory = CATEGORIES.reduce((acc, cat) => {
-    acc[cat] = sizeRanges.filter((sr) => sr.category === cat);
+  const sizeRangesByCategory = categories.reduce((acc, cat) => {
+    acc[cat.name] = sizeRanges.filter((sr) => sr.category === cat.name);
     return acc;
   }, {} as Record<string, DefaultSizeRange[]>);
 
@@ -343,6 +491,54 @@ const Settings = () => {
         </motion.div>
       )}
 
+      {/* Product Categories Section - Admin Only */}
+      {hasPermission("canManageSettings") && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
+          className="bg-card rounded-xl p-6 shadow-card"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Tag className="w-5 h-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Product Categories</h3>
+            </div>
+            <Button size="sm" className="gap-2" onClick={() => setIsAddCategoryOpen(true)}>
+              <Plus className="w-4 h-4" />
+              Add Category
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <div
+                key={category.id}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50 border border-border"
+              >
+                <span className="font-medium capitalize">{category.name}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:text-destructive"
+                  onClick={() => {
+                    setDeleteCategoryId(category.id);
+                    setDeleteCategoryName(category.name);
+                  }}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          {categories.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Tag className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>No categories configured</p>
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Default Size Ranges Section - Admin Only */}
       {hasPermission("canManageSettings") && (
         <motion.div
@@ -356,24 +552,40 @@ const Settings = () => {
               <Ruler className="w-5 h-5 text-primary" />
               <h3 className="text-lg font-semibold text-foreground">Default Size Ranges</h3>
             </div>
-            <Button size="sm" className="gap-2" onClick={() => setIsAddSizeRangeOpen(true)}>
+            <Button size="sm" className="gap-2" onClick={() => {
+              setNewSizeRange({ ...newSizeRange, category: categories[0]?.name || "" });
+              setIsAddSizeRangeOpen(true);
+            }}>
               <Plus className="w-4 h-4" />
               Add Size Range
             </Button>
           </div>
           
+          <p className="text-sm text-muted-foreground mb-4">
+            Drag size ranges to reorder them. The order will be consistent across all pages.
+          </p>
+          
           <div className="space-y-6">
-            {CATEGORIES.map((category) => (
-              <div key={category}>
-                <h4 className="font-medium capitalize mb-3 text-muted-foreground">{category}</h4>
+            {categories.map((category) => (
+              <div key={category.id}>
+                <h4 className="font-medium capitalize mb-3 text-muted-foreground">{category.name}</h4>
                 <div className="space-y-2">
-                  {sizeRangesByCategory[category]?.length > 0 ? (
-                    sizeRangesByCategory[category].map((sr) => (
+                  {sizeRangesByCategory[category.name]?.length > 0 ? (
+                    sizeRangesByCategory[category.name].map((sr) => (
                       <div
                         key={sr.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border"
+                        draggable
+                        onDragStart={() => handleDragStart(sr.id)}
+                        onDragOver={(e) => handleDragOver(e, sr.id, category.name)}
+                        onDragEnd={handleDragEnd}
+                        className={`flex items-center justify-between p-3 rounded-lg bg-muted/50 border cursor-grab active:cursor-grabbing transition-colors ${
+                          draggedSizeRange === sr.id
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:bg-muted/70"
+                        }`}
                       >
                         <div className="flex items-center gap-4">
+                          <GripVertical className="w-4 h-4 text-muted-foreground" />
                           <span className="font-medium">{sr.size_range}</span>
                           <span className="text-sm text-muted-foreground">
                             {sr.pairs_per_bundle} pairs/bundle
@@ -390,8 +602,8 @@ const Settings = () => {
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-4 text-muted-foreground text-sm">
-                      No size ranges for {category}
+                    <div className="text-center py-4 text-muted-foreground text-sm border border-dashed rounded-lg">
+                      No size ranges for {category.name}
                     </div>
                   )}
                 </div>
@@ -563,6 +775,44 @@ const Settings = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Add Category Dialog */}
+      <Dialog open={isAddCategoryOpen} onOpenChange={setIsAddCategoryOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Category</DialogTitle>
+            <DialogDescription>
+              Add a new product category for your inventory.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="categoryName">Category Name</Label>
+              <Input
+                id="categoryName"
+                placeholder="e.g., sports, formal"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddCategoryOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddCategory} disabled={isSubmitting || !newCategoryName.trim()}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Category"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Add Size Range Dialog */}
       <Dialog open={isAddSizeRangeOpen} onOpenChange={setIsAddSizeRangeOpen}>
         <DialogContent>
@@ -580,12 +830,12 @@ const Settings = () => {
                 onValueChange={(value) => setNewSizeRange({ ...newSizeRange, category: value })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat} className="capitalize">
-                      {cat}
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name} className="capitalize">
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -615,7 +865,7 @@ const Settings = () => {
             <Button variant="outline" onClick={() => setIsAddSizeRangeOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddSizeRange} disabled={isSubmitting || !newSizeRange.size_range.trim()}>
+            <Button onClick={handleAddSizeRange} disabled={isSubmitting || !newSizeRange.size_range.trim() || !newSizeRange.category}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -645,6 +895,27 @@ const Settings = () => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Category Confirmation */}
+      <AlertDialog open={deleteCategoryId !== null} onOpenChange={() => { setDeleteCategoryId(null); setDeleteCategoryName(""); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Category</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the category "{deleteCategoryName}"? This will also delete all size ranges associated with this category. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCategory}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Category
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

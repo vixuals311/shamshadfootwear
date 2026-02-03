@@ -59,7 +59,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canCreateInvoices: false,
     canEditInvoices: false,
     canDeleteInvoices: false,
-    canRecordPayments: true,
+    canRecordPayments: false,
     canManageRecoveries: true,
   },
   biller_cashier: {
