@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -8,9 +8,10 @@ import {
   FileText,
   CreditCard,
   Settings,
-  Filter,
   Download,
   Tag,
+  Loader2,
+  RefreshCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,21 +23,37 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useAudit } from "@/context/AuditContext";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
-import { AuditAction, AuditEntity } from "@/types";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { exportToCSV } from "@/utils/exportUtils";
 
-const actionColors: Record<AuditAction, string> = {
+interface AuditLogEntry {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  details: any;
+  user_id: string | null;
+  user_name: string | null;
+  created_at: string;
+}
+
+const actionColors: Record<string, string> = {
   login: "status-badge-success",
   logout: "status-badge-default",
   create: "status-badge-success",
   update: "status-badge-warning",
   delete: "status-badge-danger",
   view: "status-badge-default",
+  save_draft: "status-badge-warning",
+  export: "status-badge-default",
+  import: "status-badge-success",
+  print: "status-badge-default",
 };
 
-const entityIcons: Record<AuditEntity, typeof User> = {
+const entityIcons: Record<string, typeof User> = {
   user: User,
   product: Package,
   brand: Tag,
@@ -48,25 +65,79 @@ const entityIcons: Record<AuditEntity, typeof User> = {
 };
 
 const AuditLogs = () => {
-  const { logs, getRecentLogs } = useAudit();
   const { hasPermission } = useSupabaseAuthContext();
+  const { toast } = useToast();
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterEntity, setFilterEntity] = useState<string>("all");
   const [filterAction, setFilterAction] = useState<string>("all");
 
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (error) throw error;
+      setLogs(data || []);
+    } catch (error: any) {
+      console.error("Error fetching audit logs:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load audit logs",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
+      const detailsStr = log.details ? JSON.stringify(log.details).toLowerCase() : "";
       const matchesSearch =
-        log.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.entityName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.details?.toLowerCase().includes(searchQuery.toLowerCase());
+        (log.user_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (log.entity_id?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        detailsStr.includes(searchQuery.toLowerCase());
 
-      const matchesEntity = filterEntity === "all" || log.entity === filterEntity;
+      const matchesEntity = filterEntity === "all" || log.entity_type === filterEntity;
       const matchesAction = filterAction === "all" || log.action === filterAction;
 
       return matchesSearch && matchesEntity && matchesAction;
     });
   }, [logs, searchQuery, filterEntity, filterAction]);
+
+  const handleExportLogs = () => {
+    exportToCSV(
+      filteredLogs,
+      [
+        { 
+          key: "created_at", 
+          header: "Timestamp",
+          format: (val: string) => format(new Date(val), "dd MMM yyyy, hh:mm a")
+        },
+        { key: "user_name", header: "User" },
+        { key: "action", header: "Action" },
+        { key: "entity_type", header: "Entity Type" },
+        { key: "entity_id", header: "Entity ID" },
+        { 
+          key: "details", 
+          header: "Details",
+          format: (val: any) => val ? JSON.stringify(val) : "-"
+        },
+      ],
+      "audit-logs"
+    );
+    toast({ title: "Success", description: "Audit logs exported successfully" });
+  };
 
   if (!hasPermission("canManageSettings")) {
     return (
@@ -78,6 +149,14 @@ const AuditLogs = () => {
             You don't have permission to view audit logs.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -96,10 +175,16 @@ const AuditLogs = () => {
             Track all system activity and changes
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Download className="w-4 h-4" />
-          Export Logs
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={fetchLogs}>
+            <RefreshCcw className="w-4 h-4" />
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportLogs}>
+            <Download className="w-4 h-4" />
+            Export Logs
+          </Button>
+        </div>
       </motion.div>
 
       {/* Stats */}
@@ -121,7 +206,7 @@ const AuditLogs = () => {
         <div className="bg-card rounded-xl p-4 shadow-card">
           <p className="text-sm text-muted-foreground">Updates</p>
           <p className="text-2xl font-bold text-warning">
-            {logs.filter((l) => l.action === "update").length}
+            {logs.filter((l) => l.action === "update" || l.action === "save_draft").length}
           </p>
         </div>
         <div className="bg-card rounded-xl p-4 shadow-card">
@@ -156,6 +241,7 @@ const AuditLogs = () => {
             <SelectItem value="all">All Entities</SelectItem>
             <SelectItem value="user">Users</SelectItem>
             <SelectItem value="product">Products</SelectItem>
+            <SelectItem value="brand">Brands</SelectItem>
             <SelectItem value="client">Clients</SelectItem>
             <SelectItem value="invoice">Invoices</SelectItem>
             <SelectItem value="recovery">Recoveries</SelectItem>
@@ -172,6 +258,10 @@ const AuditLogs = () => {
             <SelectItem value="create">Create</SelectItem>
             <SelectItem value="update">Update</SelectItem>
             <SelectItem value="delete">Delete</SelectItem>
+            <SelectItem value="save_draft">Save Draft</SelectItem>
+            <SelectItem value="export">Export</SelectItem>
+            <SelectItem value="import">Import</SelectItem>
+            <SelectItem value="print">Print</SelectItem>
           </SelectContent>
         </Select>
       </motion.div>
@@ -196,36 +286,43 @@ const AuditLogs = () => {
             </thead>
             <tbody>
               {filteredLogs.map((log) => {
-                const EntityIcon = entityIcons[log.entity] || History;
+                const EntityIcon = entityIcons[log.entity_type] || History;
+                const detailsPreview = log.details 
+                  ? Object.entries(log.details)
+                      .slice(0, 3)
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join(", ")
+                  : "-";
+                
                 return (
                   <tr key={log.id}>
                     <td className="text-muted-foreground text-sm whitespace-nowrap">
-                      {format(log.timestamp, "dd MMM yyyy, hh:mm a")}
+                      {format(new Date(log.created_at), "dd MMM yyyy, hh:mm a")}
                     </td>
-                    <td className="font-medium">{log.userName}</td>
+                    <td className="font-medium">{log.user_name || "System"}</td>
                     <td>
                       <span
                         className={cn(
                           "status-badge capitalize",
-                          actionColors[log.action]
+                          actionColors[log.action] || "status-badge-default"
                         )}
                       >
-                        {log.action}
+                        {log.action.replace("_", " ")}
                       </span>
                     </td>
                     <td>
                       <div className="flex items-center gap-2">
                         <EntityIcon className="w-4 h-4 text-muted-foreground" />
-                        <span className="capitalize">{log.entity}</span>
-                        {log.entityName && (
-                          <span className="text-muted-foreground">
-                            ({log.entityName})
+                        <span className="capitalize">{log.entity_type}</span>
+                        {log.entity_id && (
+                          <span className="text-muted-foreground text-xs">
+                            ({log.entity_id.slice(0, 8)}...)
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="text-muted-foreground text-sm max-w-xs truncate">
-                      {log.details || "-"}
+                      {detailsPreview}
                     </td>
                   </tr>
                 );

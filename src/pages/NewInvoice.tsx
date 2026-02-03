@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Plus,
@@ -104,6 +104,8 @@ interface SizeBundleSelection {
 
 const NewInvoice = () => {
   const navigate = useNavigate();
+  const { invoiceId } = useParams<{ invoiceId: string }>();
+  const isEditMode = !!invoiceId;
   const { toast } = useToast();
   const { log } = useAuditLog();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -125,6 +127,7 @@ const NewInvoice = () => {
   const [notes, setNotes] = useState("");
   const [removeItemId, setRemoveItemId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
+  const [existingInvoiceNumber, setExistingInvoiceNumber] = useState<string | null>(null);
 
   // Confirmation dialogs
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -196,6 +199,77 @@ const NewInvoice = () => {
 
     fetchData();
   }, [toast]);
+
+  // Fetch existing invoice data if in edit mode
+  useEffect(() => {
+    const fetchExistingInvoice = async () => {
+      if (!invoiceId || clients.length === 0) return;
+      
+      try {
+        const { data: invoiceData, error: invoiceError } = await supabase
+          .from("invoices")
+          .select(`
+            *,
+            invoice_items (*)
+          `)
+          .eq("id", invoiceId)
+          .single();
+
+        if (invoiceError) throw invoiceError;
+        if (!invoiceData) {
+          toast({
+            title: "Error",
+            description: "Invoice not found",
+            variant: "destructive",
+          });
+          navigate("/invoices");
+          return;
+        }
+
+        // Set invoice number
+        setExistingInvoiceNumber(invoiceData.invoice_number);
+
+        // Set client
+        const client = clients.find(c => c.id === invoiceData.client_id);
+        if (client) setSelectedClient(client);
+
+        // Set payment info
+        setPaymentMethod(invoiceData.payment_method as "cash" | "account");
+        if (invoiceData.account_id) setSelectedAccount(invoiceData.account_id);
+        if (invoiceData.amount_received > 0) setAmountReceived(invoiceData.amount_received.toString());
+        if (invoiceData.tax > 0) {
+          const taxPct = (invoiceData.tax / (invoiceData.subtotal - invoiceData.total_discount)) * 100;
+          setTaxPercent(Math.round(taxPct));
+        }
+
+        // Set items
+        const formattedItems: InvoiceItem[] = (invoiceData.invoice_items || []).map((item: any) => ({
+          id: item.id,
+          productId: item.product_id || "",
+          productName: item.product_name,
+          articleNumber: item.article_number,
+          brandName: item.brand_name || "",
+          sizeRange: item.size_range,
+          quantity: item.quantity,
+          totalPairs: item.total_pairs,
+          pricePerPair: item.price_per_pair,
+          discountPerPair: item.discount_per_pair,
+          total: item.total,
+        }));
+
+        setItems(formattedItems);
+      } catch (error: any) {
+        console.error("Error fetching invoice:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load invoice",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchExistingInvoice();
+  }, [invoiceId, clients, toast, navigate]);
 
   // Initialize size selections when product is selected
   const handleProductSelect = useCallback((product: Product) => {
@@ -361,8 +435,8 @@ const NewInvoice = () => {
   }, [items, taxPercent, amountReceived]);
 
   const invoiceNumber = useMemo(() => 
-    `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
-    []
+    existingInvoiceNumber || `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+    [existingInvoiceNumber]
   );
 
   // Filter products based on search
@@ -414,31 +488,60 @@ const NewInvoice = () => {
         }
       }
 
-      // Create invoice
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from("invoices")
-        .insert({
-          invoice_number: invoiceNumber,
-          client_id: selectedClient.id,
-          subtotal: calculations.subtotal,
-          total_discount: calculations.totalDiscount,
-          tax: calculations.tax,
-          total: calculations.total,
-          amount_received: calculations.received,
-          balance_due: calculations.balance,
-          status: finalStatus,
-          payment_method: paymentMethod,
-          account_id: paymentMethod === "account" ? selectedAccount : null,
-        })
-        .select()
-        .single();
+      let savedInvoiceId: string;
 
-      if (invoiceError) throw invoiceError;
+      if (isEditMode && invoiceId) {
+        // Update existing invoice
+        const { error: updateError } = await supabase
+          .from("invoices")
+          .update({
+            client_id: selectedClient.id,
+            subtotal: calculations.subtotal,
+            total_discount: calculations.totalDiscount,
+            tax: calculations.tax,
+            total: calculations.total,
+            amount_received: calculations.received,
+            balance_due: calculations.balance,
+            status: finalStatus,
+            payment_method: paymentMethod,
+            account_id: paymentMethod === "account" ? selectedAccount : null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", invoiceId);
+
+        if (updateError) throw updateError;
+        savedInvoiceId = invoiceId;
+
+        // Delete existing items and recreate
+        await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+      } else {
+        // Create new invoice
+        const { data: invoiceData, error: invoiceError } = await supabase
+          .from("invoices")
+          .insert({
+            invoice_number: invoiceNumber,
+            client_id: selectedClient.id,
+            subtotal: calculations.subtotal,
+            total_discount: calculations.totalDiscount,
+            tax: calculations.tax,
+            total: calculations.total,
+            amount_received: calculations.received,
+            balance_due: calculations.balance,
+            status: finalStatus,
+            payment_method: paymentMethod,
+            account_id: paymentMethod === "account" ? selectedAccount : null,
+          })
+          .select()
+          .single();
+
+        if (invoiceError) throw invoiceError;
+        savedInvoiceId = invoiceData.id;
+      }
 
       // Create invoice items
       const invoiceItems = items.map((item) => ({
-        invoice_id: invoiceData.id,
-        product_id: item.productId,
+        invoice_id: savedInvoiceId,
+        product_id: item.productId || null,
         product_name: item.productName,
         article_number: item.articleNumber,
         brand_name: item.brandName,
@@ -456,23 +559,22 @@ const NewInvoice = () => {
 
       if (itemsError) throw itemsError;
 
-      // Update client balance
-      if (finalStatus !== "draft") {
+      // Update client balance (only for finalized invoices, not drafts, and only if not updating)
+      if (finalStatus !== "draft" && !isEditMode) {
         const newBalance = selectedClient.current_balance + calculations.balance;
         await supabase
           .from("clients")
           .update({
             current_balance: newBalance,
-            invoice_count: selectedClient.id ? undefined : 1,
           })
           .eq("id", selectedClient.id);
       }
 
       // Log audit event
       await log({
-        action: status === "draft" ? "save_draft" : "create",
+        action: isEditMode ? "update" : (status === "draft" ? "save_draft" : "create"),
         entityType: "invoice",
-        entityId: invoiceData.id,
+        entityId: savedInvoiceId,
         details: {
           invoice_number: invoiceNumber,
           client_name: selectedClient.name,
@@ -484,9 +586,11 @@ const NewInvoice = () => {
 
       toast({
         title: "Success",
-        description: status === "draft" 
-          ? "Invoice saved as draft" 
-          : `Invoice ${invoiceNumber} created successfully`,
+        description: isEditMode 
+          ? `Invoice ${invoiceNumber} updated successfully`
+          : (status === "draft" 
+            ? "Invoice saved as draft" 
+            : `Invoice ${invoiceNumber} created successfully`),
       });
 
       navigate("/invoices");
@@ -633,7 +737,9 @@ const NewInvoice = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground">New Invoice</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+              {isEditMode ? "Edit Invoice" : "New Invoice"}
+            </h2>
             <p className="text-muted-foreground text-sm">{invoiceNumber}</p>
           </div>
         </div>

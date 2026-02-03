@@ -175,7 +175,11 @@ export type AuditAction =
   | "create" 
   | "update" 
   | "delete" 
-  | "view";
+  | "view"
+  | "save_draft"
+  | "export"
+  | "import"
+  | "print";
 
 export type AuditEntity = 
   | "user" 

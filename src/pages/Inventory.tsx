@@ -272,6 +272,19 @@ const Inventory = () => {
           if (bundleError) throw bundleError;
         }
 
+        // Log audit event
+        await log({
+          action: "create",
+          entityType: "product",
+          entityId: productData.id,
+          details: {
+            name: newProduct.name,
+            article_number: newProduct.articleNumber,
+            gender: newProduct.gender,
+            size_bundles_count: sizeBundleInserts.length,
+          },
+        });
+
         toast({ title: "Success", description: "Product added successfully" });
         setNewProduct({
           name: "",
@@ -301,12 +314,26 @@ const Inventory = () => {
   const handleDeleteProduct = async () => {
     if (deleteProductId) {
       try {
+        // Get product info for logging
+        const productToDelete = products.find(p => p.id === deleteProductId);
+        
         // Delete size bundles first
         await supabase.from("product_size_bundles").delete().eq("product_id", deleteProductId);
 
         // Delete product
         const { error } = await supabase.from("products").delete().eq("id", deleteProductId);
         if (error) throw error;
+
+        // Log audit event
+        await log({
+          action: "delete",
+          entityType: "product",
+          entityId: deleteProductId,
+          details: {
+            name: productToDelete?.name,
+            article_number: productToDelete?.articleNumber,
+          },
+        });
 
         toast({ title: "Success", description: "Product deleted" });
         setDeleteProductId(null);
