@@ -59,6 +59,8 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
+import { exportToCSV } from "@/utils/exportUtils";
 
 interface Client {
   id: string;
@@ -94,6 +96,7 @@ interface RecoveryRecord {
 
 const Clients = () => {
   const { toast } = useToast();
+  const { log } = useAuditLog();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -438,6 +441,45 @@ const Clients = () => {
     }
   };
 
+  // Export clients to CSV
+  const handleExportClients = () => {
+    exportToCSV(
+      filteredClients,
+      [
+        { key: "name", header: "Name" },
+        { key: "email", header: "Email" },
+        { key: "phone", header: "Phone" },
+        { key: "city", header: "City" },
+        { key: "address", header: "Address" },
+        { 
+          key: "openingBalance", 
+          header: "Opening Balance", 
+          format: (val: number) => `Rs ${val.toLocaleString()}` 
+        },
+        { 
+          key: "currentBalance", 
+          header: "Current Balance", 
+          format: (val: number) => `Rs ${val.toLocaleString()}` 
+        },
+        { 
+          key: "totalSpent", 
+          header: "Total Spent", 
+          format: (val: number) => `Rs ${val.toLocaleString()}` 
+        },
+        { key: "invoiceCount", header: "Invoice Count" },
+      ],
+      "clients"
+    );
+    
+    log({
+      action: "export",
+      entityType: "client",
+      details: { count: filteredClients.length, type: "csv" },
+    });
+    
+    toast({ title: "Success", description: "Clients exported successfully" });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -754,7 +796,7 @@ const Clients = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportClients}>
             <Download className="w-4 h-4" />
             Export
           </Button>

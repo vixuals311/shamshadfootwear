@@ -8,7 +8,7 @@ import {
   Search,
   Save,
   Printer,
-  Send,
+  FileCheck,
   User,
   Package,
   Calculator,
@@ -50,10 +50,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { InvoiceItem } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
+import { format } from "date-fns";
 
 interface Client {
   id: string;
@@ -95,12 +105,14 @@ interface SizeBundleSelection {
 const NewInvoice = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { log } = useAuditLog();
   const searchInputRef = useRef<HTMLInputElement>(null);
   
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientOpen, setClientOpen] = useState(false);
@@ -114,10 +126,14 @@ const NewInvoice = () => {
   const [removeItemId, setRemoveItemId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
 
+  // Confirmation dialogs
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [showDraftConfirm, setShowDraftConfirm] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+
   // Multi-size selection with individual bundle counts
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [sizeSelections, setSizeSelections] = useState<SizeBundleSelection[]>([]);
-
   // Fetch data from Supabase
   useEffect(() => {
     const fetchData = async () => {
@@ -344,7 +360,10 @@ const NewInvoice = () => {
     return { subtotal, totalDiscount, tax, total, received, balance };
   }, [items, taxPercent, amountReceived]);
 
-  const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+  const invoiceNumber = useMemo(() => 
+    `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+    []
+  );
 
   // Filter products based on search
   const filteredProducts = useMemo(() => {
@@ -359,6 +378,235 @@ const NewInvoice = () => {
   }, [products, productSearch]);
 
   const totalSelectedBundles = sizeSelections.reduce((sum, s) => sum + s.bundles, 0);
+
+  // Save invoice (as finalized bill)
+  const saveInvoice = async (status: "pending" | "paid" | "draft") => {
+    if (!selectedClient) {
+      toast({
+        title: "Missing Client",
+        description: "Please select a client before saving",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (items.length === 0) {
+      toast({
+        title: "No Products",
+        description: "Please add at least one product to the invoice",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Determine actual status based on payment
+      let finalStatus: string = status;
+      if (status !== "draft") {
+        if (calculations.balance <= 0) {
+          finalStatus = "paid";
+        } else if (calculations.received > 0) {
+          finalStatus = "partial";
+        } else {
+          finalStatus = "pending";
+        }
+      }
+
+      // Create invoice
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from("invoices")
+        .insert({
+          invoice_number: invoiceNumber,
+          client_id: selectedClient.id,
+          subtotal: calculations.subtotal,
+          total_discount: calculations.totalDiscount,
+          tax: calculations.tax,
+          total: calculations.total,
+          amount_received: calculations.received,
+          balance_due: calculations.balance,
+          status: finalStatus,
+          payment_method: paymentMethod,
+          account_id: paymentMethod === "account" ? selectedAccount : null,
+        })
+        .select()
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      // Create invoice items
+      const invoiceItems = items.map((item) => ({
+        invoice_id: invoiceData.id,
+        product_id: item.productId,
+        product_name: item.productName,
+        article_number: item.articleNumber,
+        brand_name: item.brandName,
+        size_range: item.sizeRange,
+        quantity: item.quantity,
+        total_pairs: item.totalPairs,
+        price_per_pair: item.pricePerPair,
+        discount_per_pair: item.discountPerPair,
+        total: item.total,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("invoice_items")
+        .insert(invoiceItems);
+
+      if (itemsError) throw itemsError;
+
+      // Update client balance
+      if (finalStatus !== "draft") {
+        const newBalance = selectedClient.current_balance + calculations.balance;
+        await supabase
+          .from("clients")
+          .update({
+            current_balance: newBalance,
+            invoice_count: selectedClient.id ? undefined : 1,
+          })
+          .eq("id", selectedClient.id);
+      }
+
+      // Log audit event
+      await log({
+        action: status === "draft" ? "save_draft" : "create",
+        entityType: "invoice",
+        entityId: invoiceData.id,
+        details: {
+          invoice_number: invoiceNumber,
+          client_name: selectedClient.name,
+          total: calculations.total,
+          status: finalStatus,
+          items_count: items.length,
+        },
+      });
+
+      toast({
+        title: "Success",
+        description: status === "draft" 
+          ? "Invoice saved as draft" 
+          : `Invoice ${invoiceNumber} created successfully`,
+      });
+
+      navigate("/invoices");
+    } catch (error: any) {
+      console.error("Error saving invoice:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save invoice",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+      setShowSaveConfirm(false);
+      setShowDraftConfirm(false);
+      setShowReviewDialog(false);
+    }
+  };
+
+  // Handle print
+  const handlePrint = () => {
+    const printContent = generatePrintContent();
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      log({
+        action: "print",
+        entityType: "invoice",
+        details: {
+          invoice_number: invoiceNumber,
+          client_name: selectedClient?.name || "No client selected",
+          total: calculations.total,
+        },
+      });
+    }
+  };
+
+  const generatePrintContent = () => {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice ${invoiceNumber}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+          h1 { text-align: center; margin-bottom: 5px; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .client-info { margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { border: 1px solid #ddd; padding: 10px 8px; text-align: left; }
+          th { background-color: #f5f5f5; font-weight: bold; }
+          .totals { margin-top: 20px; text-align: right; }
+          .totals p { margin: 5px 0; }
+          .total-final { font-size: 1.2em; font-weight: bold; }
+          @media print { button { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1>INVOICE</h1>
+            <p><strong>${invoiceNumber}</strong></p>
+            <p>Date: ${format(new Date(), "dd MMM yyyy")}</p>
+          </div>
+        </div>
+        
+        <div class="client-info">
+          <h3>Bill To:</h3>
+          <p><strong>${selectedClient?.name || "N/A"}</strong></p>
+          <p>${selectedClient?.city || ""}</p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th>Article</th>
+              <th>Size</th>
+              <th>Qty (Bundles)</th>
+              <th>Pairs</th>
+              <th>Rate</th>
+              <th>Discount</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item, idx) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td>${item.productName}</td>
+                <td>${item.articleNumber}</td>
+                <td>${item.sizeRange}</td>
+                <td>${item.quantity}</td>
+                <td>${item.totalPairs}</td>
+                <td>Rs ${item.pricePerPair}</td>
+                <td>Rs ${item.discountPerPair}</td>
+                <td>Rs ${item.total.toLocaleString()}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <p>Subtotal: Rs ${calculations.subtotal.toLocaleString()}</p>
+          ${calculations.totalDiscount > 0 ? `<p>Discount: - Rs ${calculations.totalDiscount.toLocaleString()}</p>` : ""}
+          ${calculations.tax > 0 ? `<p>Tax (${taxPercent}%): Rs ${calculations.tax.toLocaleString()}</p>` : ""}
+          <p class="total-final">Total: Rs ${calculations.total.toLocaleString()}</p>
+          ${calculations.received > 0 ? `<p>Received: Rs ${calculations.received.toLocaleString()}</p>` : ""}
+          ${calculations.balance > 0 ? `<p>Balance Due: Rs ${calculations.balance.toLocaleString()}</p>` : ""}
+        </div>
+
+        ${notes ? `<div style="margin-top: 20px;"><strong>Notes:</strong> ${notes}</div>` : ""}
+        
+        <script>window.print();</script>
+      </body>
+      </html>
+    `;
+  };
 
   if (loading) {
     return (
@@ -390,17 +638,34 @@ const NewInvoice = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-none">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2 flex-1 sm:flex-none"
+            onClick={() => setShowDraftConfirm(true)}
+            disabled={saving}
+          >
             <Save className="w-4 h-4" />
             <span className="hidden sm:inline">Save Draft</span>
           </Button>
-          <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-none">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2 flex-1 sm:flex-none"
+            onClick={handlePrint}
+            disabled={items.length === 0}
+          >
             <Printer className="w-4 h-4" />
             <span className="hidden sm:inline">Print</span>
           </Button>
-          <Button size="sm" className="gap-2 flex-1 sm:flex-none">
-            <Send className="w-4 h-4" />
-            <span className="hidden sm:inline">Send</span>
+          <Button 
+            size="sm" 
+            className="gap-2 flex-1 sm:flex-none"
+            onClick={() => setShowReviewDialog(true)}
+            disabled={saving || items.length === 0 || !selectedClient}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
+            <span className="hidden sm:inline">Save Bill</span>
           </Button>
         </div>
       </motion.div>
@@ -865,6 +1130,115 @@ const NewInvoice = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Save Draft Confirmation */}
+      <AlertDialog open={showDraftConfirm} onOpenChange={setShowDraftConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save as Draft</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will save the invoice as a draft. You can edit and finalize it later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => saveInvoice("draft")} disabled={saving}>
+              {saving ? "Saving..." : "Save Draft"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bill Review Dialog */}
+      <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Review Bill</DialogTitle>
+            <DialogDescription>
+              Please review the bill details before saving
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Client Info */}
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-sm text-muted-foreground">Client</p>
+              <p className="font-semibold">{selectedClient?.name}</p>
+              <p className="text-sm text-muted-foreground">{selectedClient?.city}</p>
+            </div>
+
+            {/* Items Summary */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Items ({items.length})</p>
+              <div className="max-h-40 overflow-y-auto space-y-1">
+                {items.map((item, idx) => (
+                  <div key={item.id} className="flex justify-between text-sm p-2 bg-muted/30 rounded">
+                    <span>
+                      {idx + 1}. {item.productName} ({item.sizeRange}) - {item.totalPairs} pairs
+                    </span>
+                    <span className="font-medium">Rs {item.total.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Totals */}
+            <div className="border-t pt-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal</span>
+                <span>Rs {calculations.subtotal.toLocaleString()}</span>
+              </div>
+              {calculations.totalDiscount > 0 && (
+                <div className="flex justify-between text-sm text-destructive">
+                  <span>Discount</span>
+                  <span>- Rs {calculations.totalDiscount.toLocaleString()}</span>
+                </div>
+              )}
+              {calculations.tax > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Tax ({taxPercent}%)</span>
+                  <span>Rs {calculations.tax.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                <span>Total</span>
+                <span className="text-primary">Rs {calculations.total.toLocaleString()}</span>
+              </div>
+              {calculations.received > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Amount Received</span>
+                  <span>Rs {calculations.received.toLocaleString()}</span>
+                </div>
+              )}
+              {calculations.balance > 0 && (
+                <div className="flex justify-between text-sm font-medium text-destructive">
+                  <span>Balance Due</span>
+                  <span>Rs {calculations.balance.toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => saveInvoice("pending")} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <FileCheck className="w-4 h-4 mr-2" />
+                  Confirm & Save Bill
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
