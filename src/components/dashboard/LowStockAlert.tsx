@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Package, AlertTriangle, ArrowUpRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface LowStockItem {
   id: string;
@@ -8,14 +9,20 @@ interface LowStockItem {
   threshold: number;
 }
 
-const lowStockItems: LowStockItem[] = [
+interface LowStockAlertProps {
+  items?: LowStockItem[];
+}
+
+const defaultItems: LowStockItem[] = [
   { id: "1", name: "Wireless Mouse", stock: 5, threshold: 10 },
   { id: "2", name: "USB-C Cable (3ft)", stock: 8, threshold: 20 },
   { id: "3", name: "Laptop Stand", stock: 3, threshold: 5 },
   { id: "4", name: "Webcam HD", stock: 2, threshold: 10 },
 ];
 
-export function LowStockAlert() {
+export function LowStockAlert({ items = defaultItems }: LowStockAlertProps) {
+  const navigate = useNavigate();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -33,42 +40,51 @@ export function LowStockAlert() {
               Low Stock Alert
             </h3>
             <p className="text-sm text-muted-foreground">
-              {lowStockItems.length} items need attention
+              {items.length} items need attention
             </p>
           </div>
         </div>
-        <button className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1">
+        <button 
+          onClick={() => navigate("/inventory")}
+          className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+        >
           View inventory
           <ArrowUpRight className="w-4 h-4" />
         </button>
       </div>
       <div className="space-y-3">
-        {lowStockItems.map((item, index) => (
-          <motion.div
-            key={item.id}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 * index }}
-            className="flex items-center justify-between p-3 rounded-lg bg-warning/5 border border-warning/10"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
-                <Package className="w-4 h-4 text-muted-foreground" />
+        {items.length > 0 ? (
+          items.map((item, index) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 * index }}
+              className="flex items-center justify-between p-3 rounded-lg bg-warning/5 border border-warning/10"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                  <Package className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <span className="text-sm font-medium text-foreground">
+                  {item.name}
+                </span>
               </div>
-              <span className="text-sm font-medium text-foreground">
-                {item.name}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-warning">
-                {item.stock} left
-              </span>
-              <span className="text-xs text-muted-foreground">
-                / {item.threshold} min
-              </span>
-            </div>
-          </motion.div>
-        ))}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-warning">
+                  {item.stock} pairs
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  / {item.threshold} min
+                </span>
+              </div>
+            </motion.div>
+          ))
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            All products are well stocked
+          </div>
+        )}
       </div>
     </motion.div>
   );

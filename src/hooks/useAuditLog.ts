@@ -19,7 +19,8 @@ export type AuditEntity =
   | "brand" 
   | "user" 
   | "payment" 
-  | "settings";
+  | "settings"
+  | "report";
 
 interface AuditLogParams {
   action: AuditAction;

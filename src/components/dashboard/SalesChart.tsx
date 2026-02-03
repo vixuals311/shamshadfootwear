@@ -9,7 +9,17 @@ import {
 } from "recharts";
 import { motion } from "framer-motion";
 
-const data = [
+interface SalesData {
+  name: string;
+  sales: number;
+  payments: number;
+}
+
+interface SalesChartProps {
+  data?: SalesData[];
+}
+
+const defaultData = [
   { name: "Jan", sales: 4000, payments: 2400 },
   { name: "Feb", sales: 3000, payments: 1398 },
   { name: "Mar", sales: 5000, payments: 4800 },
@@ -19,7 +29,7 @@ const data = [
   { name: "Jul", sales: 3490, payments: 4300 },
 ];
 
-export function SalesChart() {
+export function SalesChart({ data = defaultData }: SalesChartProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -71,7 +81,7 @@ export function SalesChart() {
               axisLine={false}
               tickLine={false}
               tick={{ fill: "hsl(220 9% 46%)", fontSize: 12 }}
-              tickFormatter={(value) => `$${value / 1000}k`}
+              tickFormatter={(value) => `Rs ${value / 1000}k`}
             />
             <Tooltip
               contentStyle={{
@@ -80,7 +90,7 @@ export function SalesChart() {
                 borderRadius: "8px",
                 boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.07)",
               }}
-              formatter={(value: number) => [`$${value.toLocaleString()}`, ""]}
+              formatter={(value: number) => [`Rs ${value.toLocaleString()}`, ""]}
             />
             <Area
               type="monotone"

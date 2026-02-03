@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Search,
   Plus,
-  Filter,
   Download,
   FileText,
   MoreHorizontal,
@@ -46,6 +45,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { exportToCSV } from "@/utils/exportUtils";
+import { InvoiceViewDialog } from "@/components/dashboard/InvoiceViewDialog";
 
 interface Invoice {
   id: string;
@@ -57,6 +57,22 @@ interface Invoice {
   date: string;
   dueDate: string;
   items: number;
+}
+
+interface InvoiceDetails {
+  id: string;
+  invoice_number: string;
+  created_at: string;
+  client_name: string;
+  client_city: string;
+  subtotal: number;
+  total_discount: number;
+  tax: number;
+  total: number;
+  amount_received: number;
+  balance_due: number;
+  status: string;
+  items: any[];
 }
 
 const statusStyles = {
@@ -78,6 +94,11 @@ const Invoices = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
   const [deleteInvoiceNumber, setDeleteInvoiceNumber] = useState<string>("");
+  
+  // View dialog state
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetails | null>(null);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
 
   // Fetch invoices from Supabase
   const fetchInvoices = async () => {
@@ -107,7 +128,7 @@ const Invoices = () => {
         amount: inv.total,
         status: inv.status as Invoice["status"],
         date: inv.created_at,
-        dueDate: inv.created_at, // Could add due_date column later
+        dueDate: inv.created_at,
         items: inv.invoice_items?.length || 0,
       }));
 
@@ -135,7 +156,6 @@ const Invoices = () => {
         invoice.client.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
       
-      // Date filter
       const matchesDate = !selectedDate || 
         format(new Date(invoice.date), "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd");
       
@@ -147,14 +167,11 @@ const Invoices = () => {
     if (!deleteInvoiceId) return;
     
     try {
-      // Delete invoice items first
       await supabase.from("invoice_items").delete().eq("invoice_id", deleteInvoiceId);
       
-      // Delete invoice
       const { error } = await supabase.from("invoices").delete().eq("id", deleteInvoiceId);
       if (error) throw error;
 
-      // Log the delete action
       await log({
         action: "delete",
         entityType: "invoice",
@@ -180,6 +197,219 @@ const Invoices = () => {
     navigate(`/invoices/edit/${invoiceId}`);
   };
 
+  // View invoice
+  const handleViewInvoice = async (invoiceId: string) => {
+    try {
+      setLoadingInvoice(true);
+      
+      const { data, error } = await supabase
+        .from("invoices")
+        .select(`
+          id,
+          invoice_number,
+          created_at,
+          subtotal,
+          total_discount,
+          tax,
+          total,
+          amount_received,
+          balance_due,
+          status,
+          clients (name, city),
+          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total)
+        `)
+        .eq("id", invoiceId)
+        .single();
+
+      if (error) throw error;
+
+      setSelectedInvoice({
+        id: data.id,
+        invoice_number: data.invoice_number,
+        created_at: data.created_at,
+        client_name: data.clients?.name || "Unknown",
+        client_city: data.clients?.city || "",
+        subtotal: data.subtotal,
+        total_discount: data.total_discount,
+        tax: data.tax,
+        total: data.total,
+        amount_received: data.amount_received,
+        balance_due: data.balance_due,
+        status: data.status,
+        items: data.invoice_items || [],
+      });
+      
+      setViewDialogOpen(true);
+    } catch (error: any) {
+      console.error("Error fetching invoice:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load invoice details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingInvoice(false);
+    }
+  };
+
+  // Print invoice
+  const handlePrintInvoice = async (invoiceId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select(`
+          id,
+          invoice_number,
+          created_at,
+          subtotal,
+          total_discount,
+          tax,
+          total,
+          amount_received,
+          balance_due,
+          status,
+          clients (name, city),
+          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total)
+        `)
+        .eq("id", invoiceId)
+        .single();
+
+      if (error) throw error;
+
+      const printContent = generatePrintContent(data);
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+      }
+
+      await log({
+        action: "print",
+        entityType: "invoice",
+        entityId: invoiceId,
+        details: { invoice_number: data.invoice_number },
+      });
+    } catch (error: any) {
+      console.error("Error printing invoice:", error);
+      toast({
+        title: "Error",
+        description: "Failed to print invoice",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Generate print content
+  const generatePrintContent = (invoice: any) => {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice ${invoice.invoice_number}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+          .header h1 { margin: 0; color: #333; }
+          .client-info { margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background: #f5f5f5; }
+          .totals { text-align: right; margin-top: 20px; }
+          .totals p { margin: 5px 0; }
+          .total-final { font-size: 1.2em; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1>INVOICE</h1>
+            <p><strong>${invoice.invoice_number}</strong></p>
+            <p>Date: ${format(new Date(invoice.created_at), "dd MMM yyyy")}</p>
+          </div>
+        </div>
+        
+        <div class="client-info">
+          <h3>Bill To:</h3>
+          <p><strong>${invoice.clients?.name || "N/A"}</strong></p>
+          <p>${invoice.clients?.city || ""}</p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th>Article</th>
+              <th>Size</th>
+              <th>Qty</th>
+              <th>Pairs</th>
+              <th>Rate</th>
+              <th>Discount</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(invoice.invoice_items || []).map((item: any, idx: number) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td>${item.product_name}</td>
+                <td>${item.article_number}</td>
+                <td>${item.size_range}</td>
+                <td>${item.quantity}</td>
+                <td>${item.total_pairs}</td>
+                <td>Rs ${item.price_per_pair}</td>
+                <td>Rs ${item.discount_per_pair}</td>
+                <td>Rs ${item.total.toLocaleString()}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <p>Subtotal: Rs ${invoice.subtotal.toLocaleString()}</p>
+          ${invoice.total_discount > 0 ? `<p>Discount: - Rs ${invoice.total_discount.toLocaleString()}</p>` : ""}
+          ${invoice.tax > 0 ? `<p>Tax: Rs ${invoice.tax.toLocaleString()}</p>` : ""}
+          <p class="total-final">Total: Rs ${invoice.total.toLocaleString()}</p>
+          ${invoice.amount_received > 0 ? `<p>Received: Rs ${invoice.amount_received.toLocaleString()}</p>` : ""}
+          ${invoice.balance_due > 0 ? `<p>Balance Due: Rs ${invoice.balance_due.toLocaleString()}</p>` : ""}
+        </div>
+        
+        <script>window.print();</script>
+      </body>
+      </html>
+    `;
+  };
+
+  // Send to client (via WhatsApp or share)
+  const handleSendToClient = async (invoice: Invoice) => {
+    const message = `Invoice ${invoice.number}\nAmount: Rs ${invoice.amount.toLocaleString()}\nStatus: ${invoice.status}`;
+    
+    if (invoice.clientEmail) {
+      // If client has phone, use WhatsApp
+      const phone = invoices.find(i => i.id === invoice.id);
+      // For now, just copy to clipboard
+      await navigator.clipboard.writeText(message);
+      toast({
+        title: "Copied to Clipboard",
+        description: "Invoice details copied. You can share via WhatsApp or email.",
+      });
+    } else {
+      await navigator.clipboard.writeText(message);
+      toast({
+        title: "Copied to Clipboard",
+        description: "Invoice details copied to clipboard.",
+      });
+    }
+
+    await log({
+      action: "export",
+      entityType: "invoice",
+      entityId: invoice.id,
+      details: { invoice_number: invoice.number, method: "send_to_client" },
+    });
+  };
+
   const stats = useMemo(() => {
     const total = invoices.reduce((sum, inv) => sum + inv.amount, 0);
     const paid = invoices.filter((inv) => inv.status === "paid").reduce((sum, inv) => sum + inv.amount, 0);
@@ -188,7 +418,6 @@ const Invoices = () => {
     return { total, paid, pending, overdue };
   }, [invoices]);
 
-  // Export invoices to CSV
   const handleExportInvoices = () => {
     exportToCSV(
       filteredInvoices,
@@ -297,7 +526,6 @@ const Invoices = () => {
           />
         </div>
         <div className="flex gap-2">
-          {/* Date Filter */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("gap-2", selectedDate && "text-primary")}>
@@ -423,15 +651,24 @@ const Invoices = () => {
                             Edit Draft
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem className="gap-2">
+                        <DropdownMenuItem 
+                          className="gap-2"
+                          onClick={() => handleViewInvoice(invoice.id)}
+                        >
                           <Eye className="w-4 h-4" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
+                        <DropdownMenuItem 
+                          className="gap-2"
+                          onClick={() => handlePrintInvoice(invoice.id)}
+                        >
                           <Printer className="w-4 h-4" />
                           Print
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
+                        <DropdownMenuItem 
+                          className="gap-2"
+                          onClick={() => handleSendToClient(invoice)}
+                        >
                           <Send className="w-4 h-4" />
                           Send to Client
                         </DropdownMenuItem>
@@ -487,6 +724,14 @@ const Invoices = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Invoice Dialog */}
+      <InvoiceViewDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        invoice={selectedInvoice}
+        onPrint={() => selectedInvoice && handlePrintInvoice(selectedInvoice.id)}
+      />
     </div>
   );
 };

@@ -189,7 +189,8 @@ export type AuditEntity =
   | "invoice" 
   | "recovery" 
   | "payment" 
-  | "settings";
+  | "settings"
+  | "report";
 
 export interface AuditLog {
   id: string;
