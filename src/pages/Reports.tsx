@@ -11,28 +11,51 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { Download, Calendar } from "lucide-react";
+import { Download, Calendar, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const salesData = [
-  { month: "Jan", sales: 12400 },
-  { month: "Feb", sales: 9800 },
-  { month: "Mar", sales: 15600 },
-  { month: "Apr", sales: 11200 },
-  { month: "May", sales: 18900 },
-  { month: "Jun", sales: 21500 },
-];
-
-const categoryData = [
-  { name: "Electronics", value: 45 },
-  { name: "Accessories", value: 25 },
-  { name: "Furniture", value: 20 },
-  { name: "Other", value: 10 },
-];
+import { useReportsData } from "@/hooks/useReportsData";
+import { exportToCSV } from "@/utils/exportUtils";
+import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
 
 const COLORS = ["hsl(234 89% 59%)", "hsl(160 84% 39%)", "hsl(38 92% 50%)", "hsl(220 9% 46%)"];
 
 const Reports = () => {
+  const { stats, monthlySales, categoryData, topProducts, loading } = useReportsData();
+  const { toast } = useToast();
+  const { log } = useAuditLog();
+
+  const handleExport = () => {
+    if (topProducts.length > 0) {
+      exportToCSV(
+        topProducts,
+        [
+          { key: "name", header: "Product" },
+          { key: "unitsSold", header: "Units Sold" },
+          { key: "revenue", header: "Revenue", format: (val: number) => `Rs ${val.toLocaleString()}` },
+          { key: "growth", header: "Growth" },
+        ],
+        "reports"
+      );
+      
+      log({
+        action: "export",
+        entityType: "report",
+        details: { type: "top_products", count: topProducts.length },
+      });
+      
+      toast({ title: "Success", description: "Report exported successfully" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -52,7 +75,7 @@ const Reports = () => {
             <Calendar className="w-4 h-4" />
             Last 6 months
           </Button>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
             <Download className="w-4 h-4" />
             Export
           </Button>
@@ -60,33 +83,35 @@ const Reports = () => {
       </motion.div>
 
       {/* Summary Cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 sm:grid-cols-4 gap-4"
-      >
-        <div className="bg-card rounded-xl p-5 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
-          <p className="text-2xl font-bold text-foreground">$89,400</p>
-          <p className="text-xs text-success mt-1">+18% from last period</p>
-        </div>
-        <div className="bg-card rounded-xl p-5 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">Invoices Sent</p>
-          <p className="text-2xl font-bold text-foreground">156</p>
-          <p className="text-xs text-success mt-1">+12 from last period</p>
-        </div>
-        <div className="bg-card rounded-xl p-5 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">Products Sold</p>
-          <p className="text-2xl font-bold text-foreground">2,847</p>
-          <p className="text-xs text-success mt-1">+320 from last period</p>
-        </div>
-        <div className="bg-card rounded-xl p-5 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">New Clients</p>
-          <p className="text-2xl font-bold text-foreground">24</p>
-          <p className="text-xs text-success mt-1">+6 from last period</p>
-        </div>
-      </motion.div>
+      {stats && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 sm:grid-cols-4 gap-4"
+        >
+          <div className="bg-card rounded-xl p-5 shadow-card">
+            <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
+            <p className="text-2xl font-bold text-foreground">Rs {stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-xs text-success mt-1">{stats.revenueChange}</p>
+          </div>
+          <div className="bg-card rounded-xl p-5 shadow-card">
+            <p className="text-sm text-muted-foreground mb-1">Invoices Sent</p>
+            <p className="text-2xl font-bold text-foreground">{stats.invoicesSent}</p>
+            <p className="text-xs text-success mt-1">{stats.invoicesChange}</p>
+          </div>
+          <div className="bg-card rounded-xl p-5 shadow-card">
+            <p className="text-sm text-muted-foreground mb-1">Products Sold</p>
+            <p className="text-2xl font-bold text-foreground">{stats.productsSold.toLocaleString()}</p>
+            <p className="text-xs text-success mt-1">{stats.productsChange}</p>
+          </div>
+          <div className="bg-card rounded-xl p-5 shadow-card">
+            <p className="text-sm text-muted-foreground mb-1">New Clients</p>
+            <p className="text-2xl font-bold text-foreground">{stats.newClients}</p>
+            <p className="text-xs text-success mt-1">{stats.clientsChange}</p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -101,7 +126,7 @@ const Reports = () => {
           </h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={salesData}>
+              <BarChart data={monthlySales}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" />
                 <XAxis
                   dataKey="month"
@@ -113,7 +138,7 @@ const Reports = () => {
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: "hsl(220 9% 46%)", fontSize: 12 }}
-                  tickFormatter={(value) => `$${value / 1000}k`}
+                  tickFormatter={(value) => `Rs ${value / 1000}k`}
                 />
                 <Tooltip
                   contentStyle={{
@@ -121,7 +146,7 @@ const Reports = () => {
                     border: "1px solid hsl(220 13% 91%)",
                     borderRadius: "8px",
                   }}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, "Sales"]}
+                  formatter={(value: number) => [`Rs ${value.toLocaleString()}`, "Sales"]}
                 />
                 <Bar
                   dataKey="sales"
@@ -175,7 +200,7 @@ const Reports = () => {
                 <div className="flex items-center gap-2">
                   <div
                     className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: COLORS[index] }}
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
                   />
                   <span className="text-muted-foreground">{item.name}</span>
                 </div>
@@ -196,48 +221,32 @@ const Reports = () => {
         <h3 className="text-lg font-semibold text-foreground mb-4">
           Top Selling Products
         </h3>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Units Sold</th>
-              <th>Revenue</th>
-              <th>Growth</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="font-medium">Mechanical Keyboard</td>
-              <td>245</td>
-              <td className="font-semibold">$36,747</td>
-              <td className="text-success">+24%</td>
-            </tr>
-            <tr>
-              <td className="font-medium">Monitor 27"</td>
-              <td>189</td>
-              <td className="font-semibold">$75,598</td>
-              <td className="text-success">+18%</td>
-            </tr>
-            <tr>
-              <td className="font-medium">Headphones Pro</td>
-              <td>312</td>
-              <td className="font-semibold">$62,397</td>
-              <td className="text-success">+15%</td>
-            </tr>
-            <tr>
-              <td className="font-medium">Wireless Mouse</td>
-              <td>428</td>
-              <td className="font-semibold">$12,826</td>
-              <td className="text-destructive">-3%</td>
-            </tr>
-            <tr>
-              <td className="font-medium">Webcam HD</td>
-              <td>156</td>
-              <td className="font-semibold">$14,038</td>
-              <td className="text-success">+8%</td>
-            </tr>
-          </tbody>
-        </table>
+        {topProducts.length > 0 ? (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
+                <th>Growth</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topProducts.map((product) => (
+                <tr key={product.name}>
+                  <td className="font-medium">{product.name}</td>
+                  <td>{product.unitsSold.toLocaleString()}</td>
+                  <td className="font-semibold">Rs {product.revenue.toLocaleString()}</td>
+                  <td className="text-success">{product.growth}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No sales data available
+          </div>
+        )}
       </motion.div>
     </div>
   );

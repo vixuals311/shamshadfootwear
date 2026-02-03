@@ -954,138 +954,134 @@ const NewInvoice = () => {
               </div>
             )}
 
-            {/* Add Product Button - Below items */}
-            <Popover open={productOpen} onOpenChange={setProductOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full gap-2">
-                  <Plus className="w-4 h-4" />
-                  Add Product
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[350px] sm:w-[500px] p-0" align="start">
-                <Command shouldFilter={false}>
-                  <CommandInput
-                    placeholder="Search products by name or article..."
-                    value={productSearch}
-                    onValueChange={setProductSearch}
-                    ref={searchInputRef}
-                  />
-                  <CommandList className="max-h-[400px]">
-                    <CommandEmpty>No product found.</CommandEmpty>
-                    <CommandGroup>
-                      {filteredProducts
-                        .sort((a, b) => a.article_number.localeCompare(b.article_number))
-                        .map((product) => (
-                          <div key={product.id} className="border-b last:border-b-0">
-                            <div
-                              className={cn(
-                                "px-3 py-2 cursor-pointer transition-colors",
-                                selectedProduct?.id === product.id
-                                  ? "bg-primary/10"
-                                  : "bg-muted/30 hover:bg-muted/50"
-                              )}
-                              onClick={() => handleProductSelect(product)}
-                            >
-                              <p className="font-medium">{product.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {product.brand_name} • {product.article_number} • Stock:{" "}
-                                {product.stock_dozens * product.pairs_per_dozen} pairs
-                              </p>
-                            </div>
+            {/* Product Search - Always visible */}
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products by name or article..."
+                value={productSearch}
+                onChange={(e) => {
+                  setProductSearch(e.target.value);
+                  if (e.target.value.length > 0 && !productOpen) {
+                    setProductOpen(true);
+                  }
+                }}
+                onFocus={() => setProductOpen(true)}
+                className="pl-9"
+                ref={searchInputRef}
+              />
+            </div>
 
-                            {selectedProduct?.id === product.id && (
-                              <div className="p-3 space-y-3 bg-background border-t">
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  Select bundles per size:
-                                </p>
-                                <div className="space-y-2">
-                                  {sizeSelections.map((selection) => (
-                                    <div
-                                      key={selection.sizeRange}
-                                      className={cn(
-                                        "flex items-center justify-between p-2 rounded-lg border",
-                                        selection.bundles > 0
-                                          ? "border-primary bg-primary/5"
-                                          : "border-border"
-                                      )}
+            {/* Product Selection Dropdown */}
+            {productOpen && (
+              <div className="border rounded-lg mb-4 max-h-[400px] overflow-y-auto">
+                {filteredProducts.length > 0 ? (
+                  filteredProducts
+                    .sort((a, b) => a.article_number.localeCompare(b.article_number))
+                    .map((product) => (
+                      <div key={product.id} className="border-b last:border-b-0">
+                        <div
+                          className={cn(
+                            "px-3 py-2 cursor-pointer transition-colors",
+                            selectedProduct?.id === product.id
+                              ? "bg-primary/10"
+                              : "bg-muted/30 hover:bg-muted/50"
+                          )}
+                          onClick={() => handleProductSelect(product)}
+                        >
+                          <p className="font-medium">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {product.brand_name} • {product.article_number} • Stock:{" "}
+                            {product.stock_dozens * product.pairs_per_dozen} pairs
+                          </p>
+                        </div>
+
+                        {selectedProduct?.id === product.id && (
+                          <div className="p-3 space-y-3 bg-background border-t">
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Select bundles per size:
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {sizeSelections.map((selection) => (
+                                <div
+                                  key={selection.sizeRange}
+                                  className="flex flex-col gap-1 p-2 rounded border bg-card"
+                                >
+                                  <span className="text-xs font-medium">
+                                    {selection.sizeRange}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    Rs {selection.pricePerPair}/pair
+                                  </span>
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateSizeBundles(
+                                          selection.sizeRange,
+                                          selection.bundles - 1
+                                        );
+                                      }}
                                     >
-                                      <div className="flex-1">
-                                        <span className="font-medium text-sm">
-                                          Size {selection.sizeRange}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground ml-2">
-                                          Rs {selection.pricePerPair}/pair •{" "}
-                                          {selection.pairsPerBundle}p/bundle
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updateSizeBundles(
-                                              selection.sizeRange,
-                                              selection.bundles - 1
-                                            )
-                                          }
-                                        >
-                                          <Minus className="w-3 h-3" />
-                                        </Button>
-                                        <Input
-                                          type="number"
-                                          value={selection.bundles}
-                                          onChange={(e) =>
-                                            updateSizeBundles(
-                                              selection.sizeRange,
-                                              parseInt(e.target.value) || 0
-                                            )
-                                          }
-                                          className="w-12 h-7 text-center text-sm"
-                                        />
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updateSizeBundles(
-                                              selection.sizeRange,
-                                              selection.bundles + 1
-                                            )
-                                          }
-                                        >
-                                          <Plus className="w-3 h-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                      <Minus className="h-3 w-3" />
+                                    </Button>
+                                    <Input
+                                      type="number"
+                                      value={selection.bundles}
+                                      onChange={(e) =>
+                                        updateSizeBundles(
+                                          selection.sizeRange,
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                      className="w-10 h-6 text-center text-xs p-0"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateSizeBundles(
+                                          selection.sizeRange,
+                                          selection.bundles + 1
+                                        );
+                                      }}
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
-
-                                {totalSelectedBundles > 0 && (
-                                  <Button
-                                    size="sm"
-                                    onClick={addSelectedSizesToInvoice}
-                                    className="w-full gap-2"
-                                  >
-                                    <Check className="w-4 h-4" />
-                                    Add {totalSelectedBundles} bundle
-                                    {totalSelectedBundles > 1 ? "s" : ""} (
-                                    {sizeSelections.filter((s) => s.bundles > 0).length} size
-                                    {sizeSelections.filter((s) => s.bundles > 0).length > 1
-                                      ? "s"
-                                      : ""}
-                                    )
-                                  </Button>
-                                )}
-                              </div>
+                              ))}
+                            </div>
+                            {totalSelectedBundles > 0 && (
+                              <Button
+                                className="w-full mt-2"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addSelectedSizesToInvoice();
+                                }}
+                              >
+                                <Check className="w-4 h-4 mr-2" />
+                                Add {totalSelectedBundles} bundles
+                              </Button>
                             )}
                           </div>
-                        ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+                        )}
+                      </div>
+                    ))
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No products found
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Notes */}
