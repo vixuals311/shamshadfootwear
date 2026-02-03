@@ -303,6 +303,19 @@ const Clients = () => {
 
       if (error) throw error;
 
+      // Log audit event
+      await log({
+        action: "create",
+        entityType: "client",
+        entityId: data.id,
+        details: {
+          name: newClient.name,
+          phone: newClient.phone,
+          city: newClient.city,
+          opening_balance: openingBalance,
+        },
+      });
+
       toast({
         title: "Success",
         description: "Client added successfully",
@@ -327,12 +340,26 @@ const Clients = () => {
     if (!deleteClientId) return;
 
     try {
+      // Get client info for logging
+      const clientToDelete = clients.find(c => c.id === deleteClientId);
+      
       const { error } = await supabase
         .from("clients")
         .delete()
         .eq("id", deleteClientId);
 
       if (error) throw error;
+
+      // Log audit event
+      await log({
+        action: "delete",
+        entityType: "client",
+        entityId: deleteClientId,
+        details: {
+          name: clientToDelete?.name,
+          phone: clientToDelete?.phone,
+        },
+      });
 
       toast({
         title: "Success",

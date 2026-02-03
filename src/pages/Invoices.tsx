@@ -14,6 +14,7 @@ import {
   Trash2,
   Calendar,
   Loader2,
+  Edit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -65,6 +76,8 @@ const Invoices = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
+  const [deleteInvoiceNumber, setDeleteInvoiceNumber] = useState<string>("");
 
   // Fetch invoices from Supabase
   const fetchInvoices = async () => {
@@ -130,16 +143,28 @@ const Invoices = () => {
     });
   }, [invoices, searchQuery, statusFilter, selectedDate]);
 
-  const handleDeleteInvoice = async (id: string) => {
+  const handleDeleteInvoice = async () => {
+    if (!deleteInvoiceId) return;
+    
     try {
       // Delete invoice items first
-      await supabase.from("invoice_items").delete().eq("invoice_id", id);
+      await supabase.from("invoice_items").delete().eq("invoice_id", deleteInvoiceId);
       
       // Delete invoice
-      const { error } = await supabase.from("invoices").delete().eq("id", id);
+      const { error } = await supabase.from("invoices").delete().eq("id", deleteInvoiceId);
       if (error) throw error;
 
+      // Log the delete action
+      await log({
+        action: "delete",
+        entityType: "invoice",
+        entityId: deleteInvoiceId,
+        details: { invoice_number: deleteInvoiceNumber },
+      });
+
       toast({ title: "Success", description: "Invoice deleted" });
+      setDeleteInvoiceId(null);
+      setDeleteInvoiceNumber("");
       fetchInvoices();
     } catch (error: any) {
       console.error("Error deleting invoice:", error);
@@ -149,6 +174,10 @@ const Invoices = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleEditDraft = (invoiceId: string) => {
+    navigate(`/invoices/edit/${invoiceId}`);
   };
 
   const stats = useMemo(() => {
@@ -385,6 +414,15 @@ const Invoices = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {invoice.status === "draft" && (
+                          <DropdownMenuItem 
+                            className="gap-2"
+                            onClick={() => handleEditDraft(invoice.id)}
+                          >
+                            <Edit className="w-4 h-4" />
+                            Edit Draft
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem className="gap-2">
                           <Eye className="w-4 h-4" />
                           View
@@ -399,7 +437,10 @@ const Invoices = () => {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="gap-2 text-destructive"
-                          onClick={() => handleDeleteInvoice(invoice.id)}
+                          onClick={() => {
+                            setDeleteInvoiceId(invoice.id);
+                            setDeleteInvoiceNumber(invoice.number);
+                          }}
                         >
                           <Trash2 className="w-4 h-4" />
                           Delete
@@ -424,6 +465,28 @@ const Invoices = () => {
           </div>
         )}
       </motion.div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteInvoiceId} onOpenChange={(open) => !open && setDeleteInvoiceId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete invoice <strong>{deleteInvoiceNumber}</strong>? 
+              This action cannot be undone and will remove all associated invoice items.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteInvoice}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
