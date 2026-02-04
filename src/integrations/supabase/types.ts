@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_security_settings: {
+        Row: {
+          admin_pin_hash: string | null
+          created_at: string
+          id: string
+          require_pin_on_login: boolean
+          session_timeout_minutes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_pin_hash?: string | null
+          created_at?: string
+          id?: string
+          require_pin_on_login?: boolean
+          session_timeout_minutes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_pin_hash?: string | null
+          created_at?: string
+          id?: string
+          require_pin_on_login?: boolean
+          session_timeout_minutes?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      application_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -548,20 +602,56 @@ export type Database = {
       user_roles: {
         Row: {
           created_at: string
+          enforce_single_session: boolean
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
+          enforce_single_session?: boolean
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
+          enforce_single_session?: boolean
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_sessions: {
+        Row: {
+          created_at: string
+          device_info: string | null
+          expires_at: string
+          id: string
+          is_active: boolean
+          last_active_at: string
+          session_token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_info?: string | null
+          expires_at: string
+          id?: string
+          is_active?: boolean
+          last_active_at?: string
+          session_token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_info?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          last_active_at?: string
+          session_token?: string
           user_id?: string
         }
         Relationships: []

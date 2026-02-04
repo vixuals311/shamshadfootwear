@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   User,
@@ -13,6 +13,10 @@ import {
   Ruler,
   GripVertical,
   Tag,
+  Save,
+  KeyRound,
+  Clock,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,10 +71,38 @@ interface DefaultSizeRange {
   display_order: number;
 }
 
+interface ProfileSettings {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+interface BusinessSettings {
+  businessName: string;
+  taxId: string;
+  address: string;
+}
+
+interface NotificationSettings {
+  lowStockAlerts: boolean;
+  paymentReminders: boolean;
+  newClientNotifications: boolean;
+  emailReports: boolean;
+}
+
+interface SecuritySettings {
+  requirePinOnLogin: boolean;
+  adminPin: string;
+  sessionTimeoutMinutes: number;
+  enforceSingleSession: boolean;
+}
+
 const Settings = () => {
   const { toast } = useToast();
-  const { profile, hasPermission } = useSupabaseAuthContext();
+  const { profile, role, hasPermission, user } = useSupabaseAuthContext();
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Payment accounts state
   const [accounts, setAccounts] = useState<PaymentAccount[]>([]);
@@ -96,6 +128,70 @@ const Settings = () => {
   });
   const [deleteSizeRangeId, setDeleteSizeRangeId] = useState<string | null>(null);
   const [draggedSizeRange, setDraggedSizeRange] = useState<string | null>(null);
+
+  // Profile settings state (admin only)
+  const [profileSettings, setProfileSettings] = useState<ProfileSettings>({
+    name: "",
+    email: "",
+    phone: "",
+  });
+  const [initialProfileSettings, setInitialProfileSettings] = useState<ProfileSettings>({
+    name: "",
+    email: "",
+    phone: "",
+  });
+
+  // Business settings state
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings>({
+    businessName: "BillFlow Inc.",
+    taxId: "",
+    address: "",
+  });
+  const [initialBusinessSettings, setInitialBusinessSettings] = useState<BusinessSettings>({
+    businessName: "BillFlow Inc.",
+    taxId: "",
+    address: "",
+  });
+
+  // Notification settings state
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    lowStockAlerts: true,
+    paymentReminders: true,
+    newClientNotifications: false,
+    emailReports: true,
+  });
+  const [initialNotificationSettings, setInitialNotificationSettings] = useState<NotificationSettings>({
+    lowStockAlerts: true,
+    paymentReminders: true,
+    newClientNotifications: false,
+    emailReports: true,
+  });
+
+  // Security settings state (admin only)
+  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>({
+    requirePinOnLogin: false,
+    adminPin: "",
+    sessionTimeoutMinutes: 480,
+    enforceSingleSession: true,
+  });
+  const [initialSecuritySettings, setInitialSecuritySettings] = useState<SecuritySettings>({
+    requirePinOnLogin: false,
+    adminPin: "",
+    sessionTimeoutMinutes: 480,
+    enforceSingleSession: true,
+  });
+
+  const isAdmin = role === "admin";
+
+  // Check for unsaved changes
+  useEffect(() => {
+    const profileChanged = isAdmin && JSON.stringify(profileSettings) !== JSON.stringify(initialProfileSettings);
+    const businessChanged = JSON.stringify(businessSettings) !== JSON.stringify(initialBusinessSettings);
+    const notificationChanged = JSON.stringify(notificationSettings) !== JSON.stringify(initialNotificationSettings);
+    const securityChanged = isAdmin && JSON.stringify(securitySettings) !== JSON.stringify(initialSecuritySettings);
+    
+    setHasUnsavedChanges(profileChanged || businessChanged || notificationChanged || securityChanged);
+  }, [profileSettings, businessSettings, notificationSettings, securitySettings, initialProfileSettings, initialBusinessSettings, initialNotificationSettings, initialSecuritySettings, isAdmin]);
 
   // Fetch data
   const fetchData = async () => {
@@ -134,6 +230,70 @@ const Settings = () => {
 
       if (sizeError) throw sizeError;
       setSizeRanges(sizeData || []);
+
+      // Set profile settings from context
+      if (profile) {
+        const profileData = {
+          name: profile.name || "",
+          email: profile.email || "",
+          phone: profile.phone || "",
+        };
+        setProfileSettings(profileData);
+        setInitialProfileSettings(profileData);
+      }
+
+      // Fetch application settings
+      const { data: appSettings } = await supabase
+        .from("application_settings")
+        .select("*");
+
+      if (appSettings) {
+        const businessSetting = appSettings.find(s => s.setting_key === "business_info");
+        const notificationSetting = appSettings.find(s => s.setting_key === "notifications");
+        
+        if (businessSetting?.setting_value) {
+          const biz = businessSetting.setting_value as Record<string, string>;
+          const bizData = {
+            businessName: biz.businessName || "BillFlow Inc.",
+            taxId: biz.taxId || "",
+            address: biz.address || "",
+          };
+          setBusinessSettings(bizData);
+          setInitialBusinessSettings(bizData);
+        }
+        
+        if (notificationSetting?.setting_value) {
+          const notif = notificationSetting.setting_value as Record<string, boolean>;
+          const notifData = {
+            lowStockAlerts: notif.lowStockAlerts ?? true,
+            paymentReminders: notif.paymentReminders ?? true,
+            newClientNotifications: notif.newClientNotifications ?? false,
+            emailReports: notif.emailReports ?? true,
+          };
+          setNotificationSettings(notifData);
+          setInitialNotificationSettings(notifData);
+        }
+      }
+
+      // Fetch admin security settings if admin
+      if (isAdmin && user) {
+        const { data: secData } = await supabase
+          .from("admin_security_settings")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (secData) {
+          const secSettings = {
+            requirePinOnLogin: secData.require_pin_on_login || false,
+            adminPin: "", // Don't expose the hash
+            sessionTimeoutMinutes: secData.session_timeout_minutes || 480,
+            enforceSingleSession: true,
+          };
+          setSecuritySettings(secSettings);
+          setInitialSecuritySettings({ ...secSettings });
+        }
+      }
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
@@ -148,7 +308,159 @@ const Settings = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [profile, isAdmin, user]);
+
+  // Universal save function
+  const handleSaveAllSettings = async () => {
+    if (!hasUnsavedChanges) return;
+
+    setIsSaving(true);
+    try {
+      // Save profile (admin only)
+      if (isAdmin && JSON.stringify(profileSettings) !== JSON.stringify(initialProfileSettings)) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            name: profileSettings.name,
+            phone: profileSettings.phone,
+          })
+          .eq("user_id", user?.id);
+        if (error) throw error;
+      }
+
+      // Save business settings
+      if (JSON.stringify(businessSettings) !== JSON.stringify(initialBusinessSettings)) {
+        // Check if setting exists
+        const { data: existingBiz } = await supabase
+          .from("application_settings")
+          .select("id")
+          .eq("setting_key", "business_info")
+          .maybeSingle();
+        
+        if (existingBiz) {
+          const { error } = await supabase
+            .from("application_settings")
+            .update({
+              setting_value: JSON.parse(JSON.stringify(businessSettings)),
+              updated_by: user?.id,
+            })
+            .eq("setting_key", "business_info");
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("application_settings")
+            .insert([{
+              setting_key: "business_info",
+              setting_value: JSON.parse(JSON.stringify(businessSettings)),
+              updated_by: user?.id,
+            }]);
+          if (error) throw error;
+        }
+      }
+
+      // Save notification settings
+      if (JSON.stringify(notificationSettings) !== JSON.stringify(initialNotificationSettings)) {
+        // Check if setting exists
+        const { data: existingNotif } = await supabase
+          .from("application_settings")
+          .select("id")
+          .eq("setting_key", "notifications")
+          .maybeSingle();
+        
+        if (existingNotif) {
+          const { error } = await supabase
+            .from("application_settings")
+            .update({
+              setting_value: JSON.parse(JSON.stringify(notificationSettings)),
+              updated_by: user?.id,
+            })
+            .eq("setting_key", "notifications");
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("application_settings")
+            .insert([{
+              setting_key: "notifications",
+              setting_value: JSON.parse(JSON.stringify(notificationSettings)),
+              updated_by: user?.id,
+            }]);
+          if (error) throw error;
+        }
+      }
+
+      // Save security settings (admin only)
+      if (isAdmin && JSON.stringify(securitySettings) !== JSON.stringify(initialSecuritySettings)) {
+        // Check if setting exists
+        const { data: existingSec } = await supabase
+          .from("admin_security_settings")
+          .select("id")
+          .eq("user_id", user?.id)
+          .maybeSingle();
+        
+        if (existingSec) {
+          const updateData: {
+            require_pin_on_login: boolean;
+            session_timeout_minutes: number;
+            admin_pin_hash?: string;
+          } = {
+            require_pin_on_login: securitySettings.requirePinOnLogin,
+            session_timeout_minutes: securitySettings.sessionTimeoutMinutes,
+          };
+          
+          if (securitySettings.adminPin && securitySettings.adminPin.length >= 4) {
+            updateData.admin_pin_hash = securitySettings.adminPin;
+          }
+          
+          const { error } = await supabase
+            .from("admin_security_settings")
+            .update(updateData)
+            .eq("user_id", user?.id);
+          if (error) throw error;
+        } else {
+          const insertData: {
+            user_id: string;
+            require_pin_on_login: boolean;
+            session_timeout_minutes: number;
+            admin_pin_hash?: string;
+          } = {
+            user_id: user?.id || "",
+            require_pin_on_login: securitySettings.requirePinOnLogin,
+            session_timeout_minutes: securitySettings.sessionTimeoutMinutes,
+          };
+          
+          if (securitySettings.adminPin && securitySettings.adminPin.length >= 4) {
+            insertData.admin_pin_hash = securitySettings.adminPin;
+          }
+          
+          const { error } = await supabase
+            .from("admin_security_settings")
+            .insert([insertData]);
+          if (error) throw error;
+        }
+      }
+
+      // Update initial values to reflect saved state
+      setInitialProfileSettings({ ...profileSettings });
+      setInitialBusinessSettings({ ...businessSettings });
+      setInitialNotificationSettings({ ...notificationSettings });
+      setInitialSecuritySettings({ ...securitySettings, adminPin: "" });
+      setSecuritySettings(prev => ({ ...prev, adminPin: "" }));
+
+      toast({
+        title: "Success",
+        description: "All settings saved successfully",
+      });
+    } catch (error: any) {
+      console.error("Error saving settings:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save settings",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Payment account handlers
   const handleAddAccount = async () => {
@@ -395,51 +707,81 @@ const Settings = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Page Header */}
+    <div className="space-y-6 max-w-4xl pb-24">
+      {/* Page Header with Universal Save Button */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
       >
-        <h2 className="text-2xl font-bold text-foreground">Settings</h2>
-        <p className="text-muted-foreground">
-          Manage your account and preferences
-        </p>
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Settings</h2>
+          <p className="text-muted-foreground">
+            {isAdmin ? "Manage system settings and preferences" : "View notification preferences"}
+          </p>
+        </div>
+        {hasUnsavedChanges && (
+          <Button 
+            onClick={handleSaveAllSettings} 
+            disabled={isSaving}
+            className="gap-2"
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Save All Changes
+          </Button>
+        )}
       </motion.div>
 
-      {/* Profile Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-card rounded-xl p-6 shadow-card"
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <User className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Profile</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input id="name" defaultValue={profile?.name || "User"} />
+      {/* Profile Section - Admin Only */}
+      {isAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-card rounded-xl p-6 shadow-card"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <User className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Profile</h3>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" defaultValue={profile?.email || ""} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input 
+                id="name" 
+                value={profileSettings.name}
+                onChange={(e) => setProfileSettings(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                value={profileSettings.email}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input 
+                id="phone" 
+                value={profileSettings.phone}
+                onChange={(e) => setProfileSettings(prev => ({ ...prev, phone: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Input id="role" value={role || "User"} disabled className="bg-muted capitalize" />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" defaultValue={profile?.phone || ""} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Input id="role" defaultValue="User" disabled />
-          </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button>Save Changes</Button>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
 
       {/* Bank Details Section - Admin Only */}
       {hasPermission("canManageSettings") && (
@@ -613,32 +955,46 @@ const Settings = () => {
         </motion.div>
       )}
 
-      {/* Business Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
-        className="bg-card rounded-xl p-6 shadow-card"
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <Building2 className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Business Information</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="business">Business Name</Label>
-            <Input id="business" defaultValue="BillFlow Inc." />
+      {/* Business Section - Admin Only */}
+      {isAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="bg-card rounded-xl p-6 shadow-card"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <Building2 className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Business Information</h3>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="tax">Tax ID</Label>
-            <Input id="tax" defaultValue="XX-XXXXXXX" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="business">Business Name</Label>
+              <Input 
+                id="business" 
+                value={businessSettings.businessName}
+                onChange={(e) => setBusinessSettings(prev => ({ ...prev, businessName: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tax">Tax ID</Label>
+              <Input 
+                id="tax" 
+                value={businessSettings.taxId}
+                onChange={(e) => setBusinessSettings(prev => ({ ...prev, taxId: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="address">Business Address</Label>
+              <Input 
+                id="address" 
+                value={businessSettings.address}
+                onChange={(e) => setBusinessSettings(prev => ({ ...prev, address: e.target.value }))}
+              />
+            </div>
           </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="address">Business Address</Label>
-            <Input id="address" defaultValue="123 Business Street, Suite 100" />
-          </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
 
       {/* Notifications Section */}
       <motion.div
@@ -659,7 +1015,10 @@ const Settings = () => {
                 Get notified when products are running low
               </p>
             </div>
-            <Switch defaultChecked />
+            <Switch 
+              checked={notificationSettings.lowStockAlerts}
+              onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, lowStockAlerts: checked }))}
+            />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
@@ -669,7 +1028,10 @@ const Settings = () => {
                 Alerts for overdue invoices
               </p>
             </div>
-            <Switch defaultChecked />
+            <Switch 
+              checked={notificationSettings.paymentReminders}
+              onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, paymentReminders: checked }))}
+            />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
@@ -679,7 +1041,10 @@ const Settings = () => {
                 When a new client is added
               </p>
             </div>
-            <Switch />
+            <Switch 
+              checked={notificationSettings.newClientNotifications}
+              onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, newClientNotifications: checked }))}
+            />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
@@ -689,53 +1054,159 @@ const Settings = () => {
                 Weekly summary of sales and payments
               </p>
             </div>
-            <Switch defaultChecked />
+            <Switch 
+              checked={notificationSettings.emailReports}
+              onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, emailReports: checked }))}
+            />
           </div>
         </div>
       </motion.div>
 
-      {/* Security Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="bg-card rounded-xl p-6 shadow-card"
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <Shield className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Security</h3>
-        </div>
-        <div className="space-y-4">
-          <Button variant="outline">Change Password</Button>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Two-Factor Authentication</p>
-              <p className="text-sm text-muted-foreground">
-                Add an extra layer of security
-              </p>
+      {/* Enhanced Security Section - Admin Only */}
+      {isAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-card rounded-xl p-6 shadow-card"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <Shield className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Security Settings</h3>
+          </div>
+          <div className="space-y-6">
+            {/* Admin PIN */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <KeyRound className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Require PIN on Login</p>
+                    <p className="text-sm text-muted-foreground">
+                      Add an extra PIN verification after password login
+                    </p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={securitySettings.requirePinOnLogin}
+                  onCheckedChange={(checked) => setSecuritySettings(prev => ({ ...prev, requirePinOnLogin: checked }))}
+                />
+              </div>
+              {securitySettings.requirePinOnLogin && (
+                <div className="ml-7 space-y-2">
+                  <Label htmlFor="adminPin">Set Admin PIN (4-6 digits)</Label>
+                  <Input
+                    id="adminPin"
+                    type="password"
+                    placeholder="Enter new PIN"
+                    maxLength={6}
+                    value={securitySettings.adminPin}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "");
+                      setSecuritySettings(prev => ({ ...prev, adminPin: value }));
+                    }}
+                    className="max-w-xs"
+                  />
+                  <p className="text-xs text-muted-foreground">Leave blank to keep existing PIN</p>
+                </div>
+              )}
             </div>
-            <Switch />
-          </div>
-        </div>
-      </motion.div>
 
-      {/* Data Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="bg-card rounded-xl p-6 shadow-card"
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <Database className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Data Management</h3>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline">Export All Data</Button>
-          <Button variant="outline">Import Data</Button>
-          <Button variant="outline">Create Backup</Button>
-        </div>
-      </motion.div>
+            <Separator />
+
+            {/* Session Timeout */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Session Timeout</p>
+                  <p className="text-sm text-muted-foreground">
+                    Auto logout after inactivity (minutes)
+                  </p>
+                </div>
+              </div>
+              <Select
+                value={String(securitySettings.sessionTimeoutMinutes)}
+                onValueChange={(value) => setSecuritySettings(prev => ({ ...prev, sessionTimeoutMinutes: Number(value) }))}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30 min</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                  <SelectItem value="120">2 hours</SelectItem>
+                  <SelectItem value="240">4 hours</SelectItem>
+                  <SelectItem value="480">8 hours</SelectItem>
+                  <SelectItem value="1440">24 hours</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
+
+            {/* Single Device Login for Non-Admins */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Smartphone className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Single Device Login (Non-Admins)</p>
+                  <p className="text-sm text-muted-foreground">
+                    Enforce one active session for biller/cashier roles
+                  </p>
+                </div>
+              </div>
+              <Switch 
+                checked={securitySettings.enforceSingleSession}
+                onCheckedChange={(checked) => setSecuritySettings(prev => ({ ...prev, enforceSingleSession: checked }))}
+              />
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Data Section - Admin Only */}
+      {isAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-card rounded-xl p-6 shadow-card"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <Database className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Data Management</h3>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline">Export All Data</Button>
+            <Button variant="outline">Import Data</Button>
+            <Button variant="outline">Create Backup</Button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Floating Save Button */}
+      {hasUnsavedChanges && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-6 right-6 z-50"
+        >
+          <Button 
+            size="lg"
+            onClick={handleSaveAllSettings}
+            disabled={isSaving}
+            className="gap-2 shadow-lg"
+          >
+            {isSaving ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Save className="w-5 h-5" />
+            )}
+            Save All Changes
+          </Button>
+        </motion.div>
+      )}
 
       {/* Add Account Dialog */}
       <Dialog open={isAddAccountOpen} onOpenChange={setIsAddAccountOpen}>
