@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Key,
 } from "lucide-react";
+import { CityCombobox } from "@/components/clients/CityCombobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -260,6 +261,11 @@ const Clients = () => {
       console.error("Error fetching client details:", error);
     }
   };
+
+  // Get all existing cities for the combobox
+  const existingCities = useMemo(() => {
+    return clients.map((c) => c.city).filter((city) => city && city !== "N/A");
+  }, [clients]);
 
   // Filter clients including phone number search
   const filteredClients = clients.filter(
@@ -1215,13 +1221,11 @@ const Clients = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
+                    <CityCombobox
                       value={newClient.city}
-                      onChange={(e) =>
-                        setNewClient({ ...newClient, city: e.target.value })
-                      }
-                      placeholder="Enter city"
+                      onChange={(city) => setNewClient({ ...newClient, city })}
+                      existingCities={existingCities}
+                      placeholder="Select or add city..."
                     />
                   </div>
                 </div>
