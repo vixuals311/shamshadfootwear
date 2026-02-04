@@ -120,8 +120,24 @@ export function useSupabaseAuth() {
 
   const signOut = async () => {
     try {
+      // First, invalidate all user sessions in our custom session table
+      if (user) {
+        await supabase
+          .from("user_sessions")
+          .update({ is_active: false })
+          .eq("user_id", user.id);
+      }
+      
+      // Then sign out from Supabase auth
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Clear local state
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setRole(null);
+      setNotifications([]);
       
       toast({
         title: "Signed out",
