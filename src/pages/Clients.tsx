@@ -737,26 +737,30 @@ const Clients = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center gap-4"
+          className="flex flex-col gap-4"
         >
-          <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold text-foreground">{selectedClient.name}</h2>
-            <p className="text-muted-foreground">{selectedClient.city}</p>
-          </div>
+          {/* Top row with back button and title */}
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="shrink-0">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground truncate">{selectedClient.name}</h2>
+              <p className="text-sm text-muted-foreground">{selectedClient.city}</p>
+            </div>
+          </div>
+          {/* Action row - stacks on mobile */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <Button 
               onClick={() => setIsQuickRecoveryOpen(true)}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               <CreditCard className="w-4 h-4" />
               Add Recovery
             </Button>
-            <div className="text-right">
+            <div className="text-center sm:text-right bg-primary/5 rounded-lg p-3">
               <p className="text-sm text-muted-foreground">Current Balance</p>
-              <p className="text-2xl font-bold text-primary">
+              <p className="text-xl sm:text-2xl font-bold text-primary">
                 Rs {selectedClient.currentBalance.toLocaleString()}
               </p>
             </div>
@@ -817,28 +821,28 @@ const Clients = () => {
 
         {/* Tabs for Bills and Recoveries */}
         <Tabs defaultValue="bills" className="w-full">
-          <div className="flex items-center justify-between mb-4">
-            <TabsList>
-              <TabsTrigger value="bills" className="gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <TabsList className="w-full sm:w-auto">
+              <TabsTrigger value="bills" className="gap-2 flex-1 sm:flex-none">
                 <FileText className="w-4 h-4" />
-                Bills ({clientInvoices.length})
+                <span className="hidden sm:inline">Bills</span> ({clientInvoices.length})
               </TabsTrigger>
-              <TabsTrigger value="recoveries" className="gap-2">
+              <TabsTrigger value="recoveries" className="gap-2 flex-1 sm:flex-none">
                 <CreditCard className="w-4 h-4" />
-                Recoveries ({clientRecoveries.length})
+                <span className="hidden sm:inline">Recoveries</span> ({clientRecoveries.length})
               </TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="bills">
-            <div className="flex justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint("bills")}>
+            <div className="flex flex-wrap justify-end gap-2 mb-4">
+              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("bills")}>
                 <Printer className="w-4 h-4" />
-                Print
+                <span className="hidden sm:inline">Print</span>
               </Button>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint("bills")}>
+              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("bills")}>
                 <DownloadIcon className="w-4 h-4" />
-                Download PDF
+                <span className="hidden sm:inline">Download PDF</span>
               </Button>
             </div>
             <motion.div
@@ -847,54 +851,56 @@ const Clients = () => {
               className="bg-card rounded-xl shadow-card overflow-hidden"
             >
               {clientInvoices.length > 0 ? (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Invoice #</th>
-                      <th>Date & Time</th>
-                      <th>Items</th>
-                      <th>Total</th>
-                      <th>Status</th>
-                      <th className="w-12"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clientInvoices.map((invoice) => (
-                      <tr key={invoice.id} className="group">
-                        <td className="font-mono">{invoice.invoiceNumber}</td>
-                        <td>
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Calendar className="w-4 h-4" />
-                            {format(invoice.createdAt, "dd MMM yyyy, hh:mm a")}
-                          </div>
-                        </td>
-                        <td>{invoice.items.length} items</td>
-                        <td className="font-semibold">Rs {invoice.total.toLocaleString()}</td>
-                        <td>
-                          <span className={cn(
-                            "status-badge",
-                            invoice.status === "paid" && "status-badge-success",
-                            invoice.status === "partial" && "status-badge-warning",
-                            invoice.status === "overdue" && "status-badge-danger"
-                          )}>
-                            {invoice.status}
-                          </span>
-                        </td>
-                        <td>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setSelectedInvoice(invoice)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="data-table min-w-[600px]">
+                    <thead>
+                      <tr>
+                        <th>Invoice #</th>
+                        <th>Date & Time</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th className="w-12"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {clientInvoices.map((invoice) => (
+                        <tr key={invoice.id} className="group">
+                          <td className="font-mono text-sm">{invoice.invoiceNumber}</td>
+                          <td>
+                            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                              <Calendar className="w-4 h-4 shrink-0" />
+                              <span className="whitespace-nowrap">{format(invoice.createdAt, "dd MMM yyyy, hh:mm a")}</span>
+                            </div>
+                          </td>
+                          <td className="text-sm">{invoice.items.length} items</td>
+                          <td className="font-semibold whitespace-nowrap">Rs {invoice.total.toLocaleString()}</td>
+                          <td>
+                            <span className={cn(
+                              "status-badge",
+                              invoice.status === "paid" && "status-badge-success",
+                              invoice.status === "partial" && "status-badge-warning",
+                              invoice.status === "overdue" && "status-badge-danger"
+                            )}>
+                              {invoice.status}
+                            </span>
+                          </td>
+                          <td>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setSelectedInvoice(invoice)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
-                <div className="p-12 text-center">
+                <div className="p-8 sm:p-12 text-center">
                   <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-foreground mb-1">No bills yet</h3>
                   <p className="text-muted-foreground">This client has no invoices.</p>
@@ -904,14 +910,14 @@ const Clients = () => {
           </TabsContent>
 
           <TabsContent value="recoveries">
-            <div className="flex justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint("recoveries")}>
+            <div className="flex flex-wrap justify-end gap-2 mb-4">
+              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("recoveries")}>
                 <Printer className="w-4 h-4" />
-                Print
+                <span className="hidden sm:inline">Print</span>
               </Button>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint("recoveries")}>
+              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("recoveries")}>
                 <DownloadIcon className="w-4 h-4" />
-                Download PDF
+                <span className="hidden sm:inline">Download PDF</span>
               </Button>
             </div>
             <motion.div
@@ -920,42 +926,44 @@ const Clients = () => {
               className="bg-card rounded-xl shadow-card overflow-hidden"
             >
               {clientRecoveries.length > 0 ? (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Date & Time</th>
-                      <th>Amount</th>
-                      <th>Category</th>
-                      <th>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clientRecoveries.map((recovery) => (
-                      <tr key={recovery.id}>
-                        <td>
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Calendar className="w-4 h-4" />
-                            {format(recovery.date, "dd MMM yyyy, hh:mm a")}
-                          </div>
-                        </td>
-                        <td className="font-semibold text-success">
-                          Rs {recovery.amount.toLocaleString()}
-                        </td>
-                        <td>
-                          <span className={cn(
-                            "status-badge",
-                            recovery.isFromCity ? "status-badge-warning" : "status-badge-success"
-                          )}>
-                            {recovery.isFromCity ? "City Recovery" : "Individual"}
-                          </span>
-                        </td>
-                        <td className="text-muted-foreground">{recovery.notes || "-"}</td>
+                <div className="overflow-x-auto">
+                  <table className="data-table min-w-[500px]">
+                    <thead>
+                      <tr>
+                        <th>Date & Time</th>
+                        <th>Amount</th>
+                        <th>Category</th>
+                        <th>Notes</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {clientRecoveries.map((recovery) => (
+                        <tr key={recovery.id}>
+                          <td>
+                            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                              <Calendar className="w-4 h-4 shrink-0" />
+                              <span className="whitespace-nowrap">{format(recovery.date, "dd MMM yyyy, hh:mm a")}</span>
+                            </div>
+                          </td>
+                          <td className="font-semibold text-success whitespace-nowrap">
+                            Rs {recovery.amount.toLocaleString()}
+                          </td>
+                          <td>
+                            <span className={cn(
+                              "status-badge",
+                              recovery.isFromCity ? "status-badge-warning" : "status-badge-success"
+                            )}>
+                              {recovery.isFromCity ? "City Recovery" : "Individual"}
+                            </span>
+                          </td>
+                          <td className="text-muted-foreground text-sm max-w-[150px] truncate">{recovery.notes || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
-                <div className="p-12 text-center">
+                <div className="p-8 sm:p-12 text-center">
                   <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-foreground mb-1">No recoveries yet</h3>
                   <p className="text-muted-foreground">This client has no recovery records.</p>
@@ -1415,93 +1423,95 @@ const Clients = () => {
           transition={{ delay: 0.2 }}
           className="bg-card rounded-xl shadow-card overflow-hidden"
         >
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Client</th>
-                <th>Contact</th>
-                <th>City</th>
-                <th>Opening Bal.</th>
-                <th>Current Bal.</th>
-                <th>Invoices</th>
-                <th className="w-12"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredClients.map((client) => (
-                <tr
-                  key={client.id}
-                  className="group cursor-pointer"
-                  onClick={() => setSelectedClient(client)}
-                >
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary" />
-                      </div>
-                      <span className="font-medium text-foreground">
-                        {client.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="space-y-1">
-                      <p className="text-sm">{client.phone}</p>
-                      <p className="text-xs text-muted-foreground">{client.email}</p>
-                    </div>
-                  </td>
-                  <td className="text-muted-foreground">{client.city}</td>
-                  <td>Rs {client.openingBalance.toLocaleString()}</td>
-                  <td className={cn(
-                    "font-medium",
-                    client.currentBalance > 0 ? "text-destructive" : "text-foreground"
-                  )}>
-                    Rs {client.currentBalance.toLocaleString()}
-                  </td>
-                  <td>{client.invoiceCount}</td>
-                  <td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2">
-                          <Edit2 className="w-4 h-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="gap-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenPinDialog(client);
-                          }}
-                        >
-                          <Key className="w-4 h-4" />
-                          Manage PIN
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="gap-2 text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteClientId(client.id);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="data-table min-w-[700px]">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Contact</th>
+                  <th>City</th>
+                  <th>Opening Bal.</th>
+                  <th>Current Bal.</th>
+                  <th>Invoices</th>
+                  <th className="w-12"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredClients.map((client) => (
+                  <tr
+                    key={client.id}
+                    className="group cursor-pointer"
+                    onClick={() => setSelectedClient(client)}
+                  >
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <User className="w-5 h-5 text-primary" />
+                        </div>
+                        <span className="font-medium text-foreground whitespace-nowrap">
+                          {client.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="space-y-1">
+                        <p className="text-sm whitespace-nowrap">{client.phone}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[120px]">{client.email}</p>
+                      </div>
+                    </td>
+                    <td className="text-muted-foreground whitespace-nowrap">{client.city}</td>
+                    <td className="whitespace-nowrap">Rs {client.openingBalance.toLocaleString()}</td>
+                    <td className={cn(
+                      "font-medium whitespace-nowrap",
+                      client.currentBalance > 0 ? "text-destructive" : "text-foreground"
+                    )}>
+                      Rs {client.currentBalance.toLocaleString()}
+                    </td>
+                    <td>{client.invoiceCount}</td>
+                    <td>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem className="gap-2">
+                            <Edit2 className="w-4 h-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="gap-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenPinDialog(client);
+                            }}
+                          >
+                            <Key className="w-4 h-4" />
+                            Manage PIN
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="gap-2 text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteClientId(client.id);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </motion.div>
       )}
 
