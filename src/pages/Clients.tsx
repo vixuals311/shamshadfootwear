@@ -277,17 +277,13 @@ const Clients = () => {
   );
 
   const checkDuplicateClient = () => {
+    // Only check for duplicate phone numbers, not names
     const duplicate = clients.find(
-      (c) =>
-        c.name.toLowerCase() === newClient.name.toLowerCase() ||
-        (newClient.phone && c.phone === newClient.phone)
+      (c) => newClient.phone && c.phone === newClient.phone
     );
 
     if (duplicate) {
-      const reason = duplicate.name.toLowerCase() === newClient.name.toLowerCase()
-        ? `name "${duplicate.name}"`
-        : `phone number "${newClient.phone}"`;
-      setDuplicateWarning(`A client with this ${reason} already exists.`);
+      setDuplicateWarning(`A client with phone number "${newClient.phone}" already exists (${duplicate.name}).`);
       return true;
     }
     setDuplicateWarning(null);
@@ -345,6 +341,7 @@ const Clients = () => {
       setDuplicateWarning(null);
       setShowAddClientConfirm(false);
       setIsAddDialogOpen(false);
+      setSearchQuery(""); // Clear search to show all clients
       fetchClients();
     } catch (error: any) {
       console.error("Error adding client:", error);
