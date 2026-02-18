@@ -1,0 +1,1 @@
+ALTER TABLE public.invoices ADD COLUMN total_bundles integer NOT NULL DEFAULT 0;

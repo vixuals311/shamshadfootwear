@@ -272,6 +272,7 @@ export type Database = {
           subtotal: number
           tax: number
           total: number
+          total_bundles: number
           total_discount: number
           updated_at: string
         }
@@ -289,6 +290,7 @@ export type Database = {
           subtotal?: number
           tax?: number
           total?: number
+          total_bundles?: number
           total_discount?: number
           updated_at?: string
         }
@@ -306,6 +308,7 @@ export type Database = {
           subtotal?: number
           tax?: number
           total?: number
+          total_bundles?: number
           total_discount?: number
           updated_at?: string
         }
