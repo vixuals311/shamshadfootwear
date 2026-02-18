@@ -95,28 +95,42 @@ const ClientPortal = () => {
     setLoginError("");
 
     try {
-      // Find client by phone number
-      const { data: clients, error } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("phone", loginPhone);
+      const { data, error } = await supabase.functions.invoke("client-portal-login", {
+        body: { phone: loginPhone, pin: loginPin },
+      });
 
       if (error) throw error;
 
-      if (!clients || clients.length === 0) {
-        setLoginError("No account found with this phone number.");
+      if (data?.error) {
+        setLoginError(data.error);
         return;
       }
 
-      const client = clients[0];
+      setCurrentClient(data.client);
+      setInvoices(
+        (data.invoices || []).map((inv: any) => ({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          subtotal: inv.subtotal,
+          total_discount: inv.total_discount,
+          tax: inv.tax,
+          total: inv.total,
+          status: inv.status,
+          created_at: inv.created_at,
+          items: inv.invoice_items || [],
+        }))
+      );
 
-      // Verify PIN if set
-      if (client.portal_pin && client.portal_pin !== loginPin) {
-        setLoginError("Invalid PIN.");
-        return;
-      }
+      const directRecoveries: Recovery[] = (data.directRecoveries || []).map((r: any) => ({
+        id: r.id, amount: r.amount, date: r.date, type: r.type, notes: r.notes,
+      }));
+      const cityRecoveries: Recovery[] = (data.cityAmounts || [])
+        .filter((ca: any) => ca.recoveries)
+        .map((ca: any) => ({
+          id: ca.recoveries.id, amount: ca.amount, date: ca.recoveries.date, type: "city", notes: ca.recoveries.notes,
+        }));
+      setRecoveries([...directRecoveries, ...cityRecoveries]);
 
-      setCurrentClient(client);
       setIsLoggedIn(true);
       setLoginError("");
     } catch (error: any) {
@@ -136,93 +150,7 @@ const ClientPortal = () => {
     setRecoveries([]);
   };
 
-  // Fetch client invoices and recoveries
-  useEffect(() => {
-    if (!currentClient) return;
-
-    const fetchClientData = async () => {
-      setDataLoading(true);
-      try {
-        // Fetch invoices with items
-        const { data: invoicesData, error: invoicesError } = await supabase
-          .from("invoices")
-          .select(`
-            *,
-            invoice_items (*)
-          `)
-          .eq("client_id", currentClient.id)
-          .order("created_at", { ascending: false });
-
-        if (invoicesError) throw invoicesError;
-
-        const formattedInvoices: Invoice[] = (invoicesData || []).map((inv: any) => ({
-          id: inv.id,
-          invoice_number: inv.invoice_number,
-          subtotal: inv.subtotal,
-          total_discount: inv.total_discount,
-          tax: inv.tax,
-          total: inv.total,
-          status: inv.status,
-          created_at: inv.created_at,
-          items: inv.invoice_items || [],
-        }));
-
-        setInvoices(formattedInvoices);
-
-        // Fetch direct recoveries
-        const { data: recoveriesData, error: recoveriesError } = await supabase
-          .from("recoveries")
-          .select("*")
-          .eq("client_id", currentClient.id)
-          .order("date", { ascending: false });
-
-        if (recoveriesError) throw recoveriesError;
-
-        // Fetch city recoveries that include this client
-        const { data: cityAmounts, error: cityError } = await supabase
-          .from("recovery_client_amounts")
-          .select(`
-            *,
-            recoveries (*)
-          `)
-          .eq("client_id", currentClient.id);
-
-        if (cityError) throw cityError;
-
-        // Combine recoveries
-        const directRecoveries: Recovery[] = (recoveriesData || []).map((r: any) => ({
-          id: r.id,
-          amount: r.amount,
-          date: r.date,
-          type: r.type,
-          notes: r.notes,
-        }));
-
-        const cityRecoveries: Recovery[] = (cityAmounts || [])
-          .filter((ca: any) => ca.recoveries)
-          .map((ca: any) => ({
-            id: ca.recoveries.id,
-            amount: ca.amount,
-            date: ca.recoveries.date,
-            type: "city",
-            notes: ca.recoveries.notes,
-          }));
-
-        setRecoveries([...directRecoveries, ...cityRecoveries]);
-      } catch (error: any) {
-        console.error("Error fetching client data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load your data",
-          variant: "destructive",
-        });
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    fetchClientData();
-  }, [currentClient, toast]);
+  // Data is now fetched at login time via edge function
 
   // Login Screen
   if (!isLoggedIn || !currentClient) {
