@@ -605,6 +605,127 @@ export type Database = {
           },
         ]
       }
+      return_items: {
+        Row: {
+          article_number: string
+          brand_name: string | null
+          created_at: string
+          id: string
+          invoice_item_id: string | null
+          pairs_returned: number
+          price_per_pair: number
+          product_id: string | null
+          product_name: string
+          return_id: string
+          size_range: string
+          total: number
+        }
+        Insert: {
+          article_number: string
+          brand_name?: string | null
+          created_at?: string
+          id?: string
+          invoice_item_id?: string | null
+          pairs_returned: number
+          price_per_pair: number
+          product_id?: string | null
+          product_name: string
+          return_id: string
+          size_range: string
+          total: number
+        }
+        Update: {
+          article_number?: string
+          brand_name?: string | null
+          created_at?: string
+          id?: string
+          invoice_item_id?: string | null
+          pairs_returned?: number
+          price_per_pair?: number
+          product_id?: string | null
+          product_name?: string
+          return_id?: string
+          size_range?: string
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_items_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      returns: {
+        Row: {
+          adjustment_type: string
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          restock: boolean
+          return_number: string
+          total_amount: number
+        }
+        Insert: {
+          adjustment_type?: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          restock?: boolean
+          return_number: string
+          total_amount?: number
+        }
+        Update: {
+          adjustment_type?: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          restock?: boolean
+          return_number?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "returns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string

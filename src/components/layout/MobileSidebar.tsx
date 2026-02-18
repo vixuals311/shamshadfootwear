@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, 
-  Settings, Wallet, UserCog, History, X 
+  Settings, Wallet, UserCog, History, X, RotateCcw 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
@@ -23,6 +23,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     { icon: LayoutDashboard, label: "Dashboard", path: "/", show: true },
     { icon: FileText, label: "Invoices", path: "/invoices", show: hasPermission("canCreateInvoices") || role === "admin" },
     { icon: CreditCard, label: "Payments", path: "/payments", show: hasPermission("canRecordPayments") || role === "admin" },
+    { icon: RotateCcw, label: "Returns", path: "/returns", show: hasPermission("canCreateInvoices") || role === "admin" },
     { icon: BarChart3, label: "Reports", path: "/reports", show: hasPermission("canViewReports") || role === "admin" },
   ].filter(item => item.show);
 

@@ -17,6 +17,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
 import AuditLogs from "./pages/AuditLogs";
+import Returns from "./pages/Returns";
 import ClientPortal from "./pages/ClientPortal";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -99,6 +100,7 @@ function AppRoutes() {
         <Route path="/invoices/edit/:invoiceId" element={<NewInvoice />} />
         <Route path="/payments" element={<Payments />} />
         <Route path="/recovery" element={<Recovery />} />
+        <Route path="/returns" element={<Returns />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/users" element={<UserManagement />} />
