@@ -199,13 +199,12 @@ const Login = () => {
                 Back to Sign In
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
+              <a
+                href="/portal"
                 className="text-sm text-primary hover:underline"
               >
-                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
-              </button>
+                Client Portal — Check your data with PIN
+              </a>
             )}
           </div>
         </div>
