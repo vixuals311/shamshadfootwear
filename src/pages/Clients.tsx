@@ -132,6 +132,7 @@ const Clients = () => {
     city: "",
     openingBalance: "",
     notes: "",
+    referenceNumber: "",
   });
 
   // Fetch clients from Supabase
@@ -323,6 +324,7 @@ const Clients = () => {
           city: newClient.city || null,
           opening_balance: openingBalance,
           current_balance: openingBalance,
+          reference_number: newClient.referenceNumber || null,
         })
         .select()
         .single();
@@ -347,7 +349,7 @@ const Clients = () => {
         description: "Client added successfully",
       });
 
-      setNewClient({ name: "", email: "", phone: "", address: "", city: "", openingBalance: "", notes: "" });
+      setNewClient({ name: "", email: "", phone: "", address: "", city: "", openingBalance: "", notes: "", referenceNumber: "" });
       setDuplicateWarning(null);
       setShowAddClientConfirm(false);
       setIsAddDialogOpen(false);
@@ -1262,17 +1264,30 @@ const Clients = () => {
                     placeholder="Enter full address"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newClient.email}
-                    onChange={(e) =>
-                      setNewClient({ ...newClient, email: e.target.value })
-                    }
-                    placeholder="Enter email"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="referenceNumber">Reference Number</Label>
+                    <Input
+                      id="referenceNumber"
+                      value={newClient.referenceNumber}
+                      onChange={(e) =>
+                        setNewClient({ ...newClient, referenceNumber: e.target.value })
+                      }
+                      placeholder="e.g. REF-001, ABC123"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={newClient.email}
+                      onChange={(e) =>
+                        setNewClient({ ...newClient, email: e.target.value })
+                      }
+                      placeholder="Enter email"
+                    />
+                  </div>
                 </div>
               </div>
               <DialogFooter>
