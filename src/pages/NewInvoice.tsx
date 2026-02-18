@@ -561,6 +561,30 @@ const NewInvoice = () => {
 
       if (itemsError) throw itemsError;
 
+      // Deduct stock from products (only for finalized invoices, not drafts, and only for new invoices)
+      if (finalStatus !== "draft" && !isEditMode) {
+        for (const item of items) {
+          if (item.productId) {
+            const { data: product } = await supabase
+              .from("products")
+              .select("stock_dozens, pairs_per_dozen")
+              .eq("id", item.productId)
+              .single();
+
+            if (product) {
+              const currentTotalPairs = product.stock_dozens * product.pairs_per_dozen;
+              const newTotalPairs = Math.max(0, currentTotalPairs - item.totalPairs);
+              const newDozens = newTotalPairs / product.pairs_per_dozen;
+
+              await supabase
+                .from("products")
+                .update({ stock_dozens: newDozens })
+                .eq("id", item.productId);
+            }
+          }
+        }
+      }
+
       // Update client balance (only for finalized invoices, not drafts, and only if not updating)
       if (finalStatus !== "draft" && !isEditMode) {
         const newBalance = selectedClient.current_balance + calculations.balance;
