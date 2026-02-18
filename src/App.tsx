@@ -19,6 +19,7 @@ import UserManagement from "./pages/UserManagement";
 import AuditLogs from "./pages/AuditLogs";
 import ClientPortal from "./pages/ClientPortal";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -75,6 +76,9 @@ function AppRoutes() {
           </AuthRoute>
         }
       />
+
+      {/* Reset Password - public route */}
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Client Portal - separate from main app */}
       <Route path="/portal" element={<ClientPortal />} />
