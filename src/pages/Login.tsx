@@ -17,6 +17,28 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({ title: "Error", description: "Please enter your email address", variant: "destructive" });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast({ title: "Email sent!", description: "Check your inbox for the password reset link." });
+      setIsForgotPassword(false);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to send reset email", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,15 +106,17 @@ const Login = () => {
           </div>
 
           <h1 className="text-xl font-semibold text-center text-foreground mb-2">
-            {isSignUp ? "Create Account" : "Welcome Back"}
+            {isForgotPassword ? "Reset Password" : isSignUp ? "Create Account" : "Welcome Back"}
           </h1>
           <p className="text-sm text-muted-foreground text-center mb-6">
-            {isSignUp
+            {isForgotPassword
+              ? "Enter your email to receive a reset link"
+              : isSignUp
               ? "Sign up to get started with BillFlow"
               : "Sign in to continue to your dashboard"}
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={isForgotPassword ? handleForgotPassword : handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -119,31 +143,41 @@ const Login = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                  minLength={6}
-                />
+            {!isForgotPassword && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!isSignUp && !isForgotPassword && (
+              <div className="text-right">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsForgotPassword(true)}
+                  className="text-xs text-primary hover:underline"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  Forgot password?
                 </button>
               </div>
-            </div>
+            )}
 
             <Button type="submit" className="w-full gap-2" disabled={isLoading}>
               {isLoading ? (
@@ -151,20 +185,28 @@ const Login = () => {
               ) : (
                 <LogIn className="w-4 h-4" />
               )}
-              {isSignUp ? "Create Account" : "Sign In"}
+              {isForgotPassword ? "Send Reset Link" : isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-primary hover:underline"
-            >
-              {isSignUp
-                ? "Already have an account? Sign in"
-                : "Don't have an account? Sign up"}
-            </button>
+            {isForgotPassword ? (
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(false)}
+                className="text-sm text-primary hover:underline"
+              >
+                Back to Sign In
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm text-primary hover:underline"
+              >
+                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+              </button>
+            )}
           </div>
         </div>
 
