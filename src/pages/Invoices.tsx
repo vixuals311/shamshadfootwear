@@ -71,6 +71,7 @@ interface InvoiceDetails {
   total: number;
   amount_received: number;
   balance_due: number;
+  total_bundles: number;
   status: string;
   items: any[];
 }
@@ -214,6 +215,7 @@ const Invoices = () => {
           total,
           amount_received,
           balance_due,
+          total_bundles,
           status,
           clients (name, city),
           invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total)
@@ -235,6 +237,7 @@ const Invoices = () => {
         total: data.total,
         amount_received: data.amount_received,
         balance_due: data.balance_due,
+        total_bundles: data.total_bundles || 0,
         status: data.status,
         items: data.invoice_items || [],
       });

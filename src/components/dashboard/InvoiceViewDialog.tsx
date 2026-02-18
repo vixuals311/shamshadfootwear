@@ -30,6 +30,7 @@ interface InvoiceViewDialogProps {
     total: number;
     amount_received: number;
     balance_due: number;
+    total_bundles: number;
     status: string;
     items: InvoiceItem[];
   } | null;
@@ -75,6 +76,10 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
           </div>
 
           {/* Items Table */}
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium">Items ({invoice.items.length})</p>
+            <p className="text-sm font-semibold">{invoice.total_bundles} bundles • {invoice.items.reduce((sum, i) => sum + i.total_pairs, 0)} pairs</p>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

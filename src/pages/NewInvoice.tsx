@@ -502,6 +502,7 @@ const NewInvoice = () => {
             total: calculations.total,
             amount_received: calculations.received,
             balance_due: calculations.balance,
+            total_bundles: items.reduce((sum, i) => sum + i.quantity, 0),
             status: finalStatus,
             payment_method: paymentMethod,
             account_id: paymentMethod === "account" ? selectedAccount : null,
@@ -527,6 +528,7 @@ const NewInvoice = () => {
             total: calculations.total,
             amount_received: calculations.received,
             balance_due: calculations.balance,
+            total_bundles: items.reduce((sum, i) => sum + i.quantity, 0),
             status: finalStatus,
             payment_method: paymentMethod,
             account_id: paymentMethod === "account" ? selectedAccount : null,
@@ -989,7 +991,7 @@ const NewInvoice = () => {
                   <Package className="w-4 h-4 text-primary" />
                   Items ({items.length})
                 </h3>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs font-semibold text-foreground">
                   {items.reduce((sum, i) => sum + i.quantity, 0)} bundles • {items.reduce((sum, i) => sum + i.totalPairs, 0)} pairs
                 </span>
               </div>
@@ -1357,7 +1359,10 @@ const NewInvoice = () => {
 
             {/* Items Summary */}
             <div className="space-y-2">
-              <p className="text-sm font-medium">Items ({items.length})</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Items ({items.length})</p>
+                <p className="text-sm font-semibold">{items.reduce((sum, i) => sum + i.quantity, 0)} bundles • {items.reduce((sum, i) => sum + i.totalPairs, 0)} pairs</p>
+              </div>
               <div className="max-h-40 overflow-y-auto space-y-1">
                 {items.map((item, idx) => (
                   <div key={item.id} className="flex justify-between text-sm p-2 bg-muted/30 rounded">
