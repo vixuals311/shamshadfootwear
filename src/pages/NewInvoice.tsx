@@ -990,7 +990,7 @@ const NewInvoice = () => {
                   Items ({items.length})
                 </h3>
                 <span className="text-xs text-muted-foreground">
-                  {items.reduce((sum, i) => sum + i.totalPairs, 0)} total pairs
+                  {items.reduce((sum, i) => sum + i.quantity, 0)} bundles • {items.reduce((sum, i) => sum + i.totalPairs, 0)} pairs
                 </span>
               </div>
               {items.map((item, idx) => {
