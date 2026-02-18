@@ -721,244 +721,121 @@ const NewInvoice = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-20">
-      {/* Header */}
+    <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto pb-28 sm:pb-20">
+      {/* Header - Compact on mobile */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        className="flex items-center justify-between gap-2"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <Button
             variant="ghost"
             size="icon"
+            className="shrink-0 h-9 w-9"
             onClick={() => navigate("/invoices")}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-2xl font-bold text-foreground truncate">
               {isEditMode ? "Edit Invoice" : "New Invoice"}
             </h2>
-            <p className="text-muted-foreground text-sm">{invoiceNumber}</p>
+            <p className="text-muted-foreground text-xs sm:text-sm">{invoiceNumber}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Button 
             variant="outline" 
-            size="sm" 
-            className="gap-2 flex-1 sm:flex-none"
+            size="icon"
+            className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3 sm:gap-2"
             onClick={() => setShowDraftConfirm(true)}
             disabled={saving}
           >
             <Save className="w-4 h-4" />
-            <span className="hidden sm:inline">Save Draft</span>
+            <span className="hidden sm:inline">Draft</span>
           </Button>
           <Button 
             variant="outline" 
-            size="sm" 
-            className="gap-2 flex-1 sm:flex-none"
+            size="icon"
+            className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3 sm:gap-2"
             onClick={handlePrint}
             disabled={items.length === 0}
           >
             <Printer className="w-4 h-4" />
             <span className="hidden sm:inline">Print</span>
           </Button>
-          <Button 
-            size="sm" 
-            className="gap-2 flex-1 sm:flex-none"
-            onClick={() => setShowReviewDialog(true)}
-            disabled={saving || items.length === 0 || !selectedClient}
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
-            <span className="hidden sm:inline">Save Bill</span>
-          </Button>
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="lg:col-span-2 space-y-6"
-        >
-          {/* Client Selection */}
-          <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-primary" />
-              Client Information
-            </h3>
-            <Popover open={clientOpen} onOpenChange={setClientOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={clientOpen}
-                  className="w-full justify-between h-auto py-3"
-                >
-                  {selectedClient ? (
-                    <div className="text-left">
-                      <p className="font-medium">{selectedClient.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedClient.city} • Balance: Rs {selectedClient.current_balance.toLocaleString()}
-                      </p>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">Select a client...</span>
-                  )}
-                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[350px] sm:w-[400px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search clients by name, phone, city..." />
-                  <CommandList>
-                    <CommandEmpty>No client found.</CommandEmpty>
-                    <CommandGroup>
-                      {clients.map((client) => (
-                        <CommandItem
-                          key={client.id}
-                          value={`${client.name} ${client.phone} ${client.city}`}
-                          onSelect={() => {
-                            setSelectedClient(client);
-                            setClientOpen(false);
-                          }}
-                        >
-                          <div>
-                            <p className="font-medium">{client.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {client.phone} • {client.city} • Balance: Rs {client.current_balance.toLocaleString()}
-                            </p>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Products */}
-          <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Package className="w-5 h-5 text-primary" />
-              Products
-            </h3>
-
-            {/* Items List */}
-            {items.length > 0 ? (
-              <div className="space-y-3 mb-4">
-                {items.map((item) => {
-                  const discountTotal = item.totalPairs * item.discountPerPair;
-                  return (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border/50"
+      {/* Client Selection - Compact */}
+      <div className="bg-card rounded-xl p-3 sm:p-6 shadow-card">
+        <Popover open={clientOpen} onOpenChange={setClientOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={clientOpen}
+              className="w-full justify-between h-auto py-2.5 sm:py-3"
+            >
+              {selectedClient ? (
+                <div className="text-left min-w-0">
+                  <p className="font-medium text-sm sm:text-base truncate flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary shrink-0" />
+                    {selectedClient.name}
+                  </p>
+                  <p className="text-xs sm:text-sm text-muted-foreground ml-6">
+                    {selectedClient.city} • Bal: Rs {selectedClient.current_balance.toLocaleString()}
+                  </p>
+                </div>
+              ) : (
+                <span className="text-muted-foreground flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Select a client...
+                </span>
+              )}
+              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Search clients..." />
+              <CommandList>
+                <CommandEmpty>No client found.</CommandEmpty>
+                <CommandGroup>
+                  {clients.map((client) => (
+                    <CommandItem
+                      key={client.id}
+                      value={`${client.name} ${client.phone} ${client.city}`}
+                      onSelect={() => {
+                        setSelectedClient(client);
+                        setClientOpen(false);
+                      }}
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="font-medium text-foreground">{item.productName}</p>
-                          <p className="text-xs sm:text-sm text-muted-foreground">
-                            {item.brandName} • {item.articleNumber} • Size {item.sizeRange}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive h-8 w-8"
-                          onClick={() => setRemoveItemId(item.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                      <div>
+                        <p className="font-medium">{client.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {client.phone} • {client.city} • Bal: Rs {client.current_balance.toLocaleString()}
+                        </p>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Bundles</Label>
-                          <div className="flex items-center gap-1 mt-1">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
-                            >
-                              -
-                            </Button>
-                            <Input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) =>
-                                updateItemQuantity(item.id, parseInt(e.target.value) || 0)
-                              }
-                              className="w-12 h-8 text-center"
-                            />
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                            >
-                              +
-                            </Button>
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Total Pairs</Label>
-                          <Input
-                            type="number"
-                            value={item.totalPairs}
-                            onChange={(e) =>
-                              updateItemTotalPairs(item.id, parseInt(e.target.value) || 0)
-                            }
-                            className="h-8 mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Disc/Pair (Rs)</Label>
-                          <Input
-                            type="number"
-                            value={item.discountPerPair || ""}
-                            onChange={(e) =>
-                              updateItemDiscountPerPair(item.id, parseFloat(e.target.value) || 0)
-                            }
-                            className="h-8 mt-1"
-                            placeholder="0"
-                          />
-                        </div>
-                        <div className="text-right">
-                          <Label className="text-xs text-muted-foreground">Total</Label>
-                          <p className="font-semibold text-base sm:text-lg mt-1">
-                            Rs {item.total.toLocaleString()}
-                          </p>
-                          {discountTotal > 0 && (
-                            <p className="text-xs text-destructive">
-                              -Rs {discountTotal.toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="py-8 text-center border-2 border-dashed border-border rounded-lg mb-4">
-                <Package className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">
-                  No products added yet. Click "Add Product" below.
-                </p>
-              </div>
-            )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
 
-            {/* Product Search - Always visible */}
-            <div className="relative mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Main Form */}
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+          {/* Product Search - Sticky on mobile */}
+          <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-2 sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:backdrop-blur-none">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search products by name or article..."
+                placeholder="Search products..."
                 value={productSearch}
                 onChange={(e) => {
                   setProductSearch(e.target.value);
@@ -967,146 +844,284 @@ const NewInvoice = () => {
                   }
                 }}
                 onFocus={() => setProductOpen(true)}
-                className="pl-9"
+                className="pl-9 h-11 sm:h-10 text-base sm:text-sm"
                 ref={searchInputRef}
               />
+              {productOpen && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-2 text-xs text-muted-foreground"
+                  onClick={() => { setProductOpen(false); setProductSearch(""); setSelectedProduct(null); }}
+                >
+                  Close
+                </Button>
+              )}
             </div>
+          </div>
 
-            {/* Product Selection Dropdown */}
-            {productOpen && (
-              <div className="border rounded-lg mb-4 max-h-[400px] overflow-y-auto">
-                {filteredProducts.length > 0 ? (
-                  filteredProducts
-                    .sort((a, b) => a.article_number.localeCompare(b.article_number))
-                    .map((product) => (
-                      <div key={product.id} className="border-b last:border-b-0">
-                        <div
-                          className={cn(
-                            "px-3 py-2 cursor-pointer transition-colors",
-                            selectedProduct?.id === product.id
-                              ? "bg-primary/10"
-                              : "bg-muted/30 hover:bg-muted/50"
-                          )}
-                          onClick={() => handleProductSelect(product)}
-                        >
-                          <p className="font-medium">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {product.brand_name} • {product.article_number} • Stock:{" "}
-                            {product.stock_dozens * product.pairs_per_dozen} pairs
-                          </p>
-                        </div>
-
-                        {selectedProduct?.id === product.id && (
-                          <div className="p-3 space-y-3 bg-background border-t">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Select bundles per size:
+          {/* Product Selection Dropdown */}
+          {productOpen && (
+            <div className="border rounded-lg max-h-[50vh] sm:max-h-[400px] overflow-y-auto bg-card shadow-lg">
+              {filteredProducts.length > 0 ? (
+                filteredProducts
+                  .sort((a, b) => a.article_number.localeCompare(b.article_number))
+                  .map((product) => (
+                    <div key={product.id} className="border-b last:border-b-0">
+                      <div
+                        className={cn(
+                          "px-3 py-3 sm:py-2 cursor-pointer transition-colors active:bg-primary/20",
+                          selectedProduct?.id === product.id
+                            ? "bg-primary/10"
+                            : "hover:bg-muted/50"
+                        )}
+                        onClick={() => handleProductSelect(product)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{product.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {product.article_number} • {product.brand_name}
                             </p>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                              {sizeSelections.map((selection) => (
-                                <div
-                                  key={selection.sizeRange}
-                                  className="flex flex-col gap-1 p-2 rounded border bg-card"
-                                >
-                                  <span className="text-xs font-medium">
+                          </div>
+                          <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                            {product.stock_dozens * product.pairs_per_dozen}p
+                          </span>
+                        </div>
+                      </div>
+
+                      {selectedProduct?.id === product.id && (
+                        <div className="p-3 space-y-3 bg-muted/20 border-t">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Select bundles per size:
+                          </p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {sizeSelections.map((selection) => (
+                              <div
+                                key={selection.sizeRange}
+                                className={cn(
+                                  "flex flex-col gap-1 p-2 rounded-lg border bg-card transition-colors",
+                                  selection.bundles > 0 && "border-primary/50 bg-primary/5"
+                                )}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-semibold">
                                     {selection.sizeRange}
                                   </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    Rs {selection.pricePerPair}/pair
+                                  <span className="text-[10px] text-muted-foreground">
+                                    Rs {selection.pricePerPair}
                                   </span>
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      className="h-6 w-6"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        updateSizeBundles(
-                                          selection.sizeRange,
-                                          selection.bundles - 1
-                                        );
-                                      }}
-                                    >
-                                      <Minus className="h-3 w-3" />
-                                    </Button>
-                                    <Input
-                                      type="number"
-                                      value={selection.bundles}
-                                      onChange={(e) =>
-                                        updateSizeBundles(
-                                          selection.sizeRange,
-                                          parseInt(e.target.value) || 0
-                                        )
-                                      }
-                                      className="w-10 h-6 text-center text-xs p-0"
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      className="h-6 w-6"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        updateSizeBundles(
-                                          selection.sizeRange,
-                                          selection.bundles + 1
-                                        );
-                                      }}
-                                    >
-                                      <Plus className="h-3 w-3" />
-                                    </Button>
-                                  </div>
                                 </div>
-                              ))}
-                            </div>
-                            {totalSelectedBundles > 0 && (
-                              <Button
-                                className="w-full mt-2"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addSelectedSizesToInvoice();
-                                }}
-                              >
-                                <Check className="w-4 h-4 mr-2" />
-                                Add {totalSelectedBundles} bundles
-                              </Button>
-                            )}
+                                <div className="flex items-center gap-1 mt-1">
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 sm:h-6 sm:w-6"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateSizeBundles(
+                                        selection.sizeRange,
+                                        selection.bundles - 1
+                                      );
+                                    }}
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <Input
+                                    type="number"
+                                    value={selection.bundles}
+                                    onChange={(e) =>
+                                      updateSizeBundles(
+                                        selection.sizeRange,
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="w-10 h-8 sm:h-6 text-center text-sm sm:text-xs p-0"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 sm:h-6 sm:w-6"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateSizeBundles(
+                                        selection.sizeRange,
+                                        selection.bundles + 1
+                                      );
+                                    }}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
+                          {totalSelectedBundles > 0 && (
+                            <Button
+                              className="w-full mt-2 h-11 sm:h-9 text-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addSelectedSizesToInvoice();
+                              }}
+                            >
+                              <Check className="w-4 h-4 mr-2" />
+                              Add {totalSelectedBundles} bundle{totalSelectedBundles > 1 ? 's' : ''}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+              ) : (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  No products found
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Items List - Compact cards on mobile */}
+          {items.length > 0 ? (
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Package className="w-4 h-4 text-primary" />
+                  Items ({items.length})
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  {items.reduce((sum, i) => sum + i.totalPairs, 0)} total pairs
+                </span>
+              </div>
+              {items.map((item, idx) => {
+                const discountTotal = item.totalPairs * item.discountPerPair;
+                return (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="p-3 rounded-lg bg-card border border-border/50 shadow-sm"
+                  >
+                    {/* Top row: product info + total + delete */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm text-foreground truncate">
+                          <span className="text-muted-foreground mr-1">{idx + 1}.</span>
+                          {item.productName}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {item.articleNumber} • {item.sizeRange} • Rs {item.pricePerPair}/pr
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-bold text-sm text-foreground">
+                          Rs {item.total.toLocaleString()}
+                        </p>
+                        {discountTotal > 0 && (
+                          <p className="text-[10px] text-destructive">
+                            -Rs {discountTotal.toLocaleString()}
+                          </p>
                         )}
                       </div>
-                    ))
-                ) : (
-                  <div className="p-4 text-center text-muted-foreground">
-                    No products found
-                  </div>
-                )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive/60 hover:text-destructive h-7 w-7 shrink-0 -mr-1"
+                        onClick={() => setRemoveItemId(item.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    {/* Bottom row: controls */}
+                    <div className="grid grid-cols-3 gap-2 items-center">
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground">Bundles</Label>
+                        <div className="flex items-center gap-0.5 mt-0.5">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 sm:h-7 sm:w-7 shrink-0"
+                            onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                          >
+                            -
+                          </Button>
+                          <Input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) =>
+                              updateItemQuantity(item.id, parseInt(e.target.value) || 0)
+                            }
+                            className="w-10 h-8 sm:h-7 text-center text-sm p-0"
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 sm:h-7 sm:w-7 shrink-0"
+                            onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                          >
+                            +
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground">Pairs</Label>
+                        <Input
+                          type="number"
+                          value={item.totalPairs}
+                          onChange={(e) =>
+                            updateItemTotalPairs(item.id, parseInt(e.target.value) || 0)
+                          }
+                          className="h-8 sm:h-7 mt-0.5 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground">Disc/pr</Label>
+                        <Input
+                          type="number"
+                          value={item.discountPerPair || ""}
+                          onChange={(e) =>
+                            updateItemDiscountPerPair(item.id, parseFloat(e.target.value) || 0)
+                          }
+                          className="h-8 sm:h-7 mt-0.5 text-sm"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            !productOpen && (
+              <div className="py-6 text-center border-2 border-dashed border-border rounded-lg">
+                <Package className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm">
+                  Search above to add products
+                </p>
               </div>
-            )}
-          </div>
+            )
+          )}
 
-          {/* Notes */}
-          <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
-            <Label htmlFor="notes" className="text-sm font-medium">
-              Notes (Optional)
-            </Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any notes for this invoice..."
-              className="mt-2"
-              rows={3}
-            />
-          </div>
-        </motion.div>
+          {/* Notes - collapsible on mobile */}
+          <details className="bg-card rounded-xl shadow-card group">
+            <summary className="p-3 sm:p-4 cursor-pointer text-sm font-medium text-muted-foreground flex items-center justify-between list-none">
+              <span>Notes (Optional)</span>
+              <span className="text-xs group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add any notes..."
+                rows={2}
+              />
+            </div>
+          </details>
+        </div>
 
-        {/* Summary Sidebar */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="space-y-6"
-        >
+        {/* Summary Sidebar - visible on desktop, hidden on mobile (floating bar replaces it) */}
+        <div className="hidden lg:block space-y-6">
           {/* Calculations */}
           <div className="bg-card rounded-xl p-4 sm:p-6 shadow-card">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -1115,17 +1130,14 @@ const NewInvoice = () => {
             </h3>
 
             <div className="space-y-4">
-              {/* Tax */}
               <div className="flex items-center justify-between">
                 <Label className="text-sm">Tax Rate (%)</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={taxPercent}
-                    onChange={(e) => setTaxPercent(parseFloat(e.target.value) || 0)}
-                    className="w-20 h-8 text-center"
-                  />
-                </div>
+                <Input
+                  type="number"
+                  value={taxPercent}
+                  onChange={(e) => setTaxPercent(parseFloat(e.target.value) || 0)}
+                  className="w-20 h-8 text-center"
+                />
               </div>
 
               <div className="border-t border-border pt-4 space-y-2">
@@ -1209,7 +1221,81 @@ const NewInvoice = () => {
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
+
+        {/* Mobile Payment & Summary section - shown only on mobile */}
+        <div className="lg:hidden space-y-4">
+          <div className="bg-card rounded-xl p-3 shadow-card">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Payment</h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(value: "cash" | "account") => setPaymentMethod(value)}
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="account">Account</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  value={amountReceived}
+                  onChange={(e) => setAmountReceived(e.target.value)}
+                  placeholder="Received (Rs)"
+                  className="h-10"
+                />
+              </div>
+              {paymentMethod === "account" && (
+                <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Tax %</Label>
+                <Input
+                  type="number"
+                  value={taxPercent}
+                  onChange={(e) => setTaxPercent(parseFloat(e.target.value) || 0)}
+                  className="w-16 h-8 text-center text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Bottom Bar - Mobile only */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-card/95 backdrop-blur-md border-t border-border px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+        <div className="flex items-center justify-between max-w-5xl mx-auto">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">{items.length} items • {items.reduce((s, i) => s + i.totalPairs, 0)} pairs</p>
+            <p className="text-lg font-bold text-primary">Rs {calculations.total.toLocaleString()}</p>
+            {calculations.balance > 0 && (
+              <p className="text-[10px] text-destructive">Due: Rs {calculations.balance.toLocaleString()}</p>
+            )}
+          </div>
+          <Button
+            className="h-12 px-6 text-sm font-semibold gap-2"
+            onClick={() => setShowReviewDialog(true)}
+            disabled={saving || items.length === 0 || !selectedClient}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
+            Save Bill
+          </Button>
+        </div>
       </div>
 
       {/* Remove Item Confirmation */}
