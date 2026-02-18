@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, Settings, ChevronLeft, ChevronRight, Wallet, UserCog, History } from "lucide-react";
+import { LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, Settings, ChevronLeft, ChevronRight, Wallet, UserCog, History, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 interface SidebarProps {
@@ -46,6 +46,11 @@ export function Sidebar({
     label: "Payments",
     path: "/payments",
     show: hasPermission("canRecordPayments") || role === "admin"
+  }, {
+    icon: RotateCcw,
+    label: "Returns",
+    path: "/returns",
+    show: hasPermission("canCreateInvoices") || role === "admin"
   }, {
     icon: BarChart3,
     label: "Reports",
