@@ -300,6 +300,16 @@ const Clients = () => {
       return;
     }
 
+    const phonePattern = /^0\d{3}-\d{7}$/;
+    if (!phonePattern.test(newClient.phone)) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Phone must follow the pattern 0XXX-XXXXXXX (e.g. 0306-1728311)",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const openingBalance = parseFloat(newClient.openingBalance) || 0;
       
@@ -1218,10 +1228,17 @@ const Clients = () => {
                       id="phone"
                       value={newClient.phone}
                       onChange={(e) => {
-                        setNewClient({ ...newClient, phone: e.target.value });
+                        // Only allow digits and auto-format as 0XXX-XXXXXXX
+                        const raw = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+                        let formatted = raw;
+                        if (raw.length > 4) {
+                          formatted = raw.slice(0, 4) + "-" + raw.slice(4);
+                        }
+                        setNewClient({ ...newClient, phone: formatted });
                         setDuplicateWarning(null);
                       }}
-                      placeholder="Enter phone"
+                      placeholder="0306-1728311"
+                      maxLength={12}
                     />
                   </div>
                   <div className="space-y-2">
