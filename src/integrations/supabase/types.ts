@@ -132,6 +132,7 @@ export type Database = {
           opening_balance: number
           phone: string
           portal_pin: string | null
+          reference_number: string | null
           total_spent: number
           updated_at: string
         }
@@ -147,6 +148,7 @@ export type Database = {
           opening_balance?: number
           phone: string
           portal_pin?: string | null
+          reference_number?: string | null
           total_spent?: number
           updated_at?: string
         }
@@ -162,6 +164,7 @@ export type Database = {
           opening_balance?: number
           phone?: string
           portal_pin?: string | null
+          reference_number?: string | null
           total_spent?: number
           updated_at?: string
         }
