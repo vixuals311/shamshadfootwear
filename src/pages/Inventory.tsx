@@ -1221,12 +1221,109 @@ const Inventory = () => {
         </Select>
       </motion.div>
 
-      {/* Products Table */}
+      {/* Products - Mobile Card View */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-card rounded-xl shadow-card overflow-hidden"
+        className="lg:hidden space-y-3"
+      >
+        {filteredProducts.map((product, index) => {
+          const totalPairs = product.sizeBundles.reduce(
+            (sum: number, sb: any) => sum + (sb.quantity ?? 0) * (sb.pairsPerBundle ?? 6),
+            0
+          );
+          const stockStatus = getStockStatus(product.stockDozens, product.pairsPerDozen);
+          return (
+            <motion.div
+              key={product.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.03 * index }}
+              className="bg-card rounded-xl p-4 shadow-card border border-border/50"
+            >
+              {/* Header: Name, Article, Actions */}
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Package className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-foreground truncate">{product.name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{product.articleNumber}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={cn("status-badge text-[10px]", stockStatus.class)}>
+                    {stockStatus.label}
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem className="gap-2" onClick={() => handleEditProduct(product)}>
+                        <Edit2 className="w-4 h-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteProductId(product.id)}>
+                        <Trash2 className="w-4 h-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+
+              {/* Meta row */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="status-badge status-badge-default text-[10px]">{product.brandName}</span>
+                <span className="text-[10px] capitalize text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{product.gender}</span>
+                <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{product.category}</span>
+              </div>
+
+              {/* Size Bundles - Grid */}
+              {product.sizeBundles.length > 0 && (
+                <div className="grid grid-cols-2 gap-1.5 mb-3">
+                  {product.sizeBundles.map((sb: any) => (
+                    <div key={sb.sizeRange} className="bg-muted/50 rounded-lg px-2.5 py-2 border border-border/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-foreground">{sb.sizeRange}</span>
+                        <span className="text-[10px] text-muted-foreground">Rs {sb.pricePerPair}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        <span className="font-medium text-foreground">{sb.quantity ?? 0}</span> bdl × {sb.pairsPerBundle}p = <span className="font-medium text-foreground">{(sb.quantity ?? 0) * sb.pairsPerBundle}</span> pairs
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Total */}
+              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                <span className="text-xs text-muted-foreground">Total Stock</span>
+                <span className="text-sm font-bold text-foreground">{totalPairs} pairs</span>
+              </div>
+            </motion.div>
+          );
+        })}
+        {filteredProducts.length === 0 && (
+          <div className="p-12 text-center">
+            <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-1">No products found</h3>
+            <p className="text-muted-foreground">Try adjusting your search or add new products.</p>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Products - Desktop Table View */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="hidden lg:block bg-card rounded-xl shadow-card overflow-hidden"
       >
         <div className="overflow-x-auto">
           <table className="data-table">
@@ -1247,10 +1344,7 @@ const Inventory = () => {
                   (sum: number, sb: any) => sum + (sb.quantity ?? 0) * (sb.pairsPerBundle ?? 6),
                   0
                 );
-                const stockStatus = getStockStatus(
-                  product.stockDozens,
-                  product.pairsPerDozen
-                );
+                const stockStatus = getStockStatus(product.stockDozens, product.pairsPerDozen);
                 return (
                   <motion.tr
                     key={product.id}
@@ -1265,35 +1359,19 @@ const Inventory = () => {
                           <Package className="w-5 h-5 text-muted-foreground" />
                         </div>
                         <div>
-                          <span className="font-medium text-foreground block">
-                            {product.name}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {product.category}
-                          </span>
+                          <span className="font-medium text-foreground block">{product.name}</span>
+                          <span className="text-xs text-muted-foreground">{product.category}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="text-muted-foreground font-mono text-sm">
-                      {product.articleNumber}
-                    </td>
-                    <td>
-                      <span className="status-badge status-badge-default">
-                        {product.brandName}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="text-xs capitalize text-muted-foreground">
-                        {product.gender}
-                      </span>
-                    </td>
+                    <td className="text-muted-foreground font-mono text-sm">{product.articleNumber}</td>
+                    <td><span className="status-badge status-badge-default">{product.brandName}</span></td>
+                    <td><span className="text-xs capitalize text-muted-foreground">{product.gender}</span></td>
                     <td>
                       <div className="flex flex-col gap-1 text-xs">
                         {product.sizeBundles.map((sb: any) => (
                           <span key={sb.sizeRange} className="text-muted-foreground">
-                            <span className="font-medium text-foreground">
-                              {sb.sizeRange}:
-                            </span>{" "}
+                            <span className="font-medium text-foreground">{sb.sizeRange}:</span>{" "}
                             {sb.quantity ?? 0} bdl × {sb.pairsPerBundle}p = {(sb.quantity ?? 0) * sb.pairsPerBundle} pairs | Rs {sb.pricePerPair}/pair
                           </span>
                         ))}
@@ -1302,36 +1380,22 @@ const Inventory = () => {
                     <td>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{totalPairs}</span>
-                        <span className={cn("status-badge", stockStatus.class)}>
-                          {stockStatus.label}
-                        </span>
+                        <span className={cn("status-badge", stockStatus.class)}>{stockStatus.label}</span>
                       </div>
                     </td>
                     <td>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
+                          <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            className="gap-2"
-                            onClick={() => handleEditProduct(product)}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                            Edit
+                          <DropdownMenuItem className="gap-2" onClick={() => handleEditProduct(product)}>
+                            <Edit2 className="w-4 h-4" /> Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="gap-2 text-destructive"
-                            onClick={() => setDeleteProductId(product.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete
+                          <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteProductId(product.id)}>
+                            <Trash2 className="w-4 h-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1345,12 +1409,8 @@ const Inventory = () => {
         {filteredProducts.length === 0 && (
           <div className="p-12 text-center">
             <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-1">
-              No products found
-            </h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search or add new products.
-            </p>
+            <h3 className="text-lg font-medium text-foreground mb-1">No products found</h3>
+            <p className="text-muted-foreground">Try adjusting your search or add new products.</p>
           </div>
         )}
       </motion.div>
