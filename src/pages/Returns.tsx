@@ -242,11 +242,27 @@ export default function Returns() {
 
       if (itemsError) throw itemsError;
 
-      // If restock, update product stock
+      // If restock, update product_size_bundles quantity
       if (restock) {
         for (const item of returnItems) {
           if (item.productId) {
-            // Get current product
+            // Update the specific size bundle quantity
+            const { data: bundle } = await supabase
+              .from("product_size_bundles")
+              .select("id, quantity, pairs_per_bundle")
+              .eq("product_id", item.productId)
+              .eq("size_range", item.sizeRange)
+              .single();
+
+            if (bundle) {
+              const bundlesReturned = Math.ceil(item.pairsReturned / bundle.pairs_per_bundle);
+              await supabase
+                .from("product_size_bundles")
+                .update({ quantity: bundle.quantity + bundlesReturned })
+                .eq("id", bundle.id);
+            }
+
+            // Also update product stock_dozens for backward compat
             const { data: product } = await supabase
               .from("products")
               .select("stock_dozens, pairs_per_dozen")

@@ -408,6 +408,7 @@ export type Database = {
           pairs_per_bundle: number
           price_per_pair: number
           product_id: string
+          quantity: number
           size_range: string
         }
         Insert: {
@@ -416,6 +417,7 @@ export type Database = {
           pairs_per_bundle?: number
           price_per_pair: number
           product_id: string
+          quantity?: number
           size_range: string
         }
         Update: {
@@ -424,6 +426,7 @@ export type Database = {
           pairs_per_bundle?: number
           price_per_pair?: number
           product_id?: string
+          quantity?: number
           size_range?: string
         }
         Relationships: [
