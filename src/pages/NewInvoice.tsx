@@ -137,6 +137,10 @@ const NewInvoice = () => {
   // Multi-size selection with individual bundle counts
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [sizeSelections, setSizeSelections] = useState<SizeBundleSelection[]>([]);
+
+  // Credit notes
+  const [creditNotes, setCreditNotes] = useState<{ id: string; total_amount: number; return_number: string }[]>([]);
+  const totalCreditAvailable = creditNotes.reduce((sum, cn) => sum + cn.total_amount, 0);
   // Fetch data from Supabase
   useEffect(() => {
     const fetchData = async () => {
@@ -271,7 +275,28 @@ const NewInvoice = () => {
     fetchExistingInvoice();
   }, [invoiceId, clients, toast, navigate]);
 
-  // Initialize size selections when product is selected
+  // Fetch credit notes for selected client
+  useEffect(() => {
+    const fetchCreditNotes = async () => {
+      if (!selectedClient) {
+        setCreditNotes([]);
+        return;
+      }
+      try {
+        const { data } = await supabase
+          .from("returns")
+          .select("id, total_amount, return_number")
+          .eq("client_id", selectedClient.id)
+          .eq("adjustment_type", "credit_note");
+        setCreditNotes(data || []);
+      } catch {
+        setCreditNotes([]);
+      }
+    };
+    fetchCreditNotes();
+  }, [selectedClient]);
+
+
   const handleProductSelect = useCallback((product: Product) => {
     if (selectedProduct?.id === product.id) {
       setSelectedProduct(null);
@@ -604,15 +629,60 @@ const NewInvoice = () => {
         }
       }
 
-      // Update client balance (only for finalized invoices, not drafts, and only if not updating)
+      // Apply credit notes and update client balance (only for finalized invoices, not drafts, and only if not updating)
       if (finalStatus !== "draft" && !isEditMode) {
-        const newBalance = selectedClient.current_balance + calculations.balance;
+        let creditApplied = 0;
+        let remainingBalance = calculations.balance;
+
+        // Apply available credit notes
+        if (creditNotes.length > 0 && remainingBalance > 0) {
+          for (const cn of creditNotes) {
+            if (remainingBalance <= 0) break;
+            const applyAmount = Math.min(cn.total_amount, remainingBalance);
+            creditApplied += applyAmount;
+            remainingBalance -= applyAmount;
+
+            // Update the return record: reduce or zero out the credit note
+            const newCreditAmount = cn.total_amount - applyAmount;
+            if (newCreditAmount <= 0) {
+              // Change adjustment_type to mark as used
+              await supabase
+                .from("returns")
+                .update({ adjustment_type: "credit_applied", total_amount: 0 })
+                .eq("id", cn.id);
+            } else {
+              await supabase
+                .from("returns")
+                .update({ total_amount: newCreditAmount })
+                .eq("id", cn.id);
+            }
+          }
+
+          // Update the invoice with the adjusted balance
+          await supabase
+            .from("invoices")
+            .update({
+              amount_received: calculations.received + creditApplied,
+              balance_due: remainingBalance,
+              status: remainingBalance <= 0 ? "paid" : (calculations.received + creditApplied > 0 ? "partial" : "pending"),
+            })
+            .eq("id", savedInvoiceId);
+        }
+
+        const newBalance = selectedClient.current_balance + remainingBalance;
         await supabase
           .from("clients")
           .update({
             current_balance: newBalance,
           })
           .eq("id", selectedClient.id);
+
+        if (creditApplied > 0) {
+          toast({
+            title: "Credit Applied",
+            description: `Rs ${creditApplied.toLocaleString()} credit note applied to this invoice`,
+          });
+        }
       }
 
       // Log audit event
@@ -1264,8 +1334,33 @@ const NewInvoice = () => {
                   </div>
                 </div>
               )}
+
+              {/* Credit Notes Info */}
+              {creditNotes.length > 0 && (
+                <div className="p-3 rounded-lg bg-accent/50 border border-accent">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm text-muted-foreground">Available Credit Notes</span>
+                    <span className="font-semibold text-primary">
+                      Rs {totalCreditAvailable.toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Will be auto-applied on save
+                  </p>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Save Bill Button - Desktop */}
+          <Button
+            className="w-full h-12 text-sm font-semibold gap-2"
+            onClick={() => setShowReviewDialog(true)}
+            disabled={saving || items.length === 0 || !selectedClient}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
+            Save Bill
+          </Button>
         </div>
 
         {/* Mobile Payment & Summary section - shown only on mobile */}
