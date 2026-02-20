@@ -67,6 +67,14 @@ interface SizeBundleInput {
   isCustom: boolean;
 }
 
+interface RestockBundle {
+  id: string;
+  sizeRange: string;
+  currentQty: number;
+  addQty: string;
+  pairsPerBundle: number;
+}
+
 type GenderCategory = "men" | "women" | "children" | "unisex";
 
 const GENDER_OPTIONS: { value: GenderCategory; label: string }[] = [
@@ -106,6 +114,12 @@ const Inventory = () => {
   const [showAddBrandConfirm, setShowAddBrandConfirm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<(Product & { gender: GenderCategory }) | null>(null);
   const [isEditProductDialogOpen, setIsEditProductDialogOpen] = useState(false);
+
+  // Restock dialog
+  const [restockProduct, setRestockProduct] = useState<(Product & { gender: GenderCategory }) | null>(null);
+  const [isRestockDialogOpen, setIsRestockDialogOpen] = useState(false);
+  const [restockBundles, setRestockBundles] = useState<RestockBundle[]>([]);
+  const [restockSaving, setRestockSaving] = useState(false);
 
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -160,12 +174,15 @@ const Inventory = () => {
         gender: p.gender as GenderCategory,
         stockDozens: p.stock_dozens,
         pairsPerDozen: p.pairs_per_dozen,
-        sizeBundles: (p.product_size_bundles || []).map((sb: any) => ({
-          sizeRange: sb.size_range,
-          pricePerPair: sb.price_per_pair,
-          pairsPerBundle: sb.pairs_per_bundle,
-          quantity: sb.quantity ?? 0,
-        })),
+        sizeBundles: (p.product_size_bundles || [])
+          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          .map((sb: any) => ({
+            id: sb.id,
+            sizeRange: sb.size_range,
+            pricePerPair: sb.price_per_pair,
+            pairsPerBundle: sb.pairs_per_bundle,
+            quantity: sb.quantity ?? 0,
+          })),
         defaultPairsPerBundle: 6,
         supplier: p.supplier || "",
       }));
@@ -482,6 +499,86 @@ const Inventory = () => {
       return { label: "Critical", class: "status-badge-danger" };
     if (totalPairs <= 60) return { label: "Low", class: "status-badge-warning" };
     return { label: "In Stock", class: "status-badge-success" };
+  };
+
+  // Restock handlers
+  const handleOpenRestock = (product: Product & { gender: GenderCategory }) => {
+    setRestockProduct(product);
+    setRestockBundles(
+      product.sizeBundles.map((sb: any) => ({
+        id: sb.id,
+        sizeRange: sb.sizeRange,
+        currentQty: sb.quantity ?? 0,
+        addQty: "",
+        pairsPerBundle: sb.pairsPerBundle,
+      }))
+    );
+    setIsRestockDialogOpen(true);
+  };
+
+  const handleSaveRestock = async () => {
+    if (!restockProduct) return;
+    setRestockSaving(true);
+    try {
+      for (const bundle of restockBundles) {
+        const addQty = parseInt(bundle.addQty) || 0;
+        if (addQty > 0) {
+          const newQty = bundle.currentQty + addQty;
+          await supabase
+            .from("product_size_bundles")
+            .update({ quantity: newQty })
+            .eq("id", bundle.id);
+        }
+      }
+
+      // Update product stock_dozens for backward compat
+      const totalNewPairs = restockBundles.reduce((sum, b) => {
+        const addQty = parseInt(b.addQty) || 0;
+        return sum + addQty * b.pairsPerBundle;
+      }, 0);
+
+      if (totalNewPairs > 0) {
+        const { data: product } = await supabase
+          .from("products")
+          .select("stock_dozens, pairs_per_dozen")
+          .eq("id", restockProduct.id)
+          .single();
+
+        if (product) {
+          const currentTotalPairs = product.stock_dozens * product.pairs_per_dozen;
+          const newDozens = (currentTotalPairs + totalNewPairs) / product.pairs_per_dozen;
+          await supabase
+            .from("products")
+            .update({ stock_dozens: newDozens })
+            .eq("id", restockProduct.id);
+        }
+      }
+
+      await log({
+        action: "update",
+        entityType: "product",
+        entityId: restockProduct.id,
+        details: {
+          action: "restock",
+          name: restockProduct.name,
+          bundles_added: restockBundles.filter(b => parseInt(b.addQty) > 0).length,
+        },
+      });
+
+      toast({ title: "Success", description: "Stock updated successfully" });
+      setIsRestockDialogOpen(false);
+      setRestockProduct(null);
+      fetchData();
+    } catch (error: any) {
+      console.error("Error restocking:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update stock",
+        variant: "destructive",
+      });
+    } finally {
+      setRestockSaving(false);
+    }
   };
 
   const updateSizeBundlePrice = (index: number, price: string) => {
@@ -1269,6 +1366,9 @@ const Inventory = () => {
                       <DropdownMenuItem className="gap-2" onClick={() => handleEditProduct(product)}>
                         <Edit2 className="w-4 h-4" /> Edit
                       </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2" onClick={() => handleOpenRestock(product)}>
+                        <Plus className="w-4 h-4" /> Restock
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteProductId(product.id)}>
                         <Trash2 className="w-4 h-4" /> Delete
                       </DropdownMenuItem>
@@ -1393,6 +1493,9 @@ const Inventory = () => {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem className="gap-2" onClick={() => handleEditProduct(product)}>
                             <Edit2 className="w-4 h-4" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => handleOpenRestock(product)}>
+                            <Plus className="w-4 h-4" /> Restock
                           </DropdownMenuItem>
                           <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteProductId(product.id)}>
                             <Trash2 className="w-4 h-4" /> Delete
@@ -1669,6 +1772,87 @@ const Inventory = () => {
             </Button>
             <Button onClick={handleSaveEditProduct}>
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restock Dialog */}
+      <Dialog open={isRestockDialogOpen} onOpenChange={(open) => {
+        setIsRestockDialogOpen(open);
+        if (!open) setRestockProduct(null);
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Restock: {restockProduct?.name}</DialogTitle>
+            <DialogDescription>
+              Enter the number of NEW bundles to add to existing stock for each size range.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {restockBundles.map((bundle, idx) => (
+              <div key={bundle.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{bundle.sizeRange}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Current: {bundle.currentQty} bdl ({bundle.currentQty * bundle.pairsPerBundle} pairs)
+                  </p>
+                </div>
+                <div className="w-24 space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Add Bundles</Label>
+                  <Input
+                    type="number"
+                    value={bundle.addQty}
+                    onChange={(e) => {
+                      const updated = [...restockBundles];
+                      updated[idx] = { ...updated[idx], addQty: e.target.value };
+                      setRestockBundles(updated);
+                    }}
+                    placeholder="0"
+                    min="0"
+                    className="h-9"
+                  />
+                </div>
+                <div className="w-20 text-right">
+                  <p className="text-xs text-muted-foreground">New Total</p>
+                  <p className="text-sm font-bold text-primary">
+                    {bundle.currentQty + (parseInt(bundle.addQty) || 0)} bdl
+                  </p>
+                </div>
+              </div>
+            ))}
+            {restockBundles.length === 0 && (
+              <p className="text-center text-muted-foreground py-4 text-sm">
+                No size bundles configured for this product. Edit the product first to add size bundles.
+              </p>
+            )}
+            {/* Summary */}
+            {restockBundles.some(b => parseInt(b.addQty) > 0) && (
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <p className="text-sm font-medium">
+                  Adding: <span className="text-primary">
+                    {restockBundles.reduce((sum, b) => sum + (parseInt(b.addQty) || 0), 0)} bundles
+                  </span>
+                  <span className="text-muted-foreground ml-1">
+                    ({restockBundles.reduce((sum, b) => sum + (parseInt(b.addQty) || 0) * b.pairsPerBundle, 0)} pairs)
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRestockDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveRestock} 
+              disabled={restockSaving || !restockBundles.some(b => parseInt(b.addQty) > 0)}
+            >
+              {restockSaving ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+              ) : (
+                "Add Stock"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
