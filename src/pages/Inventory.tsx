@@ -164,6 +164,7 @@ const Inventory = () => {
           sizeRange: sb.size_range,
           pricePerPair: sb.price_per_pair,
           pairsPerBundle: sb.pairs_per_bundle,
+          quantity: sb.quantity ?? 0,
         })),
         defaultPairsPerBundle: 6,
         supplier: p.supplier || "",
@@ -264,6 +265,7 @@ const Inventory = () => {
             size_range: sb.sizeRange,
             price_per_pair: parseFloat(sb.pricePerPair) || 0,
             pairs_per_bundle: parseInt(sb.pairsPerBundle) || 6,
+            quantity: parseInt(sb.quantity) || 0,
           }));
 
         if (sizeBundleInserts.length > 0) {
@@ -383,11 +385,11 @@ const Inventory = () => {
       pairsPerDozen: product.pairsPerDozen.toString(),
       defaultPairsPerBundle: "6",
       supplier: product.supplier || "",
-      sizeBundles: product.sizeBundles.map((sb) => ({
+      sizeBundles: product.sizeBundles.map((sb: any) => ({
         sizeRange: sb.sizeRange,
         pricePerPair: sb.pricePerPair.toString(),
         pairsPerBundle: sb.pairsPerBundle.toString(),
-        quantity: "",
+        quantity: (sb.quantity ?? 0).toString(),
         isCustom: false,
       })),
     });
@@ -426,6 +428,7 @@ const Inventory = () => {
           size_range: sb.sizeRange,
           price_per_pair: parseFloat(sb.pricePerPair) || 0,
           pairs_per_bundle: parseInt(sb.pairsPerBundle) || 6,
+          quantity: parseInt(sb.quantity) || 0,
         }));
 
       if (sizeBundleInserts.length > 0) {
@@ -1233,15 +1236,17 @@ const Inventory = () => {
                 <th>Article #</th>
                 <th>Brand</th>
                 <th>Type</th>
-                <th>Size Pricing (Rs/pair)</th>
-                <th>Stock (Dozens)</th>
+                <th>Size Bundles (Stock)</th>
                 <th>Total Pairs</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.map((product, index) => {
-                const totalPairs = product.stockDozens * product.pairsPerDozen;
+                const totalPairs = product.sizeBundles.reduce(
+                  (sum: number, sb: any) => sum + (sb.quantity ?? 0) * (sb.pairsPerBundle ?? 6),
+                  0
+                );
                 const stockStatus = getStockStatus(
                   product.stockDozens,
                   product.pairsPerDozen
@@ -1284,22 +1289,14 @@ const Inventory = () => {
                     </td>
                     <td>
                       <div className="flex flex-col gap-1 text-xs">
-                        {product.sizeBundles.map((sb) => (
+                        {product.sizeBundles.map((sb: any) => (
                           <span key={sb.sizeRange} className="text-muted-foreground">
                             <span className="font-medium text-foreground">
                               {sb.sizeRange}:
                             </span>{" "}
-                            Rs {sb.pricePerPair} ({sb.pairsPerBundle}p)
+                            {sb.quantity ?? 0} bdl × {sb.pairsPerBundle}p = {(sb.quantity ?? 0) * sb.pairsPerBundle} pairs | Rs {sb.pricePerPair}/pair
                           </span>
                         ))}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{product.stockDozens}</span>
-                        <span className="text-xs text-muted-foreground">
-                          (×{product.pairsPerDozen})
-                        </span>
                       </div>
                     </td>
                     <td>
@@ -1546,7 +1543,7 @@ const Inventory = () => {
 
             {/* Size Bundles */}
             <div className="space-y-3">
-              <Label>Size Bundles & Pricing</Label>
+              <Label>Size Bundles, Pricing & Quantity</Label>
               {newProduct.sizeBundles.map((sb, idx) => (
                 <div key={idx} className="flex gap-2 items-end">
                   <div className="flex-1">
@@ -1567,12 +1564,21 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="w-20">
-                    <Label className="text-xs">Pairs/Bundle</Label>
+                    <Label className="text-xs">Pairs/Bdl</Label>
                     <Input
                       type="number"
                       value={sb.pairsPerBundle}
                       onChange={(e) => updateSizeBundlePairs(idx, e.target.value)}
                       placeholder="6"
+                    />
+                  </div>
+                  <div className="w-20">
+                    <Label className="text-xs">Qty (Bdl)</Label>
+                    <Input
+                      type="number"
+                      value={sb.quantity}
+                      onChange={(e) => updateSizeBundleQuantity(idx, e.target.value)}
+                      placeholder="0"
                     />
                   </div>
                   <Button

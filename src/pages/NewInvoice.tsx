@@ -158,7 +158,7 @@ const NewInvoice = () => {
           .select(`
             id, name, article_number, category, stock_dozens, pairs_per_dozen,
             brands (name),
-            product_size_bundles (size_range, price_per_pair, pairs_per_bundle)
+            product_size_bundles (id, size_range, price_per_pair, pairs_per_bundle, quantity)
           `)
           .order("article_number");
 
@@ -561,10 +561,29 @@ const NewInvoice = () => {
 
       if (itemsError) throw itemsError;
 
-      // Deduct stock from products (only for finalized invoices, not drafts, and only for new invoices)
+      // Deduct stock from product_size_bundles (only for finalized invoices, not drafts, and only for new invoices)
       if (finalStatus !== "draft" && !isEditMode) {
         for (const item of items) {
           if (item.productId) {
+            // Find the matching size bundle and deduct quantity
+            const { data: bundle } = await supabase
+              .from("product_size_bundles")
+              .select("id, quantity, pairs_per_bundle")
+              .eq("product_id", item.productId)
+              .eq("size_range", item.sizeRange)
+              .single();
+
+            if (bundle) {
+              const bundlesSold = Math.ceil(item.totalPairs / bundle.pairs_per_bundle);
+              const newQty = Math.max(0, bundle.quantity - bundlesSold);
+
+              await supabase
+                .from("product_size_bundles")
+                .update({ quantity: newQty })
+                .eq("id", bundle.id);
+            }
+
+            // Also update product stock_dozens for backward compat
             const { data: product } = await supabase
               .from("products")
               .select("stock_dozens, pairs_per_dozen")
