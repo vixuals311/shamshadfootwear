@@ -176,7 +176,9 @@ const NewInvoice = () => {
           category: p.category,
           stock_dozens: p.stock_dozens,
           pairs_per_dozen: p.pairs_per_dozen,
-          size_bundles: p.product_size_bundles || [],
+          size_bundles: (p.product_size_bundles || [])
+            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            .map((sb: any) => ({ size_range: sb.size_range, price_per_pair: sb.price_per_pair, pairs_per_bundle: sb.pairs_per_bundle })),
         }));
 
         setProducts(formattedProducts);
@@ -1412,6 +1414,18 @@ const NewInvoice = () => {
                   className="w-16 h-8 text-center text-sm"
                 />
               </div>
+              {/* Credit Notes - Mobile */}
+              {creditNotes.length > 0 && (
+                <div className="p-2.5 rounded-lg bg-accent/50 border border-accent">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-muted-foreground">Credit Notes</span>
+                    <span className="text-xs font-semibold text-primary">
+                      Rs {totalCreditAvailable.toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Auto-applied on save</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1541,11 +1555,23 @@ const NewInvoice = () => {
                   <span>Rs {calculations.received.toLocaleString()}</span>
                 </div>
               )}
+              {/* Credit Note Info in Review */}
+              {creditNotes.length > 0 && (
+                <div className="flex justify-between text-sm text-primary">
+                  <span>Credit Note Applied</span>
+                  <span>- Rs {Math.min(totalCreditAvailable, Math.max(0, calculations.balance)).toLocaleString()}</span>
+                </div>
+              )}
               {calculations.balance > 0 && (
                 <div className="flex justify-between text-sm font-medium text-destructive">
                   <span>Balance Due</span>
-                  <span>Rs {calculations.balance.toLocaleString()}</span>
+                  <span>Rs {Math.max(0, calculations.balance - (creditNotes.length > 0 ? Math.min(totalCreditAvailable, calculations.balance) : 0)).toLocaleString()}</span>
                 </div>
+              )}
+              {creditNotes.length > 0 && calculations.balance > 0 && (
+                <p className="text-xs text-muted-foreground italic">
+                  Credit memo of Rs {totalCreditAvailable.toLocaleString()} will be auto-applied
+                </p>
               )}
             </div>
           </div>
