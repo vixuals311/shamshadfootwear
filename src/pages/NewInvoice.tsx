@@ -88,6 +88,7 @@ interface SizeBundlePricing {
   size_range: string;
   price_per_pair: number;
   pairs_per_bundle: number;
+  available_quantity: number;
 }
 
 interface PaymentAccount {
@@ -100,6 +101,7 @@ interface SizeBundleSelection {
   bundles: number;
   pairsPerBundle: number;
   pricePerPair: number;
+  availableQuantity: number;
 }
 
 const NewInvoice = () => {
@@ -178,7 +180,7 @@ const NewInvoice = () => {
           pairs_per_dozen: p.pairs_per_dozen,
           size_bundles: (p.product_size_bundles || [])
             .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-            .map((sb: any) => ({ size_range: sb.size_range, price_per_pair: sb.price_per_pair, pairs_per_bundle: sb.pairs_per_bundle })),
+            .map((sb: any) => ({ size_range: sb.size_range, price_per_pair: sb.price_per_pair, pairs_per_bundle: sb.pairs_per_bundle, available_quantity: sb.quantity || 0 })),
         }));
 
         setProducts(formattedProducts);
@@ -311,6 +313,7 @@ const NewInvoice = () => {
           bundles: 0,
           pairsPerBundle: sb.pairs_per_bundle,
           pricePerPair: sb.price_per_pair,
+          availableQuantity: sb.available_quantity,
         }))
       );
     }
@@ -1019,7 +1022,9 @@ const NewInvoice = () => {
                                 key={selection.sizeRange}
                                 className={cn(
                                   "flex flex-col gap-1 p-2 rounded-lg border bg-card transition-colors",
-                                  selection.bundles > 0 && "border-primary/50 bg-primary/5"
+                                  selection.bundles > 0 && selection.bundles <= selection.availableQuantity && "border-primary/50 bg-primary/5",
+                                  selection.bundles > 0 && selection.bundles > selection.availableQuantity && "border-warning/50 bg-warning/5",
+                                  selection.availableQuantity === 0 && selection.bundles === 0 && "opacity-60"
                                 )}
                               >
                                 <div className="flex items-center justify-between">
@@ -1028,6 +1033,16 @@ const NewInvoice = () => {
                                   </span>
                                   <span className="text-[10px] text-muted-foreground">
                                     Rs {selection.pricePerPair}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className={cn(
+                                    "text-[10px]",
+                                    selection.availableQuantity === 0 ? "text-destructive font-medium" :
+                                    selection.bundles > selection.availableQuantity ? "text-warning font-medium" :
+                                    "text-muted-foreground"
+                                  )}>
+                                    {selection.availableQuantity === 0 ? "Out of stock" : `${selection.availableQuantity} avail`}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1 mt-1">
@@ -1076,16 +1091,23 @@ const NewInvoice = () => {
                             ))}
                           </div>
                           {totalSelectedBundles > 0 && (
-                            <Button
-                              className="w-full mt-2 h-11 sm:h-9 text-sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addSelectedSizesToInvoice();
-                              }}
-                            >
-                              <Check className="w-4 h-4 mr-2" />
-                              Add {totalSelectedBundles} bundle{totalSelectedBundles > 1 ? 's' : ''}
-                            </Button>
+                            <>
+                              {sizeSelections.some(s => s.bundles > s.availableQuantity) && (
+                                <p className="text-xs text-warning mt-2">
+                                  ⚠ Some sizes exceed available stock. Bill will still be saved.
+                                </p>
+                              )}
+                              <Button
+                                className="w-full mt-2 h-11 sm:h-9 text-sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addSelectedSizesToInvoice();
+                                }}
+                              >
+                                <Check className="w-4 h-4 mr-2" />
+                                Add {totalSelectedBundles} bundle{totalSelectedBundles > 1 ? 's' : ''}
+                              </Button>
+                            </>
                           )}
                         </div>
                       )}

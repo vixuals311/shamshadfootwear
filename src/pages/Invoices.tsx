@@ -59,6 +59,15 @@ interface Invoice {
   items: number;
 }
 
+interface ReturnInfo {
+  id: string;
+  return_number: string;
+  total_amount: number;
+  adjustment_type: string;
+  created_at: string;
+  items: { product_name: string; size_range: string; pairs_returned: number; total: number }[];
+}
+
 interface InvoiceDetails {
   id: string;
   invoice_number: string;
@@ -72,8 +81,10 @@ interface InvoiceDetails {
   amount_received: number;
   balance_due: number;
   total_bundles: number;
+  credit_applied?: number;
   status: string;
   items: any[];
+  returns?: ReturnInfo[];
 }
 
 const statusStyles = {
@@ -216,6 +227,7 @@ const Invoices = () => {
           amount_received,
           balance_due,
           total_bundles,
+          credit_applied,
           status,
           clients (name, city),
           invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total)
@@ -224,6 +236,16 @@ const Invoices = () => {
         .single();
 
       if (error) throw error;
+
+      // Fetch returns for this invoice
+      const { data: returnsData } = await supabase
+        .from("returns")
+        .select(`
+          id, return_number, total_amount, adjustment_type, created_at,
+          return_items (product_name, size_range, pairs_returned, total)
+        `)
+        .eq("invoice_id", invoiceId)
+        .order("created_at", { ascending: false });
 
       setSelectedInvoice({
         id: data.id,
@@ -238,8 +260,17 @@ const Invoices = () => {
         amount_received: data.amount_received,
         balance_due: data.balance_due,
         total_bundles: data.total_bundles || 0,
+        credit_applied: data.credit_applied || 0,
         status: data.status,
         items: data.invoice_items || [],
+        returns: (returnsData || []).map((r: any) => ({
+          id: r.id,
+          return_number: r.return_number,
+          total_amount: r.total_amount,
+          adjustment_type: r.adjustment_type,
+          created_at: r.created_at,
+          items: r.return_items || [],
+        })),
       });
       
       setViewDialogOpen(true);
