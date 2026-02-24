@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Printer, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 
 interface InvoiceItem {
@@ -13,6 +14,15 @@ interface InvoiceItem {
   price_per_pair: number;
   discount_per_pair: number;
   total: number;
+}
+
+interface ReturnInfo {
+  id: string;
+  return_number: string;
+  total_amount: number;
+  adjustment_type: string;
+  created_at: string;
+  items: { product_name: string; size_range: string; pairs_returned: number; total: number }[];
 }
 
 interface InvoiceViewDialogProps {
@@ -34,6 +44,7 @@ interface InvoiceViewDialogProps {
     credit_applied?: number;
     status: string;
     items: InvoiceItem[];
+    returns?: ReturnInfo[];
   } | null;
   onPrint: () => void;
 }
@@ -41,12 +52,24 @@ interface InvoiceViewDialogProps {
 export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: InvoiceViewDialogProps) {
   if (!invoice) return null;
 
+  const hasReturns = invoice.returns && invoice.returns.length > 0;
+  const totalReturned = invoice.returns?.reduce((sum, r) => sum + r.total_amount, 0) || 0;
+  const isFullyReturned = totalReturned >= invoice.total;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Invoice {invoice.invoice_number}</span>
+            <div className="flex items-center gap-2">
+              <span>Invoice {invoice.invoice_number}</span>
+              {hasReturns && (
+                <Badge variant={isFullyReturned ? "destructive" : "secondary"} className="text-xs">
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  {isFullyReturned ? "Fully Returned" : "Partial Return"}
+                </Badge>
+              )}
+            </div>
             <Button variant="outline" size="sm" onClick={onPrint} className="gap-2">
               <Printer className="w-4 h-4" />
               Print
@@ -144,7 +167,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
               </div>
             )}
             {(invoice.credit_applied ?? 0) > 0 && (
-              <div className="flex justify-between text-blue-600">
+              <div className="flex justify-between text-primary">
                 <span>Credit Applied:</span>
                 <span>Rs {(invoice.credit_applied ?? 0).toLocaleString()}</span>
               </div>
@@ -156,6 +179,42 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
               </div>
             )}
           </div>
+
+          {/* Returns Section */}
+          {hasReturns && (
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-destructive" />
+                Returns ({invoice.returns!.length})
+              </h4>
+              {invoice.returns!.map((ret) => (
+                <div key={ret.id} className="bg-muted/30 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{ret.return_number}</span>
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {ret.adjustment_type.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-semibold text-destructive">Rs {ret.total_amount.toLocaleString()}</span>
+                      <p className="text-xs text-muted-foreground">{format(new Date(ret.created_at), "dd MMM yyyy")}</p>
+                    </div>
+                  </div>
+                  {ret.items.length > 0 && (
+                    <div className="space-y-1">
+                      {ret.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-xs text-muted-foreground">
+                          <span>{item.product_name} ({item.size_range}) × {item.pairs_returned} pairs</span>
+                          <span>Rs {item.total.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
