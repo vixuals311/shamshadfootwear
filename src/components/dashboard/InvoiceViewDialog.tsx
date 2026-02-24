@@ -31,6 +31,7 @@ interface InvoiceViewDialogProps {
     amount_received: number;
     balance_due: number;
     total_bundles: number;
+    credit_applied?: number;
     status: string;
     items: InvoiceItem[];
   } | null;
@@ -140,6 +141,12 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
               <div className="flex justify-between text-success">
                 <span>Received:</span>
                 <span>Rs {invoice.amount_received.toLocaleString()}</span>
+              </div>
+            )}
+            {(invoice.credit_applied ?? 0) > 0 && (
+              <div className="flex justify-between text-blue-600">
+                <span>Credit Applied:</span>
+                <span>Rs {(invoice.credit_applied ?? 0).toLocaleString()}</span>
               </div>
             )}
             {invoice.balance_due > 0 && (
