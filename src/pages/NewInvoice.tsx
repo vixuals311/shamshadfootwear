@@ -660,10 +660,11 @@ const NewInvoice = () => {
             }
           }
 
-          // Update the invoice with the adjusted balance
+          // Update the invoice with the adjusted balance and credit applied
           await supabase
             .from("invoices")
             .update({
+              credit_applied: creditApplied,
               amount_received: calculations.received + creditApplied,
               balance_due: remainingBalance,
               status: remainingBalance <= 0 ? "paid" : (calculations.received + creditApplied > 0 ? "partial" : "pending"),
