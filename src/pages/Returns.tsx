@@ -7,7 +7,9 @@ import {
   Loader2,
   Package,
   Plus,
+  Download,
 } from "lucide-react";
+import { exportToCSV } from "@/utils/exportUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -354,10 +356,30 @@ export default function Returns() {
             Record item returns against invoices
           </p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Return
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+            exportToCSV(
+              filteredReturns,
+              [
+                { key: "return_number", header: "Return #" },
+                { key: "invoices", header: "Invoice", format: (v: any) => v?.invoice_number || "" },
+                { key: "invoices", header: "Client", format: (v: any) => v?.clients?.name || "" },
+                { key: "total_amount", header: "Amount" },
+                { key: "adjustment_type", header: "Adjustment Type" },
+                { key: "restock", header: "Restocked", format: (v: any) => v ? "Yes" : "No" },
+                { key: "created_at", header: "Date", format: (v: any) => new Date(v).toLocaleDateString() },
+              ],
+              "returns"
+            );
+          }}>
+            <Download className="w-4 h-4" />
+            Export
+          </Button>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Return
+          </Button>
+        </div>
       </div>
 
       {/* Search */}

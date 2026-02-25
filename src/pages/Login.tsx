@@ -20,10 +20,10 @@ const Login = () => {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [showSignUpOption, setShowSignUpOption] = useState(false);
 
+  // Check if any users exist - if not, show signup option
   useState(() => {
-    // Check if any users exist - if not, show signup option
     supabase.from("user_roles").select("id", { count: "exact", head: true }).then(({ count }) => {
-      setShowSignUpOption(count === 0);
+      setShowSignUpOption(count === null || count === 0);
     });
   });
 
@@ -69,8 +69,9 @@ const Login = () => {
 
         toast({
           title: "Account created!",
-          description: "Please check your email to verify your account.",
+          description: "You are now signed in as admin.",
         });
+        navigate("/");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,

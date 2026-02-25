@@ -51,6 +51,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
+import { DataBackupRestore } from "@/components/admin/DataBackupRestore";
 
 interface PaymentAccount {
   id: string;
@@ -1412,6 +1413,16 @@ const Settings = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Backup & Restore - Admin Only */}
+      {isAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <DataBackupRestore />
+        </motion.div>
+      )}
     </div>
   );
 };
