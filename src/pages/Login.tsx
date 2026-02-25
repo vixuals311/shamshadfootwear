@@ -18,6 +18,14 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [showSignUpOption, setShowSignUpOption] = useState(false);
+
+  useState(() => {
+    // Check if any users exist - if not, show signup option
+    supabase.from("user_roles").select("id", { count: "exact", head: true }).then(({ count }) => {
+      setShowSignUpOption(count === 0);
+    });
+  });
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,7 +197,7 @@ const Login = () => {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-2">
             {isForgotPassword ? (
               <button
                 type="button"
@@ -199,12 +207,23 @@ const Login = () => {
                 Back to Sign In
               </button>
             ) : (
-              <a
-                href="/portal"
-                className="text-sm text-primary hover:underline"
-              >
-                Client Portal — Check your data with PIN
-              </a>
+              <>
+                {showSignUpOption && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    className="text-sm text-primary hover:underline block mx-auto"
+                  >
+                    {isSignUp ? "Already have an account? Sign In" : "First time? Create Admin Account"}
+                  </button>
+                )}
+                <a
+                  href="/portal"
+                  className="text-sm text-primary hover:underline block"
+                >
+                  Client Portal — Check your data with PIN
+                </a>
+              </>
             )}
           </div>
         </div>
