@@ -9,7 +9,9 @@ import {
   Calendar,
   Loader2,
   Plus,
+  Download,
 } from "lucide-react";
+import { exportToCSV } from "@/utils/exportUtils";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -180,36 +182,54 @@ const Payments = () => {
             Track payments and manage accounts
           </p>
         </div>
-        
-        {/* Date Filter */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className={cn("gap-2", selectedDate && "text-primary")}>
-              <Calendar className="w-4 h-4" />
-              {selectedDate ? format(selectedDate, "dd MMM yyyy") : "Filter by date"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <CalendarComponent
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              initialFocus
-            />
-            {selectedDate && (
-              <div className="p-2 border-t">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => setSelectedDate(undefined)}
-                >
-                  Clear
-                </Button>
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+            exportToCSV(
+              filteredPayments,
+              [
+                { key: "client", header: "Client" },
+                { key: "amount", header: "Amount" },
+                { key: "method", header: "Method" },
+                { key: "account", header: "Account", format: (v: any) => v || "N/A" },
+                { key: "date", header: "Date", format: (v: any) => new Date(v).toLocaleDateString() },
+                { key: "type", header: "Type" },
+              ],
+              "payments"
+            );
+          }}>
+            <Download className="w-4 h-4" />
+            Export
+          </Button>
+          {/* Date Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("gap-2", selectedDate && "text-primary")}>
+                <Calendar className="w-4 h-4" />
+                {selectedDate ? format(selectedDate, "dd MMM yyyy") : "Filter by date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <CalendarComponent
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                initialFocus
+              />
+              {selectedDate && (
+                <div className="p-2 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setSelectedDate(undefined)}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
       </motion.div>
 
       {/* Stats */}

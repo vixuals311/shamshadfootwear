@@ -16,7 +16,9 @@ import {
   Play,
   Check,
   CheckCircle2,
+  Download,
 } from "lucide-react";
+import { exportToCSV } from "@/utils/exportUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -737,6 +739,23 @@ const RecoveryPage = () => {
           <p className="text-muted-foreground">Manage client payments and recoveries</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+            exportToCSV(
+              recoveries,
+              [
+                { key: "clientName", header: "Client", format: (v: any) => v || "N/A" },
+                { key: "city", header: "City", format: (v: any) => v || "N/A" },
+                { key: "amount", header: "Amount" },
+                { key: "type", header: "Type" },
+                { key: "date", header: "Date", format: (v: any) => v instanceof Date ? v.toLocaleDateString() : new Date(v).toLocaleDateString() },
+                { key: "notes", header: "Notes", format: (v: any) => v || "" },
+              ],
+              "recoveries"
+            );
+          }}>
+            <Download className="w-4 h-4" />
+            Export
+          </Button>
           {drafts.length > 0 && (
             <Button
               variant="outline"
