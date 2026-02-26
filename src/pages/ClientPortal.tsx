@@ -10,6 +10,7 @@ import {
   Eye,
   Lock,
   Loader2,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -434,7 +435,75 @@ const ClientPortal = () => {
       <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Invoice Details</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Invoice Details</span>
+              {selectedInvoice && (
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+                  if (!selectedInvoice || !currentClient) return;
+                  const logoUrl = window.location.origin + '/favicon.png';
+                  const printContent = `
+                    <!DOCTYPE html>
+                    <html><head><title>Invoice ${selectedInvoice.invoice_number}</title>
+                    <style>
+                      body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; color: #3D3D3D; }
+                      .brand-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 20px; background: #F0E8D8; border-radius: 12px; }
+                      .brand-left { display: flex; align-items: center; gap: 14px; }
+                      .brand-left img { width: 56px; height: 56px; object-fit: contain; }
+                      .brand-left h2 { margin: 0; font-size: 18px; }
+                      .brand-left p { margin: 2px 0 0; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #888; }
+                      .brand-right { text-align: right; font-size: 13px; color: #666; }
+                      .client-info { margin-bottom: 20px; }
+                      .client-info .label { font-size: 11px; color: #888; }
+                      table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                      th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
+                      th { background: #F0E8D8; }
+                      .totals { text-align: right; margin-top: 20px; }
+                      .totals p { margin: 5px 0; }
+                      .total-final { font-size: 1.2em; font-weight: bold; border-top: 2px solid #3D3D3D; padding-top: 10px; margin-top: 10px; }
+                      .brand-footer { margin-top: 40px; padding: 16px; background: #F0E8D8; border-radius: 12px; text-align: center; }
+                      .brand-footer p { margin: 4px 0; font-size: 11px; color: #666; }
+                      .brand-footer .company { font-weight: bold; color: #3D3D3D; font-size: 12px; }
+                      @media print { body { padding: 0; } }
+                    </style></head><body>
+                    <div class="brand-header">
+                      <div class="brand-left">
+                        <img src="${logoUrl}" alt="Shamshad Footwear" />
+                        <div><h2>Shamshad Footwear</h2><p>Wholesale Supplier</p></div>
+                      </div>
+                      <div class="brand-right">
+                        <p><strong>${selectedInvoice.invoice_number}</strong></p>
+                        <p>${format(new Date(selectedInvoice.created_at), "dd MMM yyyy")}</p>
+                      </div>
+                    </div>
+                    <div class="client-info">
+                      <p class="label">Bill To:</p>
+                      <p><strong>${currentClient.name}</strong></p>
+                      <p>${currentClient.city || ""}</p>
+                    </div>
+                    <table><thead><tr><th>#</th><th>Product</th><th>Size</th><th>Pairs</th><th>Rate</th><th>Discount</th><th>Total</th></tr></thead>
+                    <tbody>${selectedInvoice.items.map((item: any, idx: number) => `
+                      <tr><td>${idx + 1}</td><td>${item.product_name}</td><td>${item.size_range}</td><td>${item.total_pairs}</td><td>Rs ${item.price_per_pair}</td><td>Rs ${item.discount_per_pair}</td><td>Rs ${item.total.toLocaleString()}</td></tr>
+                    `).join("")}</tbody></table>
+                    <div class="totals">
+                      <p>Subtotal: Rs ${selectedInvoice.subtotal.toLocaleString()}</p>
+                      ${selectedInvoice.total_discount > 0 ? `<p>Discount: - Rs ${selectedInvoice.total_discount.toLocaleString()}</p>` : ""}
+                      <p class="total-final">Total: Rs ${selectedInvoice.total.toLocaleString()}</p>
+                    </div>
+                    <div class="brand-footer">
+                      <p>Thank you for your business!</p>
+                      <p class="company">Shamshad Footwear — Wholesale Supplier</p>
+                      <p>Goods once sold will not be returned without prior agreement.</p>
+                    </div>
+                    <script>window.print();</script>
+                    </body></html>`;
+                  const w = window.open("", "_blank");
+                  if (w) { w.document.write(printContent); w.document.close(); }
+                }}>
+                  <Printer className="w-4 h-4" />
+                  Print
+                </Button>
+              )}
+            </DialogTitle>
           </DialogHeader>
           {selectedInvoice && (
             <div className="space-y-4">

@@ -335,36 +335,52 @@ const Invoices = () => {
 
   // Generate print content
   const generatePrintContent = (invoice: any) => {
+    const logoUrl = window.location.origin + '/favicon.png';
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <title>Invoice ${invoice.invoice_number}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-          .header h1 { margin: 0; color: #333; }
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; color: #3D3D3D; }
+          .brand-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 20px; background: #F0E8D8; border-radius: 12px; }
+          .brand-left { display: flex; align-items: center; gap: 14px; }
+          .brand-left img { width: 56px; height: 56px; object-fit: contain; }
+          .brand-left h2 { margin: 0; font-size: 18px; color: #3D3D3D; }
+          .brand-left p { margin: 2px 0 0; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #888; }
+          .brand-right { text-align: right; font-size: 13px; color: #666; }
+          .brand-right p { margin: 2px 0; }
           .client-info { margin-bottom: 20px; }
+          .client-info .label { font-size: 11px; color: #888; margin-bottom: 2px; }
           table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-          th { background: #f5f5f5; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
+          th { background: #F0E8D8; color: #3D3D3D; }
           .totals { text-align: right; margin-top: 20px; }
-          .totals p { margin: 5px 0; }
-          .total-final { font-size: 1.2em; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
+          .totals p { margin: 5px 0; font-size: 14px; }
+          .total-final { font-size: 1.2em; font-weight: bold; border-top: 2px solid #3D3D3D; padding-top: 10px; margin-top: 10px; }
+          .brand-footer { margin-top: 40px; padding: 16px; background: #F0E8D8; border-radius: 12px; text-align: center; }
+          .brand-footer p { margin: 4px 0; font-size: 11px; color: #666; }
+          .brand-footer .company { font-weight: bold; color: #3D3D3D; font-size: 12px; }
           @media print { body { padding: 0; } }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div>
-            <h1>INVOICE</h1>
+        <div class="brand-header">
+          <div class="brand-left">
+            <img src="${logoUrl}" alt="Shamshad Footwear" />
+            <div>
+              <h2>Shamshad Footwear</h2>
+              <p>Wholesale Supplier</p>
+            </div>
+          </div>
+          <div class="brand-right">
             <p><strong>${invoice.invoice_number}</strong></p>
-            <p>Date: ${format(new Date(invoice.created_at), "dd MMM yyyy")}</p>
+            <p>${format(new Date(invoice.created_at), "dd MMM yyyy")}</p>
           </div>
         </div>
         
         <div class="client-info">
-          <h3>Bill To:</h3>
+          <p class="label">Bill To:</p>
           <p><strong>${invoice.clients?.name || "N/A"}</strong></p>
           <p>${invoice.clients?.city || ""}</p>
         </div>
@@ -407,6 +423,12 @@ const Invoices = () => {
           <p class="total-final">Total: Rs ${invoice.total.toLocaleString()}</p>
           ${invoice.amount_received > 0 ? `<p>Received: Rs ${invoice.amount_received.toLocaleString()}</p>` : ""}
           ${invoice.balance_due > 0 ? `<p>Balance Due: Rs ${invoice.balance_due.toLocaleString()}</p>` : ""}
+        </div>
+
+        <div class="brand-footer">
+          <p>Thank you for your business!</p>
+          <p class="company">Shamshad Footwear — Wholesale Supplier</p>
+          <p>Goods once sold will not be returned without prior agreement. All disputes subject to local jurisdiction.</p>
         </div>
         
         <script>window.print();</script>
