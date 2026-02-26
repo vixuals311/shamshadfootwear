@@ -7,64 +7,64 @@
 
 @layer base {
   :root {
-    /* Core palette - Deep slate/indigo professional look */
-    --background: 220 20% 97%;
-    --foreground: 224 30% 12%;
+    /* Core palette - Warm beige/charcoal from Shamshad Footwear branding */
+    --background: 40 30% 95%;
+    --foreground: 30 10% 20%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 224 30% 12%;
+    --card: 40 25% 98%;
+    --card-foreground: 30 10% 20%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 30% 12%;
+    --popover: 40 25% 98%;
+    --popover-foreground: 30 10% 20%;
 
-    /* Primary - Rich indigo */
-    --primary: 234 89% 59%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary - Warm charcoal from logo */
+    --primary: 30 8% 28%;
+    --primary-foreground: 40 30% 95%;
 
-    /* Secondary - Soft slate */
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 224 30% 20%;
+    /* Secondary - Light warm beige */
+    --secondary: 40 20% 93%;
+    --secondary-foreground: 30 10% 25%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 40 15% 92%;
+    --muted-foreground: 30 5% 45%;
 
-    /* Accent - Warm amber for highlights */
-    --accent: 38 92% 50%;
+    /* Accent - Warm sand gold */
+    --accent: 35 40% 55%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Success - Emerald */
-    --success: 160 84% 39%;
+    /* Success - Warm olive green */
+    --success: 145 45% 38%;
     --success-foreground: 0 0% 100%;
 
-    /* Warning - Amber */
-    --warning: 38 92% 50%;
+    /* Warning - Warm amber */
+    --warning: 38 80% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 234 89% 59%;
+    --border: 35 15% 87%;
+    --input: 35 15% 87%;
+    --ring: 30 8% 28%;
 
     --radius: 0.625rem;
 
-    /* Sidebar - Deep indigo gradient */
-    --sidebar-background: 234 40% 14%;
-    --sidebar-foreground: 220 20% 85%;
-    --sidebar-primary: 234 89% 65%;
+    /* Sidebar - Deep charcoal matching logo */
+    --sidebar-background: 30 8% 15%;
+    --sidebar-foreground: 40 20% 82%;
+    --sidebar-primary: 35 40% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 234 30% 22%;
-    --sidebar-accent-foreground: 220 20% 95%;
-    --sidebar-border: 234 25% 20%;
-    --sidebar-ring: 234 89% 65%;
+    --sidebar-accent: 30 10% 22%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 30 8% 20%;
+    --sidebar-ring: 35 40% 55%;
 
     /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(234 89% 59%) 0%, hsl(258 89% 66%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(160 84% 39%) 0%, hsl(152 76% 45%) 100%);
-    --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(32 95% 55%) 100%);
-    --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(350 80% 55%) 100%);
-    --gradient-sidebar: linear-gradient(180deg, hsl(234 40% 16%) 0%, hsl(234 40% 10%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(30 8% 28%) 0%, hsl(30 10% 35%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(145 45% 38%) 0%, hsl(140 40% 42%) 100%);
+    --gradient-warning: linear-gradient(135deg, hsl(38 80% 50%) 0%, hsl(32 75% 55%) 100%);
+    --gradient-danger: linear-gradient(135deg, hsl(0 72% 50%) 0%, hsl(350 65% 50%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(30 8% 17%) 0%, hsl(30 8% 10%) 100%);
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -76,50 +76,50 @@
   }
 
   .dark {
-    --background: 224 30% 8%;
-    --foreground: 220 20% 95%;
+    --background: 30 10% 8%;
+    --foreground: 40 15% 92%;
 
-    --card: 224 25% 12%;
-    --card-foreground: 220 20% 95%;
+    --card: 30 8% 12%;
+    --card-foreground: 40 15% 92%;
 
-    --popover: 224 25% 12%;
-    --popover-foreground: 220 20% 95%;
+    --popover: 30 8% 12%;
+    --popover-foreground: 40 15% 92%;
 
-    --primary: 234 89% 65%;
+    --primary: 35 40% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 224 20% 18%;
-    --secondary-foreground: 220 20% 90%;
+    --secondary: 30 10% 18%;
+    --secondary-foreground: 40 15% 88%;
 
-    --muted: 224 20% 18%;
-    --muted-foreground: 220 9% 55%;
+    --muted: 30 8% 18%;
+    --muted-foreground: 30 5% 55%;
 
-    --accent: 38 92% 55%;
+    --accent: 35 45% 50%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 70% 50%;
+    --destructive: 0 65% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 160 70% 45%;
+    --success: 145 40% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 85% 55%;
+    --warning: 38 75% 52%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 224 20% 20%;
-    --input: 224 20% 20%;
-    --ring: 234 89% 65%;
+    --border: 30 8% 20%;
+    --input: 30 8% 20%;
+    --ring: 35 40% 55%;
 
-    --sidebar-background: 224 30% 6%;
-    --sidebar-foreground: 220 20% 80%;
-    --sidebar-primary: 234 89% 65%;
+    --sidebar-background: 30 10% 6%;
+    --sidebar-foreground: 40 15% 78%;
+    --sidebar-primary: 35 40% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 25% 14%;
-    --sidebar-accent-foreground: 220 20% 95%;
-    --sidebar-border: 224 20% 15%;
-    --sidebar-ring: 234 89% 65%;
+    --sidebar-accent: 30 8% 14%;
+    --sidebar-accent-foreground: 40 15% 92%;
+    --sidebar-border: 30 8% 15%;
+    --sidebar-ring: 35 40% 55%;
 
-    --gradient-sidebar: linear-gradient(180deg, hsl(224 30% 8%) 0%, hsl(224 30% 4%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(30 10% 8%) 0%, hsl(30 10% 4%) 100%);
   }
 }
 
