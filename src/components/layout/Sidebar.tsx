@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, Settings, ChevronLeft, ChevronRight, Wallet, UserCog, History, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
+import logo from "@/assets/logo.png";
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
@@ -86,9 +87,7 @@ export function Sidebar({
         <motion.div initial={false} animate={{
         opacity: collapsed ? 0 : 1
       }} className="flex items-center gap-3 overflow-hidden">
-          <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-            <FileText className="w-4 h-4 text-sidebar-primary-foreground" />
-          </div>
+          <img src={logo} alt="Shamshad Footwear" className="w-8 h-8 object-contain rounded" />
           {!collapsed && <span className="text-sidebar-foreground font-semibold text-lg whitespace-nowrap">Shamshad Footwear</span>}
         </motion.div>
         <button onClick={onToggle} className="p-1.5 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors">

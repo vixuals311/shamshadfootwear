@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, LogIn, Loader2, Eye, EyeOff } from "lucide-react";
+import { LogIn, Loader2, Eye, EyeOff } from "lucide-react";
+import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -107,11 +108,10 @@ const Login = () => {
       >
         <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
           {/* Logo */}
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-              <FileText className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">BillFlow</span>
+          <div className="flex flex-col items-center mb-8">
+            <img src={logo} alt="Shamshad Footwear" className="w-24 h-24 object-contain mb-2" />
+            <span className="text-xl font-bold text-foreground">Shamshad Footwear</span>
+            <span className="text-xs tracking-[0.25em] text-muted-foreground uppercase">Wholesale Supplier</span>
           </div>
 
           <h1 className="text-xl font-semibold text-center text-foreground mb-2">
@@ -121,8 +121,8 @@ const Login = () => {
             {isForgotPassword
               ? "Enter your email to receive a reset link"
               : isSignUp
-              ? "Sign up to get started with BillFlow"
-              : "Sign in to continue to your dashboard"}
+              ? "Create your admin account"
+              : "Sign in to continue"}
           </p>
 
           <form onSubmit={isForgotPassword ? handleForgotPassword : handleSubmit} className="space-y-4">

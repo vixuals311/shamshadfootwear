@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
+import logo from "@/assets/logo.png";
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -59,9 +60,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             {/* Header */}
             <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-sidebar-primary-foreground" />
-                </div>
+                <img src={logo} alt="Shamshad Footwear" className="w-8 h-8 object-contain rounded" />
                 <span className="text-sidebar-foreground font-semibold text-lg">Shamshad Footwear</span>
               </div>
               <button 

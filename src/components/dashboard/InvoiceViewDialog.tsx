@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Printer, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
+import logo from "@/assets/logo.png";
 
 interface InvoiceItem {
   id: string;
@@ -78,17 +79,29 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
         </DialogHeader>
         
         <div className="space-y-6">
-          {/* Header Info */}
-          <div className="flex justify-between border-b pb-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Bill To:</p>
-              <p className="font-semibold">{invoice.client_name}</p>
-              <p className="text-sm text-muted-foreground">{invoice.client_city}</p>
+          {/* Branded Header */}
+          <div className="rounded-xl p-5 border border-border" style={{ background: 'hsl(40 30% 95%)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <img src={logo} alt="Shamshad Footwear" className="w-14 h-14 object-contain" />
+                <div>
+                  <h3 className="font-bold text-lg text-foreground">Shamshad Footwear</h3>
+                  <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Wholesale Supplier</p>
+                </div>
+              </div>
+              <div className="text-right text-sm text-muted-foreground">
+                <p>Invoice #{invoice.invoice_number}</p>
+                <p>{format(new Date(invoice.created_at), "dd MMM yyyy")}</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Date:</p>
-              <p className="font-medium">{format(new Date(invoice.created_at), "dd MMM yyyy")}</p>
-              <span className={`inline-block mt-2 px-2 py-1 text-xs rounded-full capitalize ${
+            <div className="border-t border-border pt-3 flex justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Bill To:</p>
+                <p className="font-semibold">{invoice.client_name}</p>
+                <p className="text-sm text-muted-foreground">{invoice.client_city}</p>
+              </div>
+              <div className="text-right">
+              <span className={`inline-block px-2 py-1 text-xs rounded-full capitalize ${
                 invoice.status === 'paid' ? 'bg-success/10 text-success' :
                 invoice.status === 'pending' ? 'bg-warning/10 text-warning' :
                 invoice.status === 'overdue' ? 'bg-destructive/10 text-destructive' :
@@ -96,6 +109,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
               }`}>
                 {invoice.status}
               </span>
+            </div>
             </div>
           </div>
 
@@ -215,6 +229,13 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
               ))}
             </div>
           )}
+
+          {/* Branded Footer */}
+          <div className="rounded-xl p-4 text-center border border-border" style={{ background: 'hsl(40 30% 95%)' }}>
+            <p className="text-xs text-muted-foreground">Thank you for your business!</p>
+            <p className="text-xs font-semibold text-foreground mt-1">Shamshad Footwear — Wholesale Supplier</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Goods once sold will not be returned without prior agreement. All disputes subject to local jurisdiction.</p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
