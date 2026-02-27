@@ -87,6 +87,8 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
                 <div>
                   <h3 className="font-bold text-lg text-foreground">Shamshad Footwear</h3>
                   <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Wholesale Supplier</p>
+                  <p className="text-xs text-muted-foreground mt-1">0315-7162093 | 0305-5388093</p>
+                  <p className="text-xs text-muted-foreground">Faisalabad Road, Chowk Azam, Layyah</p>
                 </div>
               </div>
               <div className="text-right text-sm text-muted-foreground">
@@ -234,7 +236,8 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
           <div className="rounded-xl p-4 text-center border border-border" style={{ background: 'hsl(40 30% 95%)' }}>
             <p className="text-xs text-muted-foreground">Thank you for your business!</p>
             <p className="text-xs font-semibold text-foreground mt-1">Shamshad Footwear — Wholesale Supplier</p>
-            <p className="text-[10px] text-muted-foreground mt-1">Goods once sold will not be returned without prior agreement. All disputes subject to local jurisdiction.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">0315-7162093 | 0305-5388093 | Faisalabad Road, Chowk Azam, Layyah</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Goods once sold will not be returned without prior agreement. All disputes subject to local jurisdiction.</p>
           </div>
         </div>
       </DialogContent>
