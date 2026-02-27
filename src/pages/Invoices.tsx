@@ -348,6 +348,7 @@ const Invoices = () => {
           .brand-left img { width: 56px; height: 56px; object-fit: contain; }
           .brand-left h2 { margin: 0; font-size: 18px; color: #3D3D3D; }
           .brand-left p { margin: 2px 0 0; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #888; }
+          .brand-left .contact { font-size: 11px; letter-spacing: 0; text-transform: none; color: #666; margin-top: 4px; }
           .brand-right { text-align: right; font-size: 13px; color: #666; }
           .brand-right p { margin: 2px 0; }
           .client-info { margin-bottom: 20px; }
@@ -371,6 +372,8 @@ const Invoices = () => {
             <div>
               <h2>Shamshad Footwear</h2>
               <p>Wholesale Supplier</p>
+              <p class="contact">0315-7162093 | 0305-5388093</p>
+              <p class="contact">Faisalabad Road, Chowk Azam, Layyah</p>
             </div>
           </div>
           <div class="brand-right">
@@ -428,6 +431,7 @@ const Invoices = () => {
         <div class="brand-footer">
           <p>Thank you for your business!</p>
           <p class="company">Shamshad Footwear — Wholesale Supplier</p>
+          <p>0315-7162093 | 0305-5388093 | Faisalabad Road, Chowk Azam, Layyah</p>
           <p>Goods once sold will not be returned without prior agreement. All disputes subject to local jurisdiction.</p>
         </div>
         

@@ -73,6 +73,17 @@ interface Recovery {
   notes: string | null;
 }
 
+const formatPhoneNumber = (value: string) => {
+  // Remove all non-digit characters
+  const digits = value.replace(/\D/g, '');
+  
+  // Format as 0XXX-XXXXXXX
+  if (digits.length <= 4) {
+    return digits;
+  }
+  return `${digits.slice(0, 4)}-${digits.slice(4, 11)}`;
+};
+
 const ClientPortal = () => {
   const { toast } = useToast();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -181,10 +192,11 @@ const ClientPortal = () => {
                   <Input
                     id="phone"
                     value={loginPhone}
-                    onChange={(e) => setLoginPhone(e.target.value)}
-                    placeholder="+92 3XX XXXXXXX"
+                    onChange={(e) => setLoginPhone(formatPhoneNumber(e.target.value))}
+                    placeholder="0XXX-XXXXXXX"
                     className="pl-10"
                     disabled={loading}
+                    maxLength={12}
                   />
                 </div>
               </div>
@@ -431,12 +443,12 @@ const ClientPortal = () => {
         )}
       </div>
 
-      {/* Invoice Detail Dialog */}
+      {/* Invoice Detail Dialog - Branded like main invoice view */}
       <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
-              <span>Invoice Details</span>
+              <span>Invoice {selectedInvoice?.invoice_number}</span>
               {selectedInvoice && (
                 <Button variant="outline" size="sm" className="gap-2" onClick={() => {
                   if (!selectedInvoice || !currentClient) return;
@@ -451,6 +463,7 @@ const ClientPortal = () => {
                       .brand-left img { width: 56px; height: 56px; object-fit: contain; }
                       .brand-left h2 { margin: 0; font-size: 18px; }
                       .brand-left p { margin: 2px 0 0; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #888; }
+                      .brand-left .contact { font-size: 11px; letter-spacing: 0; text-transform: none; color: #666; margin-top: 4px; }
                       .brand-right { text-align: right; font-size: 13px; color: #666; }
                       .client-info { margin-bottom: 20px; }
                       .client-info .label { font-size: 11px; color: #888; }
@@ -468,7 +481,12 @@ const ClientPortal = () => {
                     <div class="brand-header">
                       <div class="brand-left">
                         <img src="${logoUrl}" alt="Shamshad Footwear" />
-                        <div><h2>Shamshad Footwear</h2><p>Wholesale Supplier</p></div>
+                        <div>
+                          <h2>Shamshad Footwear</h2>
+                          <p>Wholesale Supplier</p>
+                          <p class="contact">0315-7162093 | 0305-5388093</p>
+                          <p class="contact">Faisalabad Road, Chowk Azam, Layyah</p>
+                        </div>
                       </div>
                       <div class="brand-right">
                         <p><strong>${selectedInvoice.invoice_number}</strong></p>
@@ -492,6 +510,7 @@ const ClientPortal = () => {
                     <div class="brand-footer">
                       <p>Thank you for your business!</p>
                       <p class="company">Shamshad Footwear — Wholesale Supplier</p>
+                      <p>0315-7162093 | 0305-5388093 | Faisalabad Road, Chowk Azam, Layyah</p>
                       <p>Goods once sold will not be returned without prior agreement.</p>
                     </div>
                     <script>window.print();</script>
@@ -506,55 +525,109 @@ const ClientPortal = () => {
             </DialogTitle>
           </DialogHeader>
           {selectedInvoice && (
-            <div className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Invoice #</span>
-                <span className="font-mono">{selectedInvoice.invoice_number}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Date</span>
-                <span>
-                  {format(new Date(selectedInvoice.created_at), "dd MMM yyyy, hh:mm a")}
-                </span>
-              </div>
-
-              <div className="border-t pt-4">
-                <p className="font-medium mb-2">Items</p>
-                <div className="space-y-2">
-                  {selectedInvoice.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex justify-between text-sm bg-muted/30 p-3 rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium">{item.product_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.brand_name} • Size {item.size_range} • {item.total_pairs} pairs
-                        </p>
-                      </div>
-                      <p className="font-medium">Rs {item.total.toLocaleString()}</p>
+            <div className="space-y-6">
+              {/* Branded Header */}
+              <div className="rounded-xl p-4 sm:p-5 border border-border" style={{ background: 'hsl(40 30% 95%)' }}>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <img src="/favicon.png" alt="Shamshad Footwear" className="w-10 h-10 sm:w-14 sm:h-14 object-contain" />
+                    <div>
+                      <h3 className="font-bold text-base sm:text-lg text-foreground">Shamshad Footwear</h3>
+                      <p className="text-[10px] sm:text-xs tracking-[0.2em] text-muted-foreground uppercase">Wholesale Supplier</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">0315-7162093 | 0305-5388093</p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="text-left sm:text-right text-sm text-muted-foreground">
+                    <p>Invoice #{selectedInvoice.invoice_number}</p>
+                    <p>{format(new Date(selectedInvoice.created_at), "dd MMM yyyy")}</p>
+                  </div>
+                </div>
+                <div className="border-t border-border pt-3 flex justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Bill To:</p>
+                    <p className="font-semibold">{currentClient.name}</p>
+                    <p className="text-sm text-muted-foreground">{currentClient.city}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={cn(
+                      "inline-block px-2 py-1 text-xs rounded-full capitalize",
+                      selectedInvoice.status === 'paid' ? 'bg-success/10 text-success' :
+                      selectedInvoice.status === 'pending' ? 'bg-warning/10 text-warning' :
+                      selectedInvoice.status === 'overdue' ? 'bg-destructive/10 text-destructive' :
+                      'bg-muted text-muted-foreground'
+                    )}>
+                      {selectedInvoice.status}
+                    </span>
+                  </div>
                 </div>
               </div>
 
+              {/* Items Table */}
+              <div>
+                <p className="text-sm font-medium mb-2">Items ({selectedInvoice.items.length})</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2">#</th>
+                        <th className="text-left py-2">Product</th>
+                        <th className="text-left py-2">Size</th>
+                        <th className="text-right py-2">Pairs</th>
+                        <th className="text-right py-2">Rate</th>
+                        <th className="text-right py-2">Disc.</th>
+                        <th className="text-right py-2">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedInvoice.items.map((item, idx) => (
+                        <tr key={item.id} className="border-b">
+                          <td className="py-2">{idx + 1}</td>
+                          <td className="py-2">
+                            <p className="font-medium">{item.product_name}</p>
+                            {item.brand_name && <p className="text-xs text-muted-foreground">{item.brand_name}</p>}
+                          </td>
+                          <td className="py-2">{item.size_range}</td>
+                          <td className="py-2 text-right">{item.total_pairs}</td>
+                          <td className="py-2 text-right">Rs {item.price_per_pair}</td>
+                          <td className="py-2 text-right">Rs {item.discount_per_pair}</td>
+                          <td className="py-2 text-right font-medium">Rs {item.total.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Totals */}
               <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal:</span>
                   <span>Rs {selectedInvoice.subtotal.toLocaleString()}</span>
                 </div>
                 {selectedInvoice.total_discount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Discount</span>
-                    <span className="text-destructive">
-                      - Rs {selectedInvoice.total_discount.toLocaleString()}
-                    </span>
+                  <div className="flex justify-between text-destructive">
+                    <span>Discount:</span>
+                    <span>- Rs {selectedInvoice.total_discount.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold">
-                  <span>Total</span>
+                {selectedInvoice.tax > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tax:</span>
+                    <span>Rs {selectedInvoice.tax.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-lg border-t pt-2">
+                  <span>Total:</span>
                   <span>Rs {selectedInvoice.total.toLocaleString()}</span>
                 </div>
+              </div>
+
+              {/* Branded Footer */}
+              <div className="rounded-xl p-4 text-center border border-border" style={{ background: 'hsl(40 30% 95%)' }}>
+                <p className="text-xs text-muted-foreground">Thank you for your business!</p>
+                <p className="text-xs font-semibold text-foreground mt-1">Shamshad Footwear — Wholesale Supplier</p>
+                <p className="text-[10px] text-muted-foreground mt-1">0315-7162093 | 0305-5388093 | Faisalabad Road, Chowk Azam, Layyah</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Goods once sold will not be returned without prior agreement.</p>
               </div>
             </div>
           )}
