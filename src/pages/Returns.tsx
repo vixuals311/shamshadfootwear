@@ -373,7 +373,7 @@ export default function Returns() {
             );
           }}>
             <Download className="w-4 h-4" />
-            Export
+            <span className="hidden sm:inline">Export</span>
           </Button>
           <Button onClick={() => setIsDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
@@ -383,7 +383,7 @@ export default function Returns() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-sm">
+      <div className="relative max-w-full sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Search returns..."
@@ -409,44 +409,91 @@ export default function Returns() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Return #</TableHead>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Restocked</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredReturns.map((ret) => (
-                  <TableRow key={ret.id}>
-                    <TableCell className="font-medium">{ret.return_number}</TableCell>
-                    <TableCell>{ret.invoices?.invoice_number || "-"}</TableCell>
-                    <TableCell>{ret.invoices?.clients?.name || "-"}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      Rs {ret.total_amount.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={ret.adjustment_type === "credit_note" ? "secondary" : "default"}>
-                        {ret.adjustment_type === "credit_note" ? "Credit Note" : "Balance Reduced"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{ret.restock ? "Yes" : "No"}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {format(new Date(ret.created_at), "dd MMM yyyy")}
-                    </TableCell>
+        <>
+          {/* Desktop Table */}
+          <Card className="hidden sm:block">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Return #</TableHead>
+                    <TableHead>Invoice</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Restocked</TableHead>
+                    <TableHead>Date</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {filteredReturns.map((ret) => (
+                    <TableRow key={ret.id}>
+                      <TableCell className="font-medium">{ret.return_number}</TableCell>
+                      <TableCell>{ret.invoices?.invoice_number || "-"}</TableCell>
+                      <TableCell>{ret.invoices?.clients?.name || "-"}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        Rs {ret.total_amount.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={ret.adjustment_type === "credit_note" ? "secondary" : "default"}>
+                          {ret.adjustment_type === "credit_note" ? "Credit Note" : "Balance Reduced"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{ret.restock ? "Yes" : "No"}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {format(new Date(ret.created_at), "dd MMM yyyy")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Mobile Cards */}
+          <div className="sm:hidden space-y-3">
+            {filteredReturns.map((ret) => (
+              <div key={ret.id} className="bg-card rounded-xl p-4 shadow-card border border-border/50">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <RotateCcw className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">{ret.return_number}</p>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {ret.invoices?.clients?.name || "Walk-in"}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-lg font-bold text-foreground whitespace-nowrap">
+                    Rs {ret.total_amount.toLocaleString()}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Invoice</span>
+                    <span className="font-medium">{ret.invoices?.invoice_number || "-"}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Type</span>
+                    <Badge variant={ret.adjustment_type === "credit_note" ? "secondary" : "default"} className="text-xs">
+                      {ret.adjustment_type === "credit_note" ? "Credit Note" : "Balance Reduced"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Restocked</span>
+                    <span className="font-medium">{ret.restock ? "Yes" : "No"}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="text-muted-foreground">{format(new Date(ret.created_at), "dd MMM yyyy")}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* New Return Dialog */}
