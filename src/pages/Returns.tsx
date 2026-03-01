@@ -44,6 +44,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface InvoiceItem {
   id: string;
@@ -148,15 +149,37 @@ export default function Returns() {
     setSearchingInvoice(false);
   };
 
-  const selectInvoice = (invoice: InvoiceResult) => {
+  const [alreadyReturnedPairs, setAlreadyReturnedPairs] = useState<Record<string, number>>({});
+
+  const selectInvoice = async (invoice: InvoiceResult) => {
     setSelectedInvoice(invoice);
     setReturnItems([]);
     setInvoiceResults([]);
     setInvoiceSearch(invoice.invoice_number);
+
+    // Fetch already returned pairs for this invoice
+    const { data: existingReturns } = await supabase
+      .from("return_items")
+      .select("invoice_item_id, pairs_returned, returns!inner(invoice_id)")
+      .eq("returns.invoice_id", invoice.id);
+
+    const pairsMap: Record<string, number> = {};
+    if (existingReturns) {
+      for (const ri of existingReturns as any[]) {
+        const key = ri.invoice_item_id;
+        if (key) {
+          pairsMap[key] = (pairsMap[key] || 0) + ri.pairs_returned;
+        }
+      }
+    }
+    setAlreadyReturnedPairs(pairsMap);
   };
 
   const addItemToReturn = (item: InvoiceItem) => {
     if (returnItems.find((r) => r.invoiceItemId === item.id)) return;
+    const alreadyReturned = alreadyReturnedPairs[item.id] || 0;
+    const remainingPairs = item.total_pairs - alreadyReturned;
+    if (remainingPairs <= 0) return;
     const effectivePrice = item.price_per_pair - item.discount_per_pair;
     setReturnItems((prev) => [
       ...prev,
@@ -167,7 +190,7 @@ export default function Returns() {
         articleNumber: item.article_number,
         brandName: item.brand_name,
         sizeRange: item.size_range,
-        maxPairs: item.total_pairs,
+        maxPairs: remainingPairs,
         pairsReturned: 1,
         pricePerPair: effectivePrice,
         total: effectivePrice,
@@ -577,24 +600,27 @@ export default function Returns() {
                       const alreadyAdded = returnItems.some(
                         (r) => r.invoiceItemId === item.id
                       );
+                      const prevReturned = alreadyReturnedPairs[item.id] || 0;
+                      const remainingPairs = item.total_pairs - prevReturned;
+                      const fullyReturned = remainingPairs <= 0;
                       return (
                         <div
                           key={item.id}
-                          className="px-3 py-2 flex items-center justify-between text-sm"
+                          className={cn("px-3 py-2 flex items-center justify-between text-sm", fullyReturned && "opacity-50")}
                         >
                           <div>
                             <span className="font-medium">{item.product_name}</span>
                             <span className="text-muted-foreground ml-2">
-                              {item.article_number} • {item.size_range} • {item.total_pairs} pairs
+                              {item.article_number} • {item.size_range} • {remainingPairs}/{item.total_pairs} pairs left
                             </span>
                           </div>
                           <Button
                             size="sm"
-                            variant={alreadyAdded ? "secondary" : "outline"}
-                            disabled={alreadyAdded}
+                            variant={alreadyAdded || fullyReturned ? "secondary" : "outline"}
+                            disabled={alreadyAdded || fullyReturned}
                             onClick={() => addItemToReturn(item)}
                           >
-                            {alreadyAdded ? "Added" : "Add"}
+                            {fullyReturned ? "Fully Returned" : alreadyAdded ? "Added" : "Add"}
                           </Button>
                         </div>
                       );

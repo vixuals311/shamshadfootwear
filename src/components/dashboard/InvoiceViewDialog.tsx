@@ -47,7 +47,7 @@ interface InvoiceViewDialogProps {
     items: InvoiceItem[];
     returns?: ReturnInfo[];
   } | null;
-  onPrint: () => void;
+  onPrint?: () => void;
 }
 
 export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: InvoiceViewDialogProps) {
@@ -56,6 +56,113 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
   const hasReturns = invoice.returns && invoice.returns.length > 0;
   const totalReturned = invoice.returns?.reduce((sum, r) => sum + r.total_amount, 0) || 0;
   const isFullyReturned = totalReturned >= invoice.total;
+
+  const handlePrint = () => {
+    if (onPrint) {
+      onPrint();
+      return;
+    }
+    const logoUrl = window.location.origin + '/favicon.png';
+    const returnsHtml = hasReturns ? `
+      <div style="margin-top:24px;border-top:1px solid #ddd;padding-top:16px;">
+        <h4 style="font-size:14px;margin:0 0 12px;">Returns (${invoice.returns!.length})</h4>
+        ${invoice.returns!.map(ret => `
+          <div style="background:#f9f9f9;border-radius:8px;padding:12px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <span style="font-weight:600;font-size:13px;">${ret.return_number}</span>
+                <span style="margin-left:8px;padding:2px 8px;background:#eee;border-radius:12px;font-size:11px;">${ret.adjustment_type.replace('_',' ')}</span>
+              </div>
+              <div style="text-align:right;">
+                <span style="font-weight:600;color:#dc2626;font-size:13px;">Rs ${ret.total_amount.toLocaleString()}</span>
+                <br/><span style="font-size:11px;color:#888;">${format(new Date(ret.created_at), "dd MMM yyyy")}</span>
+              </div>
+            </div>
+            ${ret.items.length > 0 ? `<div style="margin-top:6px;">${ret.items.map(item => `
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-top:2px;">
+                <span>${item.product_name} (${item.size_range}) × ${item.pairs_returned} pairs</span>
+                <span>Rs ${item.total.toLocaleString()}</span>
+              </div>
+            `).join('')}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
+
+    const printContent = `<!DOCTYPE html><html><head><title>Invoice ${invoice.invoice_number}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:0 auto;color:#3D3D3D;}
+        .brand-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:20px;background:#F0E8D8;border-radius:12px;}
+        .brand-left{display:flex;align-items:center;gap:14px;}
+        .brand-left img{width:56px;height:56px;object-fit:contain;}
+        .brand-left h2{margin:0;font-size:18px;}
+        .brand-left p{margin:2px 0 0;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#888;}
+        .brand-left .contact{font-size:11px;letter-spacing:0;text-transform:none;color:#666;margin-top:4px;}
+        .brand-right{text-align:right;font-size:13px;color:#666;}
+        .brand-right p{margin:2px 0;}
+        table{width:100%;border-collapse:collapse;margin:20px 0;}
+        th,td{border:1px solid #ddd;padding:10px;text-align:left;font-size:13px;}
+        th{background:#F0E8D8;color:#3D3D3D;}
+        .totals{text-align:right;margin-top:20px;}
+        .totals p{margin:5px 0;font-size:14px;}
+        .total-final{font-size:1.2em;font-weight:bold;border-top:2px solid #3D3D3D;padding-top:10px;margin-top:10px;}
+        .brand-footer{margin-top:40px;padding:16px;background:#F0E8D8;border-radius:12px;text-align:center;}
+        .brand-footer p{margin:4px 0;font-size:11px;color:#666;}
+        .brand-footer .company{font-weight:bold;color:#3D3D3D;font-size:12px;}
+        @media print{body{padding:0;}}
+      </style></head><body>
+        <div class="brand-header">
+          <div class="brand-left">
+            <img src="${logoUrl}" alt="Shamshad Footwear"/>
+            <div><h2>Shamshad Footwear</h2><p>Wholesale Supplier</p>
+            <p class="contact">0315-7162093 | 0305-5388093</p>
+            <p class="contact">Faisalabad Road, Chowk Azam, Layyah</p></div>
+          </div>
+          <div class="brand-right">
+            <p><strong>${invoice.invoice_number}</strong></p>
+            <p>${format(new Date(invoice.created_at), "dd MMM yyyy")}</p>
+          </div>
+        </div>
+        <div style="margin-bottom:20px;">
+          <p style="font-size:11px;color:#888;margin-bottom:2px;">Bill To:</p>
+          <p style="margin:0;"><strong>${invoice.client_name}</strong></p>
+          <p style="margin:0;color:#666;">${invoice.client_city}</p>
+        </div>
+        <p style="font-size:13px;"><strong>Items (${invoice.items.length})</strong> — ${invoice.total_bundles} bundles • ${invoice.items.reduce((s, i) => s + i.total_pairs, 0)} pairs</p>
+        <table><thead><tr>
+          <th>#</th><th>Product</th><th>Size</th><th>Bundles</th><th>Pairs</th><th>Rate</th><th>Discount</th><th>Total</th>
+        </tr></thead><tbody>
+          ${invoice.items.map((item, idx) => `<tr>
+            <td>${idx + 1}</td><td>${item.product_name}<br/><small style="color:#888;">${item.article_number}</small></td>
+            <td>${item.size_range}</td><td>${item.quantity}</td><td>${item.total_pairs}</td>
+            <td>Rs ${item.price_per_pair}</td><td>Rs ${item.discount_per_pair}</td><td><strong>Rs ${item.total.toLocaleString()}</strong></td>
+          </tr>`).join('')}
+        </tbody></table>
+        <div class="totals">
+          <p>Subtotal: Rs ${invoice.subtotal.toLocaleString()}</p>
+          ${invoice.total_discount > 0 ? `<p>Discount: - Rs ${invoice.total_discount.toLocaleString()}</p>` : ''}
+          ${invoice.tax > 0 ? `<p>Tax: Rs ${invoice.tax.toLocaleString()}</p>` : ''}
+          <p class="total-final">Total: Rs ${invoice.total.toLocaleString()}</p>
+          ${invoice.amount_received > 0 ? `<p style="color:green;">Received: Rs ${invoice.amount_received.toLocaleString()}</p>` : ''}
+          ${(invoice.credit_applied ?? 0) > 0 ? `<p>Credit Applied: Rs ${(invoice.credit_applied ?? 0).toLocaleString()}</p>` : ''}
+          ${invoice.balance_due > 0 ? `<p style="color:#d97706;font-weight:600;">Balance Due: Rs ${invoice.balance_due.toLocaleString()}</p>` : ''}
+        </div>
+        ${returnsHtml}
+        <div class="brand-footer">
+          <p>Thank you for your business!</p>
+          <p class="company">Shamshad Footwear — Wholesale Supplier</p>
+          <p>0315-7162093 | 0305-5388093 | Faisalabad Road, Chowk Azam, Layyah</p>
+          <p>Goods once sold will not be returned without prior agreement. All disputes subject to local jurisdiction.</p>
+        </div>
+        <script>window.print();</script>
+      </body></html>`;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -71,7 +178,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
                 </Badge>
               )}
             </div>
-            <Button variant="outline" size="sm" onClick={onPrint} className="gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
               <Printer className="w-4 h-4" />
               Print
             </Button>
