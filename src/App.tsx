@@ -1,9 +1,11 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SupabaseAuthProvider, useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { AuditProvider } from "@/context/AuditContext";
 import { AppLayout } from "@/components/layout";
 import Dashboard from "./pages/Dashboard";
@@ -48,7 +50,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useSupabaseAuthContext();
+  const { user, role, loading } = useSupabaseAuthContext();
+  const [landingPage, setLandingPage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user && role) {
+      supabase
+        .from("application_settings")
+        .select("setting_value")
+        .eq("setting_key", "default_landing_pages")
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.setting_value) {
+            const pages = data.setting_value as Record<string, string>;
+            setLandingPage(pages[role] || "/");
+          } else {
+            setLandingPage("/");
+          }
+        });
+    }
+  }, [user, role]);
 
   if (loading) {
     return (
@@ -59,7 +80,7 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={landingPage || "/"} replace />;
   }
 
   return <>{children}</>;
