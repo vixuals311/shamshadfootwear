@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLocation, Link } from "react-router-dom";
 import { UserMenu } from "./UserMenu";
+import { useOnlineBilling } from "@/hooks/useOnlineBilling";
 
 const pageTitle: Record<string, string> = {
   "/": "Dashboard",
@@ -31,6 +32,7 @@ interface HeaderProps {
 export function Header({ onMenuClick }: HeaderProps) {
   const location = useLocation();
   const title = pageTitle[location.pathname] || "Dashboard";
+  const { onlineBillingEnabled } = useOnlineBilling();
 
   return (
     <header className="h-14 lg:h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40 flex items-center justify-between px-3 sm:px-4 lg:px-6">
@@ -66,9 +68,11 @@ export function Header({ onMenuClick }: HeaderProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem asChild>
-              <Link to="/invoices/new">New Invoice</Link>
-            </DropdownMenuItem>
+            {onlineBillingEnabled && (
+              <DropdownMenuItem asChild>
+                <Link to="/invoices/new">New Invoice</Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link to="/clients">Add Client</Link>
             </DropdownMenuItem>
