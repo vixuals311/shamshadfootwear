@@ -24,6 +24,7 @@ import {
   Loader2,
   AlertTriangle,
   Key,
+  ClipboardList,
 } from "lucide-react";
 import { CityCombobox } from "@/components/clients/CityCombobox";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,16 @@ interface RecoveryRecord {
   isFromCity: boolean;
 }
 
+interface ManualBill {
+  id: string;
+  bill_number: string;
+  amount: number;
+  date: string;
+  notes: string | null;
+  status: "paid" | "unpaid";
+  created_at: string;
+}
+
 const Clients = () => {
   const { toast } = useToast();
   const { log } = useAuditLog();
@@ -111,11 +122,22 @@ const Clients = () => {
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [clientInvoices, setClientInvoices] = useState<Invoice[]>([]);
   const [clientRecoveries, setClientRecoveries] = useState<RecoveryRecord[]>([]);
+  const [clientManualBills, setClientManualBills] = useState<ManualBill[]>([]);
   const [pinDialogClient, setPinDialogClient] = useState<Client | null>(null);
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [currentClientPin, setCurrentClientPin] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
+
+  // Manual bill states
+  const [isAddManualBillOpen, setIsAddManualBillOpen] = useState(false);
+  const [manualBillForm, setManualBillForm] = useState({
+    bill_number: "",
+    amount: "",
+    date: new Date().toISOString().split("T")[0],
+    notes: "",
+  });
+  const [manualBillSaving, setManualBillSaving] = useState(false);
   
   // Quick recovery states
   const [isQuickRecoveryOpen, setIsQuickRecoveryOpen] = useState(false);
@@ -258,6 +280,16 @@ const Clients = () => {
       ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
       setClientRecoveries(formattedRecoveries);
+
+      // Fetch manual bills
+      const { data: manualBillsData, error: manualBillsError } = await supabase
+        .from("manual_bills")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("date", { ascending: false });
+
+      if (manualBillsError) throw manualBillsError;
+      setClientManualBills((manualBillsData || []) as ManualBill[]);
     } catch (error: any) {
       console.error("Error fetching client details:", error);
     }
@@ -734,6 +766,80 @@ const Clients = () => {
     }
   };
 
+  // Add manual bill
+  const handleAddManualBill = async () => {
+    if (!selectedClient || !manualBillForm.bill_number || !manualBillForm.amount) return;
+    setManualBillSaving(true);
+    try {
+      const amount = parseFloat(manualBillForm.amount);
+      const { error } = await supabase.from("manual_bills").insert({
+        client_id: selectedClient.id,
+        bill_number: manualBillForm.bill_number,
+        amount,
+        date: manualBillForm.date,
+        notes: manualBillForm.notes || null,
+        status: "unpaid",
+        created_by: null,
+      });
+      if (error) throw error;
+
+      // Update client balance (add to balance)
+      const { error: clientError } = await supabase
+        .from("clients")
+        .update({ current_balance: selectedClient.currentBalance + amount })
+        .eq("id", selectedClient.id);
+      if (clientError) throw clientError;
+
+      await log({
+        action: "create",
+        entityType: "invoice",
+        entityId: selectedClient.id,
+        details: { type: "manual_bill", bill_number: manualBillForm.bill_number, amount },
+      });
+
+      toast({ title: "Success", description: `Manual bill ${manualBillForm.bill_number} added` });
+      setSelectedClient({ ...selectedClient, currentBalance: selectedClient.currentBalance + amount });
+      setManualBillForm({ bill_number: "", amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
+      setIsAddManualBillOpen(false);
+      fetchClientDetails(selectedClient.id);
+      fetchClients();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to add manual bill", variant: "destructive" });
+    } finally {
+      setManualBillSaving(false);
+    }
+  };
+
+  // Toggle manual bill paid/unpaid
+  const handleToggleManualBillStatus = async (bill: ManualBill) => {
+    const newStatus = bill.status === "paid" ? "unpaid" : "paid";
+    try {
+      const { error } = await supabase
+        .from("manual_bills")
+        .update({ status: newStatus })
+        .eq("id", bill.id);
+      if (error) throw error;
+
+      // If marking as paid, reduce balance. If marking as unpaid, add back.
+      if (selectedClient) {
+        const balanceChange = newStatus === "paid" ? -bill.amount : bill.amount;
+        await supabase
+          .from("clients")
+          .update({ current_balance: selectedClient.currentBalance + balanceChange })
+          .eq("id", selectedClient.id);
+        setSelectedClient({ ...selectedClient, currentBalance: selectedClient.currentBalance + balanceChange });
+      }
+
+      toast({ title: "Updated", description: `Bill marked as ${newStatus}` });
+      if (selectedClient) {
+        fetchClientDetails(selectedClient.id);
+        fetchClients();
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -839,6 +945,10 @@ const Clients = () => {
                 <FileText className="w-4 h-4" />
                 <span className="hidden sm:inline">Bills</span> ({clientInvoices.length})
               </TabsTrigger>
+              <TabsTrigger value="manual_bills" className="gap-2 flex-1 sm:flex-none">
+                <ClipboardList className="w-4 h-4" />
+                <span className="hidden sm:inline">Manual</span> ({clientManualBills.length})
+              </TabsTrigger>
               <TabsTrigger value="recoveries" className="gap-2 flex-1 sm:flex-none">
                 <CreditCard className="w-4 h-4" />
                 <span className="hidden sm:inline">Recoveries</span> ({clientRecoveries.length})
@@ -916,6 +1026,104 @@ const Clients = () => {
                   <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-foreground mb-1">No bills yet</h3>
                   <p className="text-muted-foreground">This client has no invoices.</p>
+                </div>
+              )}
+            </motion.div>
+          </TabsContent>
+
+          {/* Manual Bills Tab */}
+          <TabsContent value="manual_bills">
+            <div className="flex flex-wrap justify-end gap-2 mb-4">
+              <Button size="sm" className="gap-2" onClick={() => setIsAddManualBillOpen(true)}>
+                <Plus className="w-4 h-4" />
+                Add Manual Bill
+              </Button>
+            </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-card rounded-xl shadow-card overflow-hidden"
+            >
+              {clientManualBills.length > 0 ? (
+                <>
+                  {/* Desktop */}
+                  <div className="overflow-x-auto hidden sm:block">
+                    <table className="data-table min-w-[500px]">
+                      <thead>
+                        <tr>
+                          <th>Bill #</th>
+                          <th>Date</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                          <th>Notes</th>
+                          <th className="w-12"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clientManualBills.map((bill) => (
+                          <tr key={bill.id}>
+                            <td className="font-mono text-sm font-medium">{bill.bill_number}</td>
+                            <td className="text-muted-foreground text-sm whitespace-nowrap">
+                              {format(new Date(bill.date), "dd MMM yyyy")}
+                            </td>
+                            <td className="font-semibold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</td>
+                            <td>
+                              <button
+                                onClick={() => handleToggleManualBillStatus(bill)}
+                                className={cn(
+                                  "status-badge cursor-pointer",
+                                  bill.status === "paid" ? "status-badge-success" : "status-badge-danger"
+                                )}
+                              >
+                                {bill.status}
+                              </button>
+                            </td>
+                            <td className="text-muted-foreground text-sm max-w-[150px] truncate">{bill.notes || "-"}</td>
+                            <td>
+                              <button
+                                onClick={() => handleToggleManualBillStatus(bill)}
+                                className="text-xs text-primary hover:underline"
+                              >
+                                {bill.status === "paid" ? "Mark Unpaid" : "Mark Paid"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Mobile Cards */}
+                  <div className="sm:hidden divide-y">
+                    {clientManualBills.map((bill) => (
+                      <div key={bill.id} className="p-4 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-mono font-medium text-sm">{bill.bill_number}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(bill.date), "dd MMM yyyy")}</p>
+                          </div>
+                          <span className="font-bold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => handleToggleManualBillStatus(bill)}
+                            className={cn(
+                              "status-badge cursor-pointer",
+                              bill.status === "paid" ? "status-badge-success" : "status-badge-danger"
+                            )}
+                          >
+                            {bill.status}
+                          </button>
+                          {bill.notes && <p className="text-xs text-muted-foreground truncate max-w-[150px]">{bill.notes}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="p-8 sm:p-12 text-center">
+                  <ClipboardList className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-1">No manual bills</h3>
+                  <p className="text-muted-foreground">Add offline/manual bills for this client.</p>
                 </div>
               )}
             </motion.div>
@@ -1146,6 +1354,83 @@ const Clients = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Add Manual Bill Dialog */}
+        <Dialog open={isAddManualBillOpen} onOpenChange={setIsAddManualBillOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-primary" />
+                Add Manual Bill
+              </DialogTitle>
+              <DialogDescription>
+                Record an offline bill for {selectedClient.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="billNumber">Bill / Reference Number *</Label>
+                <Input
+                  id="billNumber"
+                  value={manualBillForm.bill_number}
+                  onChange={(e) => setManualBillForm(prev => ({ ...prev, bill_number: e.target.value }))}
+                  placeholder="e.g. BILL-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="billAmount">Amount (Rs) *</Label>
+                <Input
+                  id="billAmount"
+                  type="number"
+                  value={manualBillForm.amount}
+                  onChange={(e) => setManualBillForm(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="Enter amount"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="billDate">Date</Label>
+                <Input
+                  id="billDate"
+                  type="date"
+                  value={manualBillForm.date}
+                  onChange={(e) => setManualBillForm(prev => ({ ...prev, date: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="billNotes">Notes (Optional)</Label>
+                <Textarea
+                  id="billNotes"
+                  value={manualBillForm.notes}
+                  onChange={(e) => setManualBillForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Description or details..."
+                  rows={2}
+                />
+              </div>
+              {manualBillForm.amount && parseFloat(manualBillForm.amount) > 0 && (
+                <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Balance After Bill</span>
+                    <span className="font-bold text-warning">
+                      Rs {(selectedClient.currentBalance + parseFloat(manualBillForm.amount)).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddManualBillOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddManualBill}
+                disabled={manualBillSaving || !manualBillForm.bill_number || !manualBillForm.amount}
+              >
+                {manualBillSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Add Bill
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
