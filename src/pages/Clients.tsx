@@ -64,6 +64,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { exportToCSV } from "@/utils/exportUtils";
+import { InvoiceViewDialog } from "@/components/dashboard/InvoiceViewDialog";
 
 interface Client {
   id: string;
@@ -116,7 +117,9 @@ const Clients = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [viewInvoiceDialogOpen, setViewInvoiceDialogOpen] = useState(false);
+  const [loadingInvoiceView, setLoadingInvoiceView] = useState(false);
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
   const [showAddClientConfirm, setShowAddClientConfirm] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
@@ -296,7 +299,72 @@ const Clients = () => {
     }
   };
 
-  // Get all existing cities for the combobox
+  // View invoice with full details (same as Invoices page)
+  const handleViewClientInvoice = async (invoiceId: string) => {
+    try {
+      setLoadingInvoiceView(true);
+
+      const { data, error } = await supabase
+        .from("invoices")
+        .select(`
+          id, invoice_number, created_at, subtotal, total_discount, tax, total,
+          amount_received, balance_due, total_bundles, credit_applied, status,
+          clients (name, city),
+          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total)
+        `)
+        .eq("id", invoiceId)
+        .single();
+
+      if (error) throw error;
+
+      const { data: returnsData } = await supabase
+        .from("returns")
+        .select(`
+          id, return_number, total_amount, adjustment_type, created_at,
+          return_items (product_name, size_range, pairs_returned, total)
+        `)
+        .eq("invoice_id", invoiceId)
+        .order("created_at", { ascending: false });
+
+      setSelectedInvoice({
+        id: data.id,
+        invoice_number: data.invoice_number,
+        created_at: data.created_at,
+        client_name: (data.clients as any)?.name || selectedClient?.name || "Unknown",
+        client_city: (data.clients as any)?.city || selectedClient?.city || "",
+        subtotal: data.subtotal,
+        total_discount: data.total_discount,
+        tax: data.tax,
+        total: data.total,
+        amount_received: data.amount_received,
+        balance_due: data.balance_due,
+        total_bundles: data.total_bundles || 0,
+        credit_applied: data.credit_applied || 0,
+        status: data.status,
+        items: data.invoice_items || [],
+        returns: (returnsData || []).map((r: any) => ({
+          id: r.id,
+          return_number: r.return_number,
+          total_amount: r.total_amount,
+          adjustment_type: r.adjustment_type,
+          created_at: r.created_at,
+          items: r.return_items || [],
+        })),
+      });
+
+      setViewInvoiceDialogOpen(true);
+    } catch (error: any) {
+      console.error("Error fetching invoice:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load invoice details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingInvoiceView(false);
+    }
+  };
+
   const existingCities = useMemo(() => {
     return clients.map((c) => c.city).filter((city) => city && city !== "N/A");
   }, [clients]);
@@ -1012,7 +1080,7 @@ const Clients = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setSelectedInvoice(invoice)}
+                              onClick={() => handleViewClientInvoice(invoice.id)}
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -1194,70 +1262,16 @@ const Clients = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Invoice Detail Dialog */}
-        <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Invoice {selectedInvoice?.invoiceNumber}</DialogTitle>
-              <DialogDescription>
-                {selectedInvoice && format(selectedInvoice.createdAt, "dd MMM yyyy, hh:mm a")}
-              </DialogDescription>
-            </DialogHeader>
-            {selectedInvoice && (
-              <div className="space-y-4">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Article</th>
-                      <th>Size</th>
-                      <th>Qty</th>
-                      <th>Rate</th>
-                      <th>Discount/Pair</th>
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedInvoice.items.map((item) => (
-                      <tr key={item.id}>
-                        <td>
-                          <div>
-                            <p className="font-medium">{item.productName}</p>
-                            <p className="text-xs text-muted-foreground">{item.articleNumber}</p>
-                          </div>
-                        </td>
-                        <td>{item.sizeRange}</td>
-                        <td>{item.totalPairs} pairs</td>
-                        <td>Rs {item.pricePerPair}</td>
-                        <td className="text-destructive">
-                          {item.discountPerPair > 0 ? `- Rs ${item.discountPerPair}` : "-"}
-                        </td>
-                        <td className="font-semibold">Rs {item.total.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="border-t pt-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>Rs {selectedInvoice.subtotal.toLocaleString()}</span>
-                  </div>
-                  {selectedInvoice.totalDiscount > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Discount</span>
-                      <span className="text-destructive">- Rs {selectedInvoice.totalDiscount.toLocaleString()}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
-                    <span className="text-primary">Rs {selectedInvoice.total.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Quick Recovery Dialog */}
+        <InvoiceViewDialog
+          open={viewInvoiceDialogOpen}
+          onOpenChange={setViewInvoiceDialogOpen}
+          invoice={selectedInvoice}
+          onPrint={() => {
+            if (selectedInvoice) {
+              window.print();
+            }
+          }}
+        />
         <Dialog open={isQuickRecoveryOpen} onOpenChange={setIsQuickRecoveryOpen}>
           <DialogContent className="sm:max-w-[400px]">
             <DialogHeader>
