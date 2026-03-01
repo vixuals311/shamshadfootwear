@@ -18,6 +18,7 @@ import {
   Clock,
   Smartphone,
   Home,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -217,6 +218,10 @@ const Settings = () => {
     cashier: "/",
   });
 
+  // Online billing toggle (admin only)
+  const [onlineBillingEnabled, setOnlineBillingEnabled] = useState(true);
+  const [initialOnlineBillingEnabled, setInitialOnlineBillingEnabled] = useState(true);
+
   // Check for unsaved changes
   useEffect(() => {
     const profileChanged = isAdmin && JSON.stringify(profileSettings) !== JSON.stringify(initialProfileSettings);
@@ -224,9 +229,10 @@ const Settings = () => {
     const notificationChanged = JSON.stringify(notificationSettings) !== JSON.stringify(initialNotificationSettings);
     const securityChanged = isAdmin && JSON.stringify(securitySettings) !== JSON.stringify(initialSecuritySettings);
     const landingChanged = isAdmin && JSON.stringify(landingPages) !== JSON.stringify(initialLandingPages);
+    const billingChanged = isAdmin && onlineBillingEnabled !== initialOnlineBillingEnabled;
     
-    setHasUnsavedChanges(profileChanged || businessChanged || notificationChanged || securityChanged || landingChanged);
-  }, [profileSettings, businessSettings, notificationSettings, securitySettings, landingPages, initialProfileSettings, initialBusinessSettings, initialNotificationSettings, initialSecuritySettings, initialLandingPages, isAdmin]);
+    setHasUnsavedChanges(profileChanged || businessChanged || notificationChanged || securityChanged || landingChanged || billingChanged);
+  }, [profileSettings, businessSettings, notificationSettings, securitySettings, landingPages, onlineBillingEnabled, initialProfileSettings, initialBusinessSettings, initialNotificationSettings, initialSecuritySettings, initialLandingPages, initialOnlineBillingEnabled, isAdmin]);
 
   // Fetch data
   const fetchData = async () => {
@@ -321,6 +327,14 @@ const Settings = () => {
           };
           setLandingPages(lpData);
           setInitialLandingPages(lpData);
+        }
+
+        // Fetch online billing setting
+        const billingSetting = appSettings.find(s => s.setting_key === "online_billing_enabled");
+        if (billingSetting?.setting_value !== undefined) {
+          const enabled = (billingSetting.setting_value as any) === true || billingSetting.setting_value === "true";
+          setOnlineBillingEnabled(enabled);
+          setInitialOnlineBillingEnabled(enabled);
         }
       }
 
@@ -517,6 +531,35 @@ const Settings = () => {
         }
       }
 
+      // Save online billing setting (admin only)
+      if (isAdmin && onlineBillingEnabled !== initialOnlineBillingEnabled) {
+        const { data: existingBilling } = await supabase
+          .from("application_settings")
+          .select("id")
+          .eq("setting_key", "online_billing_enabled")
+          .maybeSingle();
+        
+        if (existingBilling) {
+          const { error } = await supabase
+            .from("application_settings")
+            .update({
+              setting_value: JSON.parse(JSON.stringify(onlineBillingEnabled)),
+              updated_by: user?.id,
+            })
+            .eq("setting_key", "online_billing_enabled");
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("application_settings")
+            .insert([{
+              setting_key: "online_billing_enabled",
+              setting_value: JSON.parse(JSON.stringify(onlineBillingEnabled)),
+              updated_by: user?.id,
+            }]);
+          if (error) throw error;
+        }
+      }
+
       // Update initial values to reflect saved state
       setInitialProfileSettings({ ...profileSettings });
       setInitialBusinessSettings({ ...businessSettings });
@@ -524,6 +567,7 @@ const Settings = () => {
       setInitialSecuritySettings({ ...securitySettings, adminPin: "" });
       setSecuritySettings(prev => ({ ...prev, adminPin: "" }));
       setInitialLandingPages({ ...landingPages });
+      setInitialOnlineBillingEnabled(onlineBillingEnabled);
 
       toast({
         title: "Success",
@@ -1070,6 +1114,36 @@ const Settings = () => {
                 </Select>
               </div>
             ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Online Billing Toggle - Admin Only */}
+      {isAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.23 }}
+          className="bg-card rounded-xl p-6 shadow-card"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <FileText className="w-5 h-5 text-primary" />
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">Billing Mode</h3>
+              <p className="text-sm text-muted-foreground">Control how invoices are created in the system</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Online Billing (Invoices)</p>
+              <p className="text-sm text-muted-foreground">
+                When enabled, the full invoice creation flow is available. When disabled, only manual bills can be added via the Clients section.
+              </p>
+            </div>
+            <Switch 
+              checked={onlineBillingEnabled}
+              onCheckedChange={(checked) => setOnlineBillingEnabled(checked)}
+            />
           </div>
         </motion.div>
       )}
