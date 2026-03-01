@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogIn, Loader2, Eye, EyeOff } from "lucide-react";
@@ -21,12 +21,11 @@ const Login = () => {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [showSignUpOption, setShowSignUpOption] = useState(false);
 
-  // Check if any users exist - if not, show signup option
-  useState(() => {
+  useEffect(() => {
     supabase.from("user_roles").select("id", { count: "exact", head: true }).then(({ count }) => {
       setShowSignUpOption(count === null || count === 0);
     });
-  });
+  }, []);
 
   // Get the landing page for a given role from application_settings
   const getLandingPage = async (userId: string): Promise<string> => {
