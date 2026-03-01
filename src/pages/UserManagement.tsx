@@ -496,7 +496,14 @@ const UserManagement = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" value={newUser.phone} onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })} placeholder="+92 3XX XXXXXXX" />
+              <Input id="phone" value={newUser.phone} onChange={(e) => {
+                const raw = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+                let formatted = raw;
+                if (raw.length > 4) {
+                  formatted = raw.slice(0, 4) + "-" + raw.slice(4);
+                }
+                setNewUser({ ...newUser, phone: formatted });
+              }} placeholder="0XXX-XXXXXXX" maxLength={12} />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
