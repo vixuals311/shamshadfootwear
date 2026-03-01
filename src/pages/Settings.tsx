@@ -558,6 +558,7 @@ const Settings = () => {
             }]);
           if (error) throw error;
         }
+        window.dispatchEvent(new Event("online-billing-changed"));
       }
 
       // Update initial values to reflect saved state
