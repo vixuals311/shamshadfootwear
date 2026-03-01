@@ -8,7 +8,7 @@ const Dashboard = () => {
   const { role, profile } = useSupabaseAuthContext();
   const { stats, recentInvoices, lowStockProducts, monthlySales, loading } = useDashboardData();
   
-  const isRestrictedRole = role === "biller" || role === "cashier" || role === "biller_cashier";
+  const isRestrictedRole = role === "biller" || role === "cashier";
 
   if (loading) {
     return (

@@ -1,13 +1,14 @@
 import { createContext, useContext, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { useSupabaseAuth, Profile, Notification, AppRole } from "@/hooks/useAuth";
-import { RolePermissions, ROLE_PERMISSIONS } from "@/types";
+import { RolePermissions, ROLE_PERMISSIONS, PageKey } from "@/types";
 
 interface SupabaseAuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
+  pageAccess: Record<PageKey, boolean>;
   notifications: Notification[];
   unreadCount: number;
   loading: boolean;
@@ -15,9 +16,11 @@ interface SupabaseAuthContextType {
   markNotificationAsRead: (id: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
   hasPermission: (permission: keyof RolePermissions) => boolean;
+  hasPageAccess: (pageKey: PageKey) => boolean;
   getPermissions: () => RolePermissions | null;
   refetchProfile: () => void;
   refetchNotifications: () => void;
+  refetchPageAccess: () => void;
 }
 
 const SupabaseAuthContext = createContext<SupabaseAuthContextType | null>(null);
@@ -27,12 +30,20 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
   const hasPermission = (permission: keyof RolePermissions): boolean => {
     if (!auth.role) return false;
-    return ROLE_PERMISSIONS[auth.role][permission];
+    return ROLE_PERMISSIONS[auth.role]?.[permission] ?? false;
+  };
+
+  const hasPageAccess = (pageKey: PageKey): boolean => {
+    if (!auth.role) return false;
+    if (auth.role === "admin") return true;
+    // Users tab is admin-only, never accessible to others
+    if (pageKey === "users") return false;
+    return auth.pageAccess[pageKey] ?? false;
   };
 
   const getPermissions = (): RolePermissions | null => {
     if (!auth.role) return null;
-    return ROLE_PERMISSIONS[auth.role];
+    return ROLE_PERMISSIONS[auth.role] ?? null;
   };
 
   return (
@@ -40,6 +51,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       value={{
         ...auth,
         hasPermission,
+        hasPageAccess,
         getPermissions,
       }}
     >

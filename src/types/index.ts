@@ -1,6 +1,6 @@
 // Shared types for the application
 
-export type UserRole = "admin" | "biller" | "cashier" | "biller_cashier";
+export type UserRole = "admin" | "manager" | "biller" | "cashier";
 
 export interface User {
   id: string;
@@ -12,6 +12,49 @@ export interface User {
   isActive: boolean;
 }
 
+// Page keys that can be assigned by admin
+export type PageKey = 
+  | "dashboard"
+  | "inventory" 
+  | "clients"
+  | "invoices"
+  | "payments"
+  | "recovery"
+  | "returns"
+  | "reports"
+  | "audit_logs"
+  | "settings"
+  | "users";
+
+export interface PagePermission {
+  pageKey: PageKey;
+  hasAccess: boolean;
+}
+
+// Default page access per role
+export const ROLE_DEFAULT_PAGES: Record<UserRole, PageKey[]> = {
+  admin: ["dashboard", "inventory", "clients", "invoices", "payments", "recovery", "returns", "reports", "users", "audit_logs", "settings"],
+  manager: ["dashboard", "inventory", "clients", "invoices", "payments", "recovery", "returns", "reports", "audit_logs", "settings"],
+  biller: ["dashboard", "inventory", "clients", "invoices", "returns"],
+  cashier: ["dashboard", "payments", "recovery"],
+};
+
+// Page metadata for UI display
+export const PAGE_METADATA: Record<PageKey, { label: string; description: string }> = {
+  dashboard: { label: "Dashboard", description: "Overview & analytics" },
+  inventory: { label: "Inventory", description: "Products & stock management" },
+  clients: { label: "Clients", description: "Customer management" },
+  invoices: { label: "Invoices", description: "Create & manage invoices" },
+  payments: { label: "Payments", description: "Record payments" },
+  recovery: { label: "Recovery", description: "Debt recovery management" },
+  returns: { label: "Returns", description: "Process returns" },
+  reports: { label: "Reports", description: "Sales & financial reports" },
+  audit_logs: { label: "Audit Logs", description: "Activity history" },
+  settings: { label: "Settings", description: "App configuration" },
+  users: { label: "Users", description: "User management (Admin only)" },
+};
+
+// Legacy permission interface (kept for backward compat in some components)
 export interface RolePermissions {
   canManageUsers: boolean;
   canManageSettings: boolean;
@@ -28,6 +71,18 @@ export interface RolePermissions {
 export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
   admin: {
     canManageUsers: true,
+    canManageSettings: true,
+    canViewReports: true,
+    canManageInventory: true,
+    canManageClients: true,
+    canCreateInvoices: true,
+    canEditInvoices: true,
+    canDeleteInvoices: true,
+    canRecordPayments: true,
+    canManageRecoveries: true,
+  },
+  manager: {
+    canManageUsers: false,
     canManageSettings: true,
     canViewReports: true,
     canManageInventory: true,
@@ -59,18 +114,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canCreateInvoices: false,
     canEditInvoices: false,
     canDeleteInvoices: false,
-    canRecordPayments: false,
-    canManageRecoveries: true,
-  },
-  biller_cashier: {
-    canManageUsers: false,
-    canManageSettings: false,
-    canViewReports: false,
-    canManageInventory: true,
-    canManageClients: true,
-    canCreateInvoices: true,
-    canEditInvoices: true,
-    canDeleteInvoices: false,
     canRecordPayments: true,
     canManageRecoveries: true,
   },
@@ -84,7 +127,7 @@ export interface Brand {
 export interface SizeBundlePricing {
   sizeRange: string;
   pricePerPair: number;
-  pairsPerBundle: number; // Editable per bundle
+  pairsPerBundle: number;
 }
 
 export interface Product {
@@ -113,7 +156,6 @@ export interface Client {
   totalSpent: number;
   invoiceCount: number;
   notes?: string;
-  // For client portal login
   loginPin?: string;
 }
 
@@ -125,7 +167,7 @@ export interface InvoiceItem {
   brandName: string;
   sizeRange: string;
   quantity: number;
-  totalPairs: number; // Editable total pairs
+  totalPairs: number;
   pricePerPair: number;
   discountPerPair: number;
   total: number;
@@ -170,27 +212,12 @@ export interface PaymentAccount {
 }
 
 export type AuditAction = 
-  | "login" 
-  | "logout" 
-  | "create" 
-  | "update" 
-  | "delete" 
-  | "view"
-  | "save_draft"
-  | "export"
-  | "import"
-  | "print";
+  | "login" | "logout" | "create" | "update" | "delete" | "view"
+  | "save_draft" | "export" | "import" | "print";
 
 export type AuditEntity = 
-  | "user" 
-  | "product" 
-  | "brand" 
-  | "client" 
-  | "invoice" 
-  | "recovery" 
-  | "payment" 
-  | "settings"
-  | "report";
+  | "user" | "product" | "brand" | "client" | "invoice" 
+  | "recovery" | "payment" | "settings" | "report";
 
 export interface AuditLog {
   id: string;
@@ -205,5 +232,4 @@ export interface AuditLog {
   ipAddress?: string;
 }
 
-// Default size bundles for dropdown
 export const DEFAULT_SIZE_BUNDLES = ["7-10", "4-6", "1-3"];
