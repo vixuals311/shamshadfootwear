@@ -102,18 +102,20 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   3. Password is updated in the auth system
 
 ### 3.5 Role-Based Access Control
-- Four roles: **Admin**, **Biller**, **Cashier**, **Biller + Cashier**
-- Each role has granular permissions (see [Section 20](#20-role-based-access-control-matrix))
+- Four roles: **Admin**, **Manager**, **Biller**, **Cashier**
+- Each role has default page access (see [Section 20](#20-role-based-access-control-matrix))
+- **Granular Page Overrides:** Admins can customize any user's page access beyond their role defaults via the User Management page
+- Overrides are stored in `user_page_permissions` table and merged with role defaults via `get_user_page_access()` database function
 - Protected routes redirect unauthenticated users to `/login`
-- Sidebar navigation items are conditionally rendered based on role permissions
+- Sidebar navigation items are dynamically filtered based on the user's effective page access
 
 ---
 
 ## 4. Dashboard
 
-### 4.1 Admin Dashboard (UC-DASH-01)
+### 4.1 Admin/Manager Dashboard (UC-DASH-01)
 - **Route:** `/`
-- **Actors:** Admin only
+- **Actors:** Admin, Manager
 - **Features:**
   - **Metric Cards (4):**
     - Total Revenue (with % change)
@@ -129,7 +131,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
     - Overdue Amount
 
 ### 4.2 Restricted Dashboard (UC-DASH-02)
-- **Actors:** Biller, Cashier, Biller+Cashier
+- **Actors:** Biller, Cashier
 - **Features:** Only shows:
   - Low Stock Alert
   - Recent Invoices
@@ -141,7 +143,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 5.1 View Products (UC-INV-01)
 - **Route:** `/inventory`
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Features:**
   - Product list with article number, name, brand, category, gender, stock status
   - **Search:** By product name, article number, brand name, or category
@@ -154,7 +156,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   - Size bundle details: size range, price/pair, pairs/bundle, quantity (bundles)
 
 ### 5.2 Add Product (UC-INV-02)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. Click "Add Product" button
   2. Fill in: Name, Article Number, Brand (dropdown), Category, Gender, Pairs Per Dozen, Supplier
@@ -164,7 +166,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   6. Audit log entry is created
 
 ### 5.3 Edit Product (UC-INV-03)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. Click edit icon on a product row
   2. Pre-populated form with current product data
@@ -181,7 +183,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   4. Audit log entry is created
 
 ### 5.5 Restock Product (UC-INV-05)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. Click restock icon on a product row
   2. Dialog shows current quantity for each size bundle
@@ -189,21 +191,21 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   4. System updates quantity in `product_size_bundles` and recalculates `stock_dozens`
 
 ### 5.6 Brand Management (UC-INV-06)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Features:**
   - View all brands in a separate tab
   - Add new brand (with confirmation dialog)
   - Delete brand (with confirmation dialog)
 
 ### 5.7 Size Range Management (UC-INV-07)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Features:**
   - Default size ranges are defined per gender category (men, women, children, unisex)
   - Managed via Settings page or Inventory dialog
   - Each size range has: category, size range string, pairs per bundle, display order
 
 ### 5.8 Export Inventory (UC-INV-08)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Format:** CSV download
 - **Columns:** Article Number, Product Name, Brand, Category, Gender, Size Range, Price/Pair, Pairs/Bundle, Quantity, Stock Status
 
@@ -221,7 +223,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 6.1 View Clients (UC-CLI-01)
 - **Route:** `/clients`
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Features:**
   - **Grid View:** Client cards with name, phone, city, balance
   - **List View:** Table format with all client details
@@ -229,7 +231,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   - **Client Card Info:** Name, email, phone, address, city, opening balance, current balance, total spent, invoice count
 
 ### 6.2 Add Client (UC-CLI-02)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Required Fields:** Name, Phone (format: `0XXX-XXXXXXX`)
 - **Optional Fields:** Email, Address, City (combobox with existing cities), Opening Balance, Reference Number, Notes
 - **Validations:**
@@ -243,7 +245,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   5. Audit log entry created
 
 ### 6.3 Edit Client (UC-CLI-03)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:** Similar to Add Client but pre-populated with existing data
 
 ### 6.4 Delete Client (UC-CLI-04)
@@ -251,7 +253,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 - **Flow:** Confirmation dialog → delete from database → audit log
 
 ### 6.5 View Client Details (UC-CLI-05)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. Click on a client card/row
   2. Detail view shows:
@@ -262,7 +264,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   4. Can print invoices directly from the detail view
 
 ### 6.6 Client Portal PIN Management (UC-CLI-06)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. Click the key icon on a client card
   2. Set or change a 4+ digit PIN for client portal access
@@ -270,7 +272,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   4. Audit log entry created
 
 ### 6.7 Quick Recovery from Client Detail (UC-CLI-07)
-- **Actors:** Admin, Biller+Cashier
+- **Actors:** Admin, Manager, Cashier
 - **Flow:**
   1. From client detail view, click "Record Recovery"
   2. Enter amount and optional notes
@@ -296,7 +298,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 7.1 View Invoices (UC-INV-LIST-01)
 - **Route:** `/invoices`
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Features:**
   - Invoice list with: number, client name, amount, status, date, item count
   - **Search:** By invoice number or client name
@@ -307,7 +309,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 7.2 Create New Invoice (UC-INV-NEW-01)
 - **Route:** `/invoices/new`
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. **Select Client:** Searchable combobox with all clients (shows phone + city)
   2. **Add Products:**
@@ -341,7 +343,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 7.3 Edit Draft Invoice (UC-INV-EDIT-01)
 - **Route:** `/invoices/edit/:invoiceId`
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. From invoice list, click edit icon on a draft invoice
   2. Existing invoice data is loaded into the form
@@ -349,7 +351,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   4. Save updates or finalize the draft
 
 ### 7.4 View Invoice Detail (UC-INV-VIEW-01)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. Click Eye icon on an invoice row
   2. Branded dialog opens with:
@@ -361,7 +363,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   3. Print button in the dialog
 
 ### 7.5 Print Invoice (UC-INV-PRINT-01)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. Click Printer icon on an invoice row (or from view dialog)
   2. New browser window opens with branded print layout:
@@ -382,7 +384,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   4. Audit log entry created
 
 ### 7.7 Send Invoice to Client (UC-INV-SEND-01)
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Flow:**
   1. Click send icon on an invoice row
   2. Invoice details are copied to clipboard (formatted text)
@@ -397,7 +399,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 8.1 View Payments (UC-PAY-01)
 - **Route:** `/payments`
-- **Actors:** Admin, Biller+Cashier
+- **Actors:** Admin, Manager, Cashier
 - **Features:**
   - **Payment Accounts:** List of all payment accounts (JazzCash, EasyPaisa, Bank, etc.)
   - **Incoming Payments:** From invoices (amount received > 0)
@@ -414,7 +416,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 9.1 View Recoveries (UC-REC-01)
 - **Route:** `/recovery`
-- **Actors:** Admin, Cashier, Biller+Cashier
+- **Actors:** Admin, Manager, Cashier
 - **Features:**
   - List of all recovery records
   - Two types: **Client Recovery** (direct) and **City Recovery** (grouped)
@@ -451,7 +453,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   3. Managed via `useRecoveryDrafts` hook
 
 ### 9.5 Print Recovery Receipt (UC-REC-05)
-- **Actors:** Admin, Cashier, Biller+Cashier
+- **Actors:** Admin, Manager, Cashier
 - **Flow:** Print formatted recovery receipt
 
 ### 9.6 Export Recoveries (UC-REC-06)
@@ -463,7 +465,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 10.1 View Returns (UC-RET-01)
 - **Route:** `/returns`
-- **Actors:** Admin, Biller, Biller+Cashier
+- **Actors:** Admin, Manager, Biller
 - **Features:**
   - List of all return records with return number, invoice reference, client, amount, date
   - Search by return number or client name
@@ -493,7 +495,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 11.1 View Reports (UC-REP-01)
 - **Route:** `/reports`
-- **Actors:** Admin only
+- **Actors:** Admin, Manager
 - **Features:**
   - **Summary Stats:**
     - Total Revenue
@@ -518,16 +520,28 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 - **Features:**
   - List of all system users with: name, email, phone, role, status, created date
   - Search by name or email
-  - Role badge color-coded (Admin=red, Biller=green, Cashier=yellow, Biller+Cashier=gray)
+  - Role badge color-coded (Admin=red, Manager=blue, Biller=green, Cashier=yellow)
+  - **Page Access Dialog:** Click on a user to view/edit their granular page permissions
 
 ### 12.2 Create User (UC-USER-02)
 - **Actors:** Admin only
 - **Flow:**
   1. Click "Add User"
-  2. Enter: Name, Email, Password, Phone (optional)
-  3. Select role: Admin, Biller, Cashier, Biller+Cashier
+  2. Enter: Name, Email, Password, Phone (format: `0XXX-XXXXXXX`)
+  3. Select role: Admin, Manager, Biller, Cashier
   4. System creates auth user + profile + role record
-  5. Audit log entry created
+  5. Default page permissions applied based on role
+  6. Audit log entry created
+
+### 12.6 Manage Page Access (UC-USER-06)
+- **Actors:** Admin only
+- **Flow:**
+  1. Click the shield/permissions icon on a user row
+  2. Dialog shows all pages with toggle switches
+  3. Each toggle shows the effective access (role default + override)
+  4. Admin can grant or revoke access to specific pages
+  5. Overrides are stored in `user_page_permissions` table
+  6. Changes take effect immediately on the user's next page load
 
 ### 12.3 Edit User (UC-USER-03)
 - **Actors:** Admin only
@@ -558,7 +572,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 13.1 View Audit Logs (UC-AUDIT-01)
 - **Route:** `/audit-logs`
-- **Actors:** Admin only
+- **Actors:** Admin, Manager
 - **Features:**
   - Chronological list of all system actions
   - Each entry shows: timestamp, user name, action, entity type, entity ID, details
@@ -589,14 +603,14 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   - Save changes to profiles table
 
 ### 14.2 Payment Accounts (UC-SET-02)
-- **Actors:** Admin only
+- **Actors:** Admin, Manager
 - **Features:**
   - View all payment accounts
   - Add new payment account (name)
   - Delete payment account
 
 ### 14.3 Product Categories (UC-SET-03)
-- **Actors:** Admin only
+- **Actors:** Admin, Manager
 - **Features:**
   - View all product categories
   - Add new category with display order
@@ -604,7 +618,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   - Drag to reorder (display_order)
 
 ### 14.4 Default Size Ranges (UC-SET-04)
-- **Actors:** Admin only
+- **Actors:** Admin, Manager
 - **Features:**
   - Configure default size ranges per gender category (men, women, children, unisex)
   - Each size range: size string, pairs per bundle, display order
@@ -750,7 +764,8 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 | Table | Purpose |
 |-------|---------|
 | `profiles` | User profile data (name, email, phone, avatar) |
-| `user_roles` | Maps users to roles (admin, biller, cashier, biller_cashier) |
+| `user_roles` | Maps users to roles (admin, manager, biller, cashier) |
+| `user_page_permissions` | Per-user page access overrides |
 | `user_sessions` | Active session tracking for single-session enforcement |
 | `admin_security_settings` | PIN, timeout, session settings per admin |
 | `brands` | Footwear brand names |
@@ -793,37 +808,27 @@ recoveries ──< recovery_client_amounts
 
 ## 20. Role-Based Access Control Matrix
 
-| Permission | Admin | Biller | Cashier | Biller+Cashier |
-|-----------|:-----:|:------:|:-------:|:--------------:|
-| Manage Users | ✅ | ❌ | ❌ | ❌ |
-| Manage Settings | ✅ | ❌ | ❌ | ❌ |
-| View Reports | ✅ | ❌ | ❌ | ❌ |
-| Manage Inventory | ✅ | ✅ | ❌ | ✅ |
-| Manage Clients | ✅ | ✅ | ❌ | ✅ |
-| Create Invoices | ✅ | ✅ | ❌ | ✅ |
-| Edit Invoices | ✅ | ✅ | ❌ | ✅ |
-| Delete Invoices | ✅ | ❌ | ❌ | ❌ |
-| Record Payments | ✅ | ❌ | ❌ | ✅ |
-| Manage Recoveries | ✅ | ❌ | ✅ | ✅ |
-| View Dashboard (Full) | ✅ | ❌ | ❌ | ❌ |
-| View Dashboard (Limited) | ✅ | ✅ | ✅ | ✅ |
-| View Audit Logs | ✅ | ❌ | ❌ | ❌ |
+### Default Page Access by Role
 
-### Navigation Visibility by Role
-
-| Page | Admin | Biller | Cashier | Biller+Cashier |
-|------|:-----:|:------:|:-------:|:--------------:|
+| Page | Admin | Manager | Biller | Cashier |
+|------|:-----:|:-------:|:------:|:-------:|
 | Dashboard | ✅ | ✅ | ✅ | ✅ |
-| Inventory | ✅ | ✅ | ❌ | ✅ |
-| Clients | ✅ | ✅ | ❌ | ✅ |
-| Invoices | ✅ | ✅ | ❌ | ✅ |
-| Payments | ✅ | ❌ | ❌ | ✅ |
-| Recovery | ✅ | ❌ | ✅ | ✅ |
-| Returns | ✅ | ✅ | ❌ | ✅ |
-| Reports | ✅ | ❌ | ❌ | ❌ |
+| Inventory | ✅ | ✅ | ✅ | ❌ |
+| Clients | ✅ | ✅ | ✅ | ❌ |
+| Invoices | ✅ | ✅ | ✅ | ❌ |
+| Payments | ✅ | ✅ | ❌ | ✅ |
+| Recovery | ✅ | ✅ | ❌ | ✅ |
+| Returns | ✅ | ✅ | ✅ | ❌ |
+| Reports | ✅ | ✅ | ❌ | ❌ |
 | Users | ✅ | ❌ | ❌ | ❌ |
-| Audit Logs | ✅ | ❌ | ❌ | ❌ |
-| Settings | ✅ | ❌ | ❌ | ❌ |
+| Audit Logs | ✅ | ✅ | ❌ | ❌ |
+| Settings | ✅ | ✅ | ❌ | ❌ |
+
+### Granular Page Overrides
+- Admins can customize any user's page access beyond their role defaults
+- Overrides are stored in `user_page_permissions` table
+- Effective access = `COALESCE(override, role_default)`
+- Admin users always have full access (overrides are ignored)
 
 ---
 
