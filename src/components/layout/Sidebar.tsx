@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, Settings, ChevronLeft, ChevronRight, Wallet, UserCog, History, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
+import { useOnlineBilling } from "@/hooks/useOnlineBilling";
 import logo from "@/assets/logo.png";
 
 interface SidebarProps {
@@ -13,13 +14,14 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
   const { hasPageAccess } = useSupabaseAuthContext();
+  const { onlineBillingEnabled } = useOnlineBilling();
 
   const navItems = [
     { icon: Package, label: "Inventory", path: "/inventory", show: hasPageAccess("inventory") },
     { icon: Users, label: "Clients", path: "/clients", show: hasPageAccess("clients") },
     { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPageAccess("recovery") },
     { icon: LayoutDashboard, label: "Dashboard", path: "/", show: hasPageAccess("dashboard") },
-    { icon: FileText, label: "Invoices", path: "/invoices", show: hasPageAccess("invoices") },
+    { icon: FileText, label: "Invoices", path: "/invoices", show: hasPageAccess("invoices") && onlineBillingEnabled },
     { icon: CreditCard, label: "Payments", path: "/payments", show: hasPageAccess("payments") },
     { icon: RotateCcw, label: "Returns", path: "/returns", show: hasPageAccess("returns") },
     { icon: BarChart3, label: "Reports", path: "/reports", show: hasPageAccess("reports") },

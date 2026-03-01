@@ -138,6 +138,7 @@ const Clients = () => {
     notes: "",
   });
   const [manualBillSaving, setManualBillSaving] = useState(false);
+  const [showManualBillConfirm, setShowManualBillConfirm] = useState(false);
   
   // Quick recovery states
   const [isQuickRecoveryOpen, setIsQuickRecoveryOpen] = useState(false);
@@ -1422,7 +1423,7 @@ const Clients = () => {
                 Cancel
               </Button>
               <Button
-                onClick={handleAddManualBill}
+                onClick={() => setShowManualBillConfirm(true)}
                 disabled={manualBillSaving || !manualBillForm.bill_number || !manualBillForm.amount}
               >
                 {manualBillSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -1431,6 +1432,27 @@ const Clients = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Manual Bill Confirmation */}
+        <AlertDialog open={showManualBillConfirm} onOpenChange={setShowManualBillConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Manual Bill</AlertDialogTitle>
+              <AlertDialogDescription>
+                Add bill <span className="font-semibold">{manualBillForm.bill_number}</span> for{" "}
+                <span className="font-semibold">Rs {parseFloat(manualBillForm.amount || "0").toLocaleString()}</span>{" "}
+                to <span className="font-semibold">{selectedClient.name}</span>?
+                This will increase their balance accordingly.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { setShowManualBillConfirm(false); handleAddManualBill(); }}>
+                Confirm
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
