@@ -58,10 +58,6 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
   const isFullyReturned = totalReturned >= invoice.total;
 
   const handlePrint = () => {
-    if (onPrint) {
-      onPrint();
-      return;
-    }
     const logoUrl = window.location.origin + '/favicon.png';
     const returnsHtml = hasReturns ? `
       <div style="margin-top:24px;border-top:1px solid #ddd;padding-top:16px;">
