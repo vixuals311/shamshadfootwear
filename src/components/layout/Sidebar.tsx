@@ -4,76 +4,33 @@ import { LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, Setti
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import logo from "@/assets/logo.png";
+
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
-export function Sidebar({
-  collapsed,
-  onToggle
-}: SidebarProps) {
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
-  const {
-    hasPermission,
-    role
-  } = useSupabaseAuthContext();
-  const navItems = [{
-    icon: Package,
-    label: "Inventory",
-    path: "/inventory",
-    show: hasPermission("canManageInventory") || role === "admin"
-  }, {
-    icon: Users,
-    label: "Clients",
-    path: "/clients",
-    show: hasPermission("canManageClients") || role === "admin"
-  }, {
-    icon: Wallet,
-    label: "Recovery",
-    path: "/recovery",
-    show: hasPermission("canManageRecoveries") || role === "admin" || role === "cashier"
-  }, {
-    icon: LayoutDashboard,
-    label: "Dashboard",
-    path: "/",
-    show: true
-  }, {
-    icon: FileText,
-    label: "Invoices",
-    path: "/invoices",
-    show: hasPermission("canCreateInvoices") || role === "admin"
-  }, {
-    icon: CreditCard,
-    label: "Payments",
-    path: "/payments",
-    show: hasPermission("canRecordPayments") || role === "admin"
-  }, {
-    icon: RotateCcw,
-    label: "Returns",
-    path: "/returns",
-    show: hasPermission("canCreateInvoices") || role === "admin"
-  }, {
-    icon: BarChart3,
-    label: "Reports",
-    path: "/reports",
-    show: hasPermission("canViewReports") || role === "admin"
-  }].filter(item => item.show);
-  const bottomNavItems = [{
-    icon: UserCog,
-    label: "Users",
-    path: "/users",
-    show: hasPermission("canManageUsers") || role === "admin"
-  }, {
-    icon: History,
-    label: "Audit Logs",
-    path: "/audit-logs",
-    show: hasPermission("canManageSettings") || role === "admin"
-  }, {
-    icon: Settings,
-    label: "Settings",
-    path: "/settings",
-    show: hasPermission("canManageSettings") || role === "admin"
-  }].filter(item => item.show);
+  const { hasPageAccess } = useSupabaseAuthContext();
+
+  const navItems = [
+    { icon: Package, label: "Inventory", path: "/inventory", show: hasPageAccess("inventory") },
+    { icon: Users, label: "Clients", path: "/clients", show: hasPageAccess("clients") },
+    { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPageAccess("recovery") },
+    { icon: LayoutDashboard, label: "Dashboard", path: "/", show: hasPageAccess("dashboard") },
+    { icon: FileText, label: "Invoices", path: "/invoices", show: hasPageAccess("invoices") },
+    { icon: CreditCard, label: "Payments", path: "/payments", show: hasPageAccess("payments") },
+    { icon: RotateCcw, label: "Returns", path: "/returns", show: hasPageAccess("returns") },
+    { icon: BarChart3, label: "Reports", path: "/reports", show: hasPageAccess("reports") },
+  ].filter(item => item.show);
+
+  const bottomNavItems = [
+    { icon: UserCog, label: "Users", path: "/users", show: hasPageAccess("users") },
+    { icon: History, label: "Audit Logs", path: "/audit-logs", show: hasPageAccess("audit_logs") },
+    { icon: Settings, label: "Settings", path: "/settings", show: hasPageAccess("settings") },
+  ].filter(item => item.show);
+
   return <motion.aside initial={false} animate={{
     width: collapsed ? 64 : 256
   }} transition={{

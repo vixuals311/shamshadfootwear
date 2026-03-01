@@ -732,6 +732,33 @@ export type Database = {
           },
         ]
       }
+      user_page_permissions: {
+        Row: {
+          created_at: string
+          has_access: boolean
+          id: string
+          page_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          has_access?: boolean
+          id?: string
+          page_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          has_access?: boolean
+          id?: string
+          page_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -794,6 +821,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_page_access: {
+        Args: { _user_id: string }
+        Returns: {
+          has_access: boolean
+          page_key: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
