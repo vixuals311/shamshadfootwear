@@ -1,0 +1,1 @@
+ALTER TABLE public.product_size_bundles ADD COLUMN cost_per_pair numeric DEFAULT NULL;
