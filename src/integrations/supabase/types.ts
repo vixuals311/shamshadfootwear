@@ -406,6 +406,7 @@ export type Database = {
       }
       product_size_bundles: {
         Row: {
+          cost_per_pair: number | null
           created_at: string
           id: string
           pairs_per_bundle: number
@@ -415,6 +416,7 @@ export type Database = {
           size_range: string
         }
         Insert: {
+          cost_per_pair?: number | null
           created_at?: string
           id?: string
           pairs_per_bundle?: number
@@ -424,6 +426,7 @@ export type Database = {
           size_range: string
         }
         Update: {
+          cost_per_pair?: number | null
           created_at?: string
           id?: string
           pairs_per_bundle?: number

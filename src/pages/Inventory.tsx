@@ -14,6 +14,7 @@ import {
   X,
   Settings2,
   Loader2,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { exportToCSV } from "@/utils/exportUtils";
+import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 
 interface SizeBundleInput {
   sizeRange: string;
@@ -87,6 +89,8 @@ const GENDER_OPTIONS: { value: GenderCategory; label: string }[] = [
 const Inventory = () => {
   const { toast } = useToast();
   const { log } = useAuditLog();
+  const { role } = useSupabaseAuthContext();
+  const isAdmin = role === "admin";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [products, setProducts] = useState<(Product & { gender: GenderCategory })[]>([]);
@@ -120,6 +124,12 @@ const Inventory = () => {
   const [isRestockDialogOpen, setIsRestockDialogOpen] = useState(false);
   const [restockBundles, setRestockBundles] = useState<RestockBundle[]>([]);
   const [restockSaving, setRestockSaving] = useState(false);
+
+  // Cost price dialog (admin only)
+  const [costPriceProduct, setCostPriceProduct] = useState<(Product & { gender: GenderCategory }) | null>(null);
+  const [isCostPriceDialogOpen, setIsCostPriceDialogOpen] = useState(false);
+  const [costPriceInputs, setCostPriceInputs] = useState<{ id: string; sizeRange: string; costPerPair: string; sellingPrice: number }[]>([]);
+  const [costPriceSaving, setCostPriceSaving] = useState(false);
 
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -182,6 +192,7 @@ const Inventory = () => {
             pricePerPair: sb.price_per_pair,
             pairsPerBundle: sb.pairs_per_bundle,
             quantity: sb.quantity ?? 0,
+            costPerPair: sb.cost_per_pair ?? null,
           })),
         defaultPairsPerBundle: 6,
         supplier: p.supplier || "",
@@ -585,6 +596,58 @@ const Inventory = () => {
     const updated = [...newProduct.sizeBundles];
     updated[index] = { ...updated[index], pricePerPair: price };
     setNewProduct({ ...newProduct, sizeBundles: updated });
+  };
+
+  // Cost price handlers (admin only)
+  const handleOpenCostPrice = (product: Product & { gender: GenderCategory }) => {
+    setCostPriceProduct(product);
+    setCostPriceInputs(
+      product.sizeBundles.map((sb: any) => ({
+        id: sb.id,
+        sizeRange: sb.sizeRange,
+        costPerPair: sb.costPerPair !== null ? sb.costPerPair.toString() : "",
+        sellingPrice: sb.pricePerPair,
+      }))
+    );
+    setIsCostPriceDialogOpen(true);
+  };
+
+  const handleSaveCostPrice = async () => {
+    if (!costPriceProduct) return;
+    setCostPriceSaving(true);
+    try {
+      for (const input of costPriceInputs) {
+        const costValue = input.costPerPair ? parseFloat(input.costPerPair) : null;
+        await supabase
+          .from("product_size_bundles")
+          .update({ cost_per_pair: costValue })
+          .eq("id", input.id);
+      }
+
+      await log({
+        action: "update",
+        entityType: "product",
+        entityId: costPriceProduct.id,
+        details: {
+          action: "set_cost_price",
+          name: costPriceProduct.name,
+        },
+      });
+
+      toast({ title: "Success", description: "Cost prices updated successfully" });
+      setIsCostPriceDialogOpen(false);
+      setCostPriceProduct(null);
+      fetchData();
+    } catch (error: any) {
+      console.error("Error saving cost prices:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save cost prices",
+        variant: "destructive",
+      });
+    } finally {
+      setCostPriceSaving(false);
+    }
   };
 
   const updateSizeBundleRange = (
@@ -1369,6 +1432,11 @@ const Inventory = () => {
                       <DropdownMenuItem className="gap-2" onClick={() => handleOpenRestock(product)}>
                         <Plus className="w-4 h-4" /> Restock
                       </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem className="gap-2" onClick={() => handleOpenCostPrice(product)}>
+                          <DollarSign className="w-4 h-4" /> Cost Price
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteProductId(product.id)}>
                         <Trash2 className="w-4 h-4" /> Delete
                       </DropdownMenuItem>
@@ -1434,6 +1502,7 @@ const Inventory = () => {
                 <th>Brand</th>
                 <th>Type</th>
                 <th>Size Bundles (Stock)</th>
+                {isAdmin && <th>Cost / Profit</th>}
                 <th>Total Pairs</th>
                 <th className="w-12"></th>
               </tr>
@@ -1477,6 +1546,32 @@ const Inventory = () => {
                         ))}
                       </div>
                     </td>
+                    {isAdmin && (
+                      <td>
+                        <div className="flex flex-col gap-1 text-xs">
+                          {product.sizeBundles.map((sb: any) => {
+                            const cost = sb.costPerPair;
+                            const sell = sb.pricePerPair;
+                            if (cost === null || cost === undefined) {
+                              return (
+                                <span key={sb.sizeRange} className="text-muted-foreground italic">
+                                  {sb.sizeRange}: Not set
+                                </span>
+                              );
+                            }
+                            const profit = sell - cost;
+                            const margin = sell > 0 ? ((profit / sell) * 100).toFixed(0) : "0";
+                            return (
+                              <span key={sb.sizeRange} className="text-muted-foreground">
+                                <span className="font-medium text-foreground">{sb.sizeRange}:</span>{" "}
+                                <span className={cn("font-semibold", profit > 0 ? "text-primary" : "text-destructive")}>Rs {profit}</span>{" "}
+                                <span className="text-muted-foreground">({margin}%)</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    )}
                     <td>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{totalPairs}</span>
@@ -1497,6 +1592,11 @@ const Inventory = () => {
                           <DropdownMenuItem className="gap-2" onClick={() => handleOpenRestock(product)}>
                             <Plus className="w-4 h-4" /> Restock
                           </DropdownMenuItem>
+                          {isAdmin && (
+                            <DropdownMenuItem className="gap-2" onClick={() => handleOpenCostPrice(product)}>
+                              <DollarSign className="w-4 h-4" /> Cost Price
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteProductId(product.id)}>
                             <Trash2 className="w-4 h-4" /> Delete
                           </DropdownMenuItem>
@@ -1857,6 +1957,84 @@ const Inventory = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Cost Price Dialog (Admin Only) */}
+      {isAdmin && (
+        <Dialog open={isCostPriceDialogOpen} onOpenChange={(open) => {
+          setIsCostPriceDialogOpen(open);
+          if (!open) setCostPriceProduct(null);
+        }}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Set Cost Price: {costPriceProduct?.name}</DialogTitle>
+              <DialogDescription>
+                Enter the purchase cost per pair for each size range. This is only visible to admins.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-4">
+              {costPriceInputs.map((input, idx) => {
+                const cost = parseFloat(input.costPerPair) || 0;
+                const profit = cost > 0 ? input.sellingPrice - cost : 0;
+                return (
+                  <div key={input.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{input.sizeRange}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Selling: Rs {input.sellingPrice}/pair
+                      </p>
+                    </div>
+                    <div className="w-28 space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Cost/Pair (Rs)</Label>
+                      <Input
+                        type="number"
+                        value={input.costPerPair}
+                        onChange={(e) => {
+                          const updated = [...costPriceInputs];
+                          updated[idx] = { ...updated[idx], costPerPair: e.target.value };
+                          setCostPriceInputs(updated);
+                        }}
+                        placeholder="0"
+                        min="0"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="w-20 text-right">
+                      <p className="text-xs text-muted-foreground">Profit</p>
+                      {cost > 0 ? (
+                        <p className={cn("text-sm font-bold", profit > 0 ? "text-primary" : "text-destructive")}>
+                          Rs {profit}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">—</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {costPriceInputs.length === 0 && (
+                <p className="text-center text-muted-foreground py-4 text-sm">
+                  No size bundles configured for this product.
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCostPriceDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveCostPrice}
+                disabled={costPriceSaving}
+              >
+                {costPriceSaving ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                ) : (
+                  "Save Cost Prices"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
