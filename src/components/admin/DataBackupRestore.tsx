@@ -94,6 +94,13 @@ export function DataBackupRestore() {
         details: { type: "full_backup", tables: BACKUP_TABLES.length },
       });
 
+      // Create a database notification for all admins
+      await supabase.rpc("notify_admins", {
+        _title: "Backup Exported",
+        _message: `Full system backup exported on ${format(new Date(), "dd MMM yyyy, hh:mm a")} — ${BACKUP_TABLES.length} tables`,
+        _type: "info",
+      });
+
       toast({ title: "Export Complete", description: "Full backup downloaded successfully" });
     } catch (error: any) {
       toast({ title: "Export Failed", description: error.message, variant: "destructive" });
