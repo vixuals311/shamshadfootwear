@@ -17,6 +17,7 @@ import {
   KeyRound,
   Clock,
   Smartphone,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,6 +98,24 @@ interface SecuritySettings {
   sessionTimeoutMinutes: number;
   enforceSingleSession: boolean;
 }
+
+interface DefaultLandingPages {
+  admin: string;
+  manager: string;
+  biller: string;
+  cashier: string;
+}
+
+const LANDING_PAGE_OPTIONS = [
+  { value: "/", label: "Dashboard" },
+  { value: "/inventory", label: "Inventory" },
+  { value: "/clients", label: "Clients" },
+  { value: "/invoices", label: "Invoices" },
+  { value: "/payments", label: "Payments" },
+  { value: "/recovery", label: "Recovery" },
+  { value: "/returns", label: "Returns" },
+  { value: "/reports", label: "Reports" },
+];
 
 const Settings = () => {
   const { toast } = useToast();
@@ -184,15 +203,30 @@ const Settings = () => {
 
   const isAdmin = role === "admin";
 
+  // Default landing pages state (admin only)
+  const [landingPages, setLandingPages] = useState<DefaultLandingPages>({
+    admin: "/",
+    manager: "/",
+    biller: "/clients",
+    cashier: "/",
+  });
+  const [initialLandingPages, setInitialLandingPages] = useState<DefaultLandingPages>({
+    admin: "/",
+    manager: "/",
+    biller: "/clients",
+    cashier: "/",
+  });
+
   // Check for unsaved changes
   useEffect(() => {
     const profileChanged = isAdmin && JSON.stringify(profileSettings) !== JSON.stringify(initialProfileSettings);
     const businessChanged = JSON.stringify(businessSettings) !== JSON.stringify(initialBusinessSettings);
     const notificationChanged = JSON.stringify(notificationSettings) !== JSON.stringify(initialNotificationSettings);
     const securityChanged = isAdmin && JSON.stringify(securitySettings) !== JSON.stringify(initialSecuritySettings);
+    const landingChanged = isAdmin && JSON.stringify(landingPages) !== JSON.stringify(initialLandingPages);
     
-    setHasUnsavedChanges(profileChanged || businessChanged || notificationChanged || securityChanged);
-  }, [profileSettings, businessSettings, notificationSettings, securitySettings, initialProfileSettings, initialBusinessSettings, initialNotificationSettings, initialSecuritySettings, isAdmin]);
+    setHasUnsavedChanges(profileChanged || businessChanged || notificationChanged || securityChanged || landingChanged);
+  }, [profileSettings, businessSettings, notificationSettings, securitySettings, landingPages, initialProfileSettings, initialBusinessSettings, initialNotificationSettings, initialSecuritySettings, initialLandingPages, isAdmin]);
 
   // Fetch data
   const fetchData = async () => {
@@ -273,6 +307,20 @@ const Settings = () => {
           };
           setNotificationSettings(notifData);
           setInitialNotificationSettings(notifData);
+        }
+
+        // Fetch landing pages setting
+        const landingSetting = appSettings.find(s => s.setting_key === "default_landing_pages");
+        if (landingSetting?.setting_value) {
+          const lp = landingSetting.setting_value as Record<string, string>;
+          const lpData = {
+            admin: lp.admin || "/",
+            manager: lp.manager || "/",
+            biller: lp.biller || "/clients",
+            cashier: lp.cashier || "/",
+          };
+          setLandingPages(lpData);
+          setInitialLandingPages(lpData);
         }
       }
 
@@ -440,12 +488,42 @@ const Settings = () => {
         }
       }
 
+      // Save landing pages (admin only)
+      if (isAdmin && JSON.stringify(landingPages) !== JSON.stringify(initialLandingPages)) {
+        const { data: existingLp } = await supabase
+          .from("application_settings")
+          .select("id")
+          .eq("setting_key", "default_landing_pages")
+          .maybeSingle();
+        
+        if (existingLp) {
+          const { error } = await supabase
+            .from("application_settings")
+            .update({
+              setting_value: JSON.parse(JSON.stringify(landingPages)),
+              updated_by: user?.id,
+            })
+            .eq("setting_key", "default_landing_pages");
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("application_settings")
+            .insert([{
+              setting_key: "default_landing_pages",
+              setting_value: JSON.parse(JSON.stringify(landingPages)),
+              updated_by: user?.id,
+            }]);
+          if (error) throw error;
+        }
+      }
+
       // Update initial values to reflect saved state
       setInitialProfileSettings({ ...profileSettings });
       setInitialBusinessSettings({ ...businessSettings });
       setInitialNotificationSettings({ ...notificationSettings });
       setInitialSecuritySettings({ ...securitySettings, adminPin: "" });
       setSecuritySettings(prev => ({ ...prev, adminPin: "" }));
+      setInitialLandingPages({ ...landingPages });
 
       toast({
         title: "Success",
@@ -950,6 +1028,46 @@ const Settings = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Default Landing Page Section - Admin Only */}
+      {isAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="bg-card rounded-xl p-6 shadow-card"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <Home className="w-5 h-5 text-primary" />
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">Default Landing Page</h3>
+              <p className="text-sm text-muted-foreground">Set which page each role sees after login</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(["admin", "manager", "biller", "cashier"] as const).map((r) => (
+              <div key={r} className="space-y-2">
+                <Label className="capitalize">{r}</Label>
+                <Select
+                  value={landingPages[r]}
+                  onValueChange={(value) => setLandingPages(prev => ({ ...prev, [r]: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANDING_PAGE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ))}
           </div>

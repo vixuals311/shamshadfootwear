@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Settings, Check, CheckCheck } from "lucide-react";
+import { Bell, User, LogOut, Settings, Check, CheckCheck, FileText, Wallet, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -82,10 +82,20 @@ export function UserMenu() {
                     <div className="flex items-start gap-3">
                       <div
                         className={cn(
-                          "w-2 h-2 rounded-full mt-2 shrink-0",
-                          notification.is_read ? "bg-muted" : "bg-primary"
+                          "w-7 h-7 rounded-full flex items-center justify-center shrink-0",
+                          notification.type === "invoice" ? "bg-primary/10" :
+                          notification.type === "recovery" ? "bg-chart-2/10" :
+                          "bg-muted"
                         )}
-                      />
+                      >
+                        {notification.type === "invoice" ? (
+                          <FileText className="w-3.5 h-3.5 text-primary" />
+                        ) : notification.type === "recovery" ? (
+                          <Wallet className="w-3.5 h-3.5 text-chart-2" />
+                        ) : (
+                          <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">
                           {notification.title}

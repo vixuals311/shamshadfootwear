@@ -28,6 +28,35 @@ const Login = () => {
     });
   });
 
+  // Get the landing page for a given role from application_settings
+  const getLandingPage = async (userId: string): Promise<string> => {
+    try {
+      // Get user role
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const userRole = roleData?.role || "biller";
+
+      // Get landing page setting
+      const { data: settingData } = await supabase
+        .from("application_settings")
+        .select("setting_value")
+        .eq("setting_key", "default_landing_pages")
+        .maybeSingle();
+
+      if (settingData?.setting_value) {
+        const pages = settingData.setting_value as Record<string, string>;
+        return pages[userRole] || "/";
+      }
+      return "/";
+    } catch {
+      return "/";
+    }
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
@@ -55,7 +84,7 @@ const Login = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -74,7 +103,7 @@ const Login = () => {
         });
         navigate("/");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -86,7 +115,9 @@ const Login = () => {
           description: "You have successfully signed in.",
         });
 
-        navigate("/");
+        // Get role-based landing page
+        const landingPage = await getLandingPage(data.user.id);
+        navigate(landingPage);
       }
     } catch (error: any) {
       toast({
