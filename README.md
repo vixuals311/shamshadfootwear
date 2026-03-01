@@ -1,73 +1,45 @@
-# Welcome to your Lovable project
+# Shamshad Footwear — Business Management System
 
-## Project info
+A wholesale footwear business management PWA for **Shamshad Footwear**, Chowk Azam, Layyah.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Live App:** [shamshadfootwear.lovable.app](https://shamshadfootwear.lovable.app)
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Inventory Management** — Products, brands, size bundles, stock tracking
+- **Client Management** — Customer records, balances, city-based grouping
+- **Invoicing** — Create, print, and manage invoices with auto-stock deduction
+- **Payments & Recovery** — Track payments, record debt recoveries (client & city-based)
+- **Returns & Credit Notes** — Process returns with optional restock and credit application
+- **Reports & Analytics** — Revenue charts, top products, category breakdowns
+- **Client Portal** — Self-service portal for clients to view invoices and balances
+- **Role-Based Access Control** — Admin, Manager, Biller, Cashier roles with granular per-user page overrides
+- **Audit Logs** — Complete activity trail for all system actions
+- **PWA Support** — Installable on mobile devices
 
-**Use Lovable**
+## Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript, Vite |
+| UI | shadcn/ui, Tailwind CSS, Framer Motion |
+| State | TanStack React Query |
+| Backend | Lovable Cloud (PostgreSQL, Auth, Edge Functions) |
+| Charts | Recharts |
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Development
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
 npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Documentation
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+See [DOCUMENTATION.md](./DOCUMENTATION.md) for comprehensive use cases, database schema, and RBAC matrix.
 
-**Use GitHub Codespaces**
+## Deployment
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+The app is deployed via [Lovable](https://lovable.dev). Frontend updates require clicking "Update" in the publish dialog. Backend changes (edge functions, migrations) deploy automatically.
