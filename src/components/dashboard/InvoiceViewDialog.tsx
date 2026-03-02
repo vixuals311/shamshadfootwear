@@ -87,6 +87,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
 
     const printContent = `<!DOCTYPE html><html><head><title>Invoice ${invoice.invoice_number}</title>
       <style>
+        *{box-sizing:border-box;}
         body{font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:0 auto;color:#3D3D3D;}
         .brand-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:20px;background:#F0E8D8;border-radius:12px;}
         .brand-left{display:flex;align-items:center;gap:14px;}
@@ -96,16 +97,18 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
         .brand-left .contact{font-size:11px;letter-spacing:0;text-transform:none;color:#666;margin-top:4px;}
         .brand-right{text-align:right;font-size:13px;color:#666;}
         .brand-right p{margin:2px 0;}
-        table{width:100%;border-collapse:collapse;margin:20px 0;}
+        table{width:100%;border-collapse:collapse;margin:20px 0;page-break-inside:auto;}
+        tr{page-break-inside:avoid;page-break-after:auto;}
         th,td{border:1px solid #ddd;padding:10px;text-align:left;font-size:13px;}
         th{background:#F0E8D8;color:#3D3D3D;}
         .totals{text-align:right;margin-top:20px;}
         .totals p{margin:5px 0;font-size:14px;}
         .total-final{font-size:1.2em;font-weight:bold;border-top:2px solid #3D3D3D;padding-top:10px;margin-top:10px;}
-        .brand-footer{margin-top:40px;padding:16px;background:#F0E8D8;border-radius:12px;text-align:center;}
+        .brand-footer{margin-top:40px;padding:16px;background:#F0E8D8;border-radius:12px;text-align:center;page-break-inside:avoid;}
         .brand-footer p{margin:4px 0;font-size:11px;color:#666;}
         .brand-footer .company{font-weight:bold;color:#3D3D3D;font-size:12px;}
-        @media print{body{padding:0;}}
+        @page{size:A4;margin:15mm;}
+        @media print{body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
       </style></head><body>
         <div class="brand-header">
           <div class="brand-left">
@@ -150,13 +153,15 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
           <p>0315-7162093 | 0305-5388093 | Faisalabad Road, Chowk Azam, Layyah</p>
           <p>Goods once sold will not be returned without prior agreement. All disputes subject to local jurisdiction.</p>
         </div>
-        <script>window.print();</script>
       </body></html>`;
 
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
+      printWindow.onload = () => {
+        setTimeout(() => { printWindow.print(); }, 300);
+      };
     }
   };
 

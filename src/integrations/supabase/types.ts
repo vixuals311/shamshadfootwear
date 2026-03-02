@@ -871,6 +871,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_admins_exist: { Args: never; Returns: boolean }
       get_user_page_access: {
         Args: { _user_id: string }
         Returns: {

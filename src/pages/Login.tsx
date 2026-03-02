@@ -22,8 +22,8 @@ const Login = () => {
   const [showSignUpOption, setShowSignUpOption] = useState(false);
 
   useEffect(() => {
-    supabase.from("user_roles").select("id", { count: "exact", head: true }).then(({ count }) => {
-      setShowSignUpOption(count === null || count === 0);
+    supabase.rpc("check_admins_exist").then(({ data }) => {
+      setShowSignUpOption(data === false);
     });
   }, []);
 
