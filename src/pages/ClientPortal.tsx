@@ -336,7 +336,7 @@ const ClientPortal = () => {
               </div>
               <div className="bg-card rounded-xl p-4 shadow-card">
                 <p className="text-sm text-muted-foreground">Total Invoices</p>
-                <p className="text-xl font-bold">{currentClient.invoice_count}</p>
+                <p className="text-xl font-bold">{invoices.length}</p>
               </div>
             </motion.div>
 
