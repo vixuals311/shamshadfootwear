@@ -11,18 +11,13 @@ import {
   Eye,
   Lock,
   Loader2,
-  Printer,
+  
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { InvoiceViewDialog } from "@/components/dashboard/InvoiceViewDialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -57,6 +52,7 @@ interface Invoice {
 interface InvoiceItem {
   id: string;
   product_name: string;
+  article_number: string;
   brand_name: string | null;
   size_range: string;
   total_pairs: number;
@@ -514,196 +510,27 @@ const ClientPortal = () => {
         )}
       </div>
 
-      {/* Invoice Detail Dialog - Branded like main invoice view */}
-      <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Invoice {selectedInvoice?.invoice_number}</span>
-              {selectedInvoice && (
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => {
-                  if (!selectedInvoice || !currentClient) return;
-                  const logoUrl = window.location.origin + '/favicon.png';
-                  const printContent = `
-                    <!DOCTYPE html>
-                    <html><head><title>Invoice ${selectedInvoice.invoice_number}</title>
-                    <style>
-                      body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; color: #3D3D3D; }
-                      .brand-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 20px; background: #F0E8D8; border-radius: 12px; }
-                      .brand-left { display: flex; align-items: center; gap: 14px; }
-                      .brand-left img { width: 56px; height: 56px; object-fit: contain; }
-                      .brand-left h2 { margin: 0; font-size: 18px; }
-                      .brand-left p { margin: 2px 0 0; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #888; }
-                      .brand-left .contact { font-size: 11px; letter-spacing: 0; text-transform: none; color: #666; margin-top: 4px; }
-                      .brand-right { text-align: right; font-size: 13px; color: #666; }
-                      .client-info { margin-bottom: 20px; }
-                      .client-info .label { font-size: 11px; color: #888; }
-                      table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                      th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
-                      th { background: #F0E8D8; }
-                      .totals { text-align: right; margin-top: 20px; }
-                      .totals p { margin: 5px 0; }
-                      .total-final { font-size: 1.2em; font-weight: bold; border-top: 2px solid #3D3D3D; padding-top: 10px; margin-top: 10px; }
-                      .brand-footer { margin-top: 40px; padding: 16px; background: #F0E8D8; border-radius: 12px; text-align: center; }
-                      .brand-footer p { margin: 4px 0; font-size: 11px; color: #666; }
-                      .brand-footer .company { font-weight: bold; color: #3D3D3D; font-size: 12px; }
-                      @media print { body { padding: 0; } }
-                    </style></head><body>
-                    <div class="brand-header">
-                      <div class="brand-left">
-                        <img src="${logoUrl}" alt="Shamshad Footwear" />
-                        <div>
-                          <h2>Shamshad Footwear</h2>
-                          <p>Wholesale Supplier</p>
-                          <p class="contact">0315-7162093 | 0305-5388093</p>
-                          <p class="contact">Faisalabad Road, Chowk Azam, Layyah</p>
-                        </div>
-                      </div>
-                      <div class="brand-right">
-                        <p><strong>${selectedInvoice.invoice_number}</strong></p>
-                        <p>${format(new Date(selectedInvoice.created_at), "dd MMM yyyy")}</p>
-                      </div>
-                    </div>
-                    <div class="client-info">
-                      <p class="label">Bill To:</p>
-                      <p><strong>${currentClient.name}</strong></p>
-                      <p>${currentClient.city || ""}</p>
-                    </div>
-                    <table><thead><tr><th>#</th><th>Product</th><th>Size</th><th>Pairs</th><th>Rate</th><th>Discount</th><th>Total</th></tr></thead>
-                    <tbody>${selectedInvoice.items.map((item: any, idx: number) => `
-                      <tr><td>${idx + 1}</td><td>${item.product_name}</td><td>${item.size_range}</td><td>${item.total_pairs}</td><td>Rs ${item.price_per_pair}</td><td>Rs ${item.discount_per_pair}</td><td>Rs ${item.total.toLocaleString()}</td></tr>
-                    `).join("")}</tbody></table>
-                    <div class="totals">
-                      <p>Subtotal: Rs ${selectedInvoice.subtotal.toLocaleString()}</p>
-                      ${selectedInvoice.total_discount > 0 ? `<p>Discount: - Rs ${selectedInvoice.total_discount.toLocaleString()}</p>` : ""}
-                      <p class="total-final">Total: Rs ${selectedInvoice.total.toLocaleString()}</p>
-                    </div>
-                    <div class="brand-footer">
-                      <p>Thank you for your business!</p>
-                      <p class="company">Shamshad Footwear — Wholesale Supplier</p>
-                      <p>0315-7162093 | 0305-5388093 | Faisalabad Road, Chowk Azam, Layyah</p>
-                      <p>Goods once sold will not be returned without prior agreement.</p>
-                    </div>
-                    <script>window.print();</script>
-                    </body></html>`;
-                  const w = window.open("", "_blank");
-                  if (w) { w.document.write(printContent); w.document.close(); }
-                }}>
-                  <Printer className="w-4 h-4" />
-                  Print
-                </Button>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedInvoice && (
-            <div className="space-y-6">
-              {/* Branded Header */}
-              <div className="rounded-xl p-4 sm:p-5 border border-border" style={{ background: 'hsl(40 30% 95%)' }}>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-3">
-                    <img src="/favicon.png" alt="Shamshad Footwear" className="w-10 h-10 sm:w-14 sm:h-14 object-contain" />
-                    <div>
-                      <h3 className="font-bold text-base sm:text-lg text-foreground">Shamshad Footwear</h3>
-                      <p className="text-[10px] sm:text-xs tracking-[0.2em] text-muted-foreground uppercase">Wholesale Supplier</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">0315-7162093 | 0305-5388093</p>
-                    </div>
-                  </div>
-                  <div className="text-left sm:text-right text-sm text-muted-foreground">
-                    <p>Invoice #{selectedInvoice.invoice_number}</p>
-                    <p>{format(new Date(selectedInvoice.created_at), "dd MMM yyyy")}</p>
-                  </div>
-                </div>
-                <div className="border-t border-border pt-3 flex justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Bill To:</p>
-                    <p className="font-semibold">{currentClient.name}</p>
-                    <p className="text-sm text-muted-foreground">{currentClient.city}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={cn(
-                      "inline-block px-2 py-1 text-xs rounded-full capitalize",
-                      selectedInvoice.status === 'paid' ? 'bg-success/10 text-success' :
-                      selectedInvoice.status === 'pending' ? 'bg-warning/10 text-warning' :
-                      selectedInvoice.status === 'overdue' ? 'bg-destructive/10 text-destructive' :
-                      'bg-muted text-muted-foreground'
-                    )}>
-                      {selectedInvoice.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Items Table */}
-              <div>
-                <p className="text-sm font-medium mb-2">Items ({selectedInvoice.items.length})</p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2">#</th>
-                        <th className="text-left py-2">Product</th>
-                        <th className="text-left py-2">Size</th>
-                        <th className="text-right py-2">Pairs</th>
-                        <th className="text-right py-2">Rate</th>
-                        <th className="text-right py-2">Disc.</th>
-                        <th className="text-right py-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedInvoice.items.map((item, idx) => (
-                        <tr key={item.id} className="border-b">
-                          <td className="py-2">{idx + 1}</td>
-                          <td className="py-2">
-                            <p className="font-medium">{item.product_name}</p>
-                            {item.brand_name && <p className="text-xs text-muted-foreground">{item.brand_name}</p>}
-                          </td>
-                          <td className="py-2">{item.size_range}</td>
-                          <td className="py-2 text-right">{item.total_pairs}</td>
-                          <td className="py-2 text-right">Rs {item.price_per_pair}</td>
-                          <td className="py-2 text-right">Rs {item.discount_per_pair}</td>
-                          <td className="py-2 text-right font-medium">Rs {item.total.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Totals */}
-              <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal:</span>
-                  <span>Rs {selectedInvoice.subtotal.toLocaleString()}</span>
-                </div>
-                {selectedInvoice.total_discount > 0 && (
-                  <div className="flex justify-between text-destructive">
-                    <span>Discount:</span>
-                    <span>- Rs {selectedInvoice.total_discount.toLocaleString()}</span>
-                  </div>
-                )}
-                {selectedInvoice.tax > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tax:</span>
-                    <span>Rs {selectedInvoice.tax.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold text-lg border-t pt-2">
-                  <span>Total:</span>
-                  <span>Rs {selectedInvoice.total.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Branded Footer */}
-              <div className="rounded-xl p-4 text-center border border-border" style={{ background: 'hsl(40 30% 95%)' }}>
-                <p className="text-xs text-muted-foreground">Thank you for your business!</p>
-                <p className="text-xs font-semibold text-foreground mt-1">Shamshad Footwear — Wholesale Supplier</p>
-                <p className="text-[10px] text-muted-foreground mt-1">0315-7162093 | 0305-5388093 | Faisalabad Road, Chowk Azam, Layyah</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Goods once sold will not be returned without prior agreement.</p>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Invoice Detail Dialog - Same as admin view */}
+      <InvoiceViewDialog
+        open={!!selectedInvoice}
+        onOpenChange={() => setSelectedInvoice(null)}
+        invoice={selectedInvoice ? {
+          id: selectedInvoice.id,
+          invoice_number: selectedInvoice.invoice_number,
+          created_at: selectedInvoice.created_at,
+          client_name: currentClient.name,
+          client_city: currentClient.city || '',
+          subtotal: selectedInvoice.subtotal,
+          total_discount: selectedInvoice.total_discount,
+          tax: selectedInvoice.tax,
+          total: selectedInvoice.total,
+          amount_received: 0,
+          balance_due: 0,
+          total_bundles: selectedInvoice.items.reduce((sum, i) => sum + i.quantity, 0),
+          status: selectedInvoice.status,
+          items: selectedInvoice.items,
+        } : null}
+      />
     </div>
   );
 };
