@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Download, Upload, Loader2, Database, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Download, Upload, Loader2, Database, AlertTriangle, Clock, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -32,11 +32,18 @@ const BACKUP_TABLES = [
   "recovery_client_amounts",
   "returns",
   "return_items",
+  "manual_bills",
   "audit_logs",
   "application_settings",
 ] as const;
 
 type TableName = typeof BACKUP_TABLES[number];
+
+interface BackupFile {
+  name: string;
+  created_at: string;
+  metadata: { size: number } | null;
+}
 
 export function DataBackupRestore() {
   const { toast } = useToast();
@@ -47,6 +54,82 @@ export function DataBackupRestore() {
   const [progressLabel, setProgressLabel] = useState("");
   const [confirmImport, setConfirmImport] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [backupFiles, setBackupFiles] = useState<BackupFile[]>([]);
+  const [loadingBackups, setLoadingBackups] = useState(false);
+  const [triggeringBackup, setTriggeringBackup] = useState(false);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+
+  const fetchBackupFiles = async () => {
+    setLoadingBackups(true);
+    try {
+      const { data, error } = await supabase.storage
+        .from("backups")
+        .list("", { sortBy: { column: "created_at", order: "desc" } });
+
+      if (error) throw error;
+      setBackupFiles(
+        (data || []).map((f) => ({
+          name: f.name,
+          created_at: f.created_at || "",
+          metadata: f.metadata as { size: number } | null,
+        }))
+      );
+    } catch (error: any) {
+      console.error("Error fetching backups:", error);
+    } finally {
+      setLoadingBackups(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBackupFiles();
+  }, []);
+
+  const handleDownloadBackup = async (fileName: string) => {
+    setDownloadingFile(fileName);
+    try {
+      const { data, error } = await supabase.storage
+        .from("backups")
+        .download(fileName);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast({ title: "Download Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setDownloadingFile(null);
+    }
+  };
+
+  const handleTriggerBackup = async () => {
+    setTriggeringBackup(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-backup");
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Backup Generated",
+        description: `Backup created — ${data.total_rows} records (${data.size_kb} KB)`,
+      });
+
+      await fetchBackupFiles();
+    } catch (error: any) {
+      toast({ title: "Backup Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setTriggeringBackup(false);
+    }
+  };
 
   const handleExportAll = async () => {
     setExporting(true);
@@ -94,7 +177,6 @@ export function DataBackupRestore() {
         details: { type: "full_backup", tables: BACKUP_TABLES.length },
       });
 
-      // Create a database notification for all admins
       await supabase.rpc("notify_admins", {
         _title: "Backup Exported",
         _message: `Full system backup exported on ${format(new Date(), "dd MMM yyyy, hh:mm a")} — ${BACKUP_TABLES.length} tables`,
@@ -138,7 +220,6 @@ export function DataBackupRestore() {
         BACKUP_TABLES.includes(t as TableName)
       );
 
-      // Import in order (respecting foreign keys)
       const orderedTables: TableName[] = [
         "brands",
         "product_categories",
@@ -154,6 +235,7 @@ export function DataBackupRestore() {
         "recovery_client_amounts",
         "returns",
         "return_items",
+        "manual_bills",
         "audit_logs",
       ];
 
@@ -168,7 +250,6 @@ export function DataBackupRestore() {
         setProgressLabel(`Importing ${table} (${rows.length} rows)...`);
         setProgress(((i + 1) / importOrder.length) * 100);
 
-        // Import in batches of 500
         const BATCH_SIZE = 500;
         for (let j = 0; j < rows.length; j += BATCH_SIZE) {
           const batch = rows.slice(j, j + BATCH_SIZE);
@@ -181,7 +262,6 @@ export function DataBackupRestore() {
           } else {
             imported += batch.length;
           }
-          // Yield to UI
           await new Promise(r => setTimeout(r, 50));
         }
       }
@@ -209,25 +289,39 @@ export function DataBackupRestore() {
 
   const isProcessing = exporting || importing;
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    return `${Math.round(bytes / 1024)} KB`;
+  };
+
   return (
-    <div className="bg-card rounded-xl p-6 shadow-card">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="bg-card rounded-xl p-6 shadow-card space-y-6">
+      <div className="flex items-center gap-3">
         <Database className="w-5 h-5 text-primary" />
         <h3 className="text-lg font-semibold text-foreground">Backup & Restore</h3>
       </div>
 
-      <p className="text-sm text-muted-foreground mb-4">
-        Export all system data (clients, invoices, inventory, payments, recoveries, returns, logs, settings) as a single backup file, or restore from a previous backup.
+      <p className="text-sm text-muted-foreground">
+        Automated daily backups run at midnight. You can also trigger a manual backup or export/import data directly.
       </p>
 
       {isProcessing && (
-        <div className="mb-4 space-y-2">
+        <div className="space-y-2">
           <p className="text-sm text-muted-foreground">{progressLabel}</p>
           <Progress value={progress} className="h-2" />
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
+        <Button
+          variant="default"
+          className="gap-2"
+          onClick={handleTriggerBackup}
+          disabled={isProcessing || triggeringBackup}
+        >
+          {triggeringBackup ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          Generate Backup Now
+        </Button>
         <Button
           variant="outline"
           className="gap-2"
@@ -235,7 +329,7 @@ export function DataBackupRestore() {
           disabled={isProcessing}
         >
           {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          Export All Data
+          Export to Browser
         </Button>
         <Button
           variant="outline"
@@ -244,8 +338,61 @@ export function DataBackupRestore() {
           disabled={isProcessing}
         >
           {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          Import All Data
+          Import Data
         </Button>
+      </div>
+
+      {/* Automated Backup History */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            Backup History (Last 7)
+          </h4>
+          <Button variant="ghost" size="sm" onClick={fetchBackupFiles} disabled={loadingBackups}>
+            {loadingBackups ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+          </Button>
+        </div>
+
+        {loadingBackups && backupFiles.length === 0 ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : backupFiles.length > 0 ? (
+          <div className="border border-border rounded-lg divide-y divide-border">
+            {backupFiles.map((file) => (
+              <div key={file.name} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {file.created_at
+                      ? format(new Date(file.created_at), "dd MMM yyyy, hh:mm a")
+                      : "Unknown date"}
+                    {file.metadata?.size ? ` • ${formatFileSize(file.metadata.size)}` : ""}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  onClick={() => handleDownloadBackup(file.name)}
+                  disabled={downloadingFile === file.name}
+                >
+                  {downloadingFile === file.name ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  Download
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6 text-sm text-muted-foreground border border-dashed border-border rounded-lg">
+            No automated backups yet. Click "Generate Backup Now" to create one.
+          </div>
+        )}
       </div>
 
       {/* Import Confirmation */}
