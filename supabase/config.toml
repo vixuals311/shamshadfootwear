@@ -2,3 +2,6 @@ project_id = "puixtquwfrnjumbcsiqy"
 
 [functions.generate-backup]
 verify_jwt = false
+
+[functions.seed-test-data]
+verify_jwt = false
