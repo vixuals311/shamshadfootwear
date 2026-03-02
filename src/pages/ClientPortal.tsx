@@ -37,6 +37,16 @@ interface Client {
   portal_pin: string | null;
 }
 
+interface ReturnInfo {
+  id: string;
+  return_number: string;
+  total_amount: number;
+  adjustment_type: string;
+  created_at: string;
+  invoice_id: string;
+  items: { product_name: string; size_range: string; pairs_returned: number; total: number }[];
+}
+
 interface Invoice {
   id: string;
   invoice_number: string;
@@ -44,9 +54,14 @@ interface Invoice {
   total_discount: number;
   tax: number;
   total: number;
+  amount_received: number;
+  balance_due: number;
+  total_bundles: number;
+  credit_applied: number;
   status: string;
   created_at: string;
   items: InvoiceItem[];
+  returns: ReturnInfo[];
 }
 
 interface InvoiceItem {
@@ -125,6 +140,22 @@ const ClientPortal = () => {
         return;
       }
 
+      // Build returns map by invoice_id
+      const allReturns: ReturnInfo[] = (data.returns || []).map((r: any) => ({
+        id: r.id,
+        return_number: r.return_number,
+        total_amount: r.total_amount,
+        adjustment_type: r.adjustment_type,
+        created_at: r.created_at,
+        invoice_id: r.invoice_id,
+        items: (r.return_items || []).map((ri: any) => ({
+          product_name: ri.product_name,
+          size_range: ri.size_range,
+          pairs_returned: ri.pairs_returned,
+          total: ri.total,
+        })),
+      }));
+
       setCurrentClient(data.client);
       setInvoices(
         (data.invoices || []).map((inv: any) => ({
@@ -134,9 +165,14 @@ const ClientPortal = () => {
           total_discount: inv.total_discount,
           tax: inv.tax,
           total: inv.total,
+          amount_received: inv.amount_received || 0,
+          balance_due: inv.balance_due || 0,
+          total_bundles: inv.total_bundles || 0,
+          credit_applied: inv.credit_applied || 0,
           status: inv.status,
           created_at: inv.created_at,
           items: inv.invoice_items || [],
+          returns: allReturns.filter((r: ReturnInfo) => r.invoice_id === inv.id),
         }))
       );
 
@@ -524,11 +560,13 @@ const ClientPortal = () => {
           total_discount: selectedInvoice.total_discount,
           tax: selectedInvoice.tax,
           total: selectedInvoice.total,
-          amount_received: 0,
-          balance_due: 0,
-          total_bundles: selectedInvoice.items.reduce((sum, i) => sum + i.quantity, 0),
+          amount_received: selectedInvoice.amount_received,
+          balance_due: selectedInvoice.balance_due,
+          total_bundles: selectedInvoice.total_bundles,
+          credit_applied: selectedInvoice.credit_applied,
           status: selectedInvoice.status,
           items: selectedInvoice.items,
+          returns: selectedInvoice.returns,
         } : null}
       />
     </div>

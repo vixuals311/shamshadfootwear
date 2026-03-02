@@ -60,6 +60,13 @@ serve(async (req) => {
       .eq("client_id", client.id)
       .order("created_at", { ascending: false });
 
+    // Fetch returns for this client's invoices
+    const { data: returns } = await supabase
+      .from("returns")
+      .select("*, return_items(*)")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false });
+
     // Fetch direct recoveries
     const { data: directRecoveries } = await supabase
       .from("recoveries")
@@ -87,6 +94,7 @@ serve(async (req) => {
         directRecoveries: directRecoveries || [],
         cityAmounts: cityAmounts || [],
         manualBills: manualBills || [],
+        returns: returns || [],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
