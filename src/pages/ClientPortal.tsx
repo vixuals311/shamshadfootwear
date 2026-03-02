@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import logoImg from "@/assets/logo.png";
 import {
   User,
   FileText,
@@ -187,11 +188,10 @@ const ClientPortal = () => {
         >
           <div className="bg-card rounded-2xl p-8 shadow-lg border border-border">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <User className="w-8 h-8 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground">Client Portal</h1>
-              <p className="text-muted-foreground mt-2">
+              <img src={logoImg} alt="Shamshad Footwear" className="w-20 h-20 rounded-2xl mx-auto mb-4 object-contain" />
+              <h1 className="text-2xl font-bold text-foreground">Shamshad Footwear</h1>
+              <p className="text-sm text-muted-foreground mt-1">Client Portal</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 View your bills and payment history
               </p>
             </div>
@@ -245,7 +245,7 @@ const ClientPortal = () => {
             </div>
 
             <p className="text-xs text-muted-foreground text-center mt-6">
-              Use the phone number registered with your account
+              Faisalabad Road, Chowk Azam, Layyah | 0315-7162093
             </p>
           </div>
         </motion.div>
@@ -257,10 +257,13 @@ const ClientPortal = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-card border-b border-border sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-foreground">{currentClient.name}</h1>
-            <p className="text-sm text-muted-foreground">{currentClient.city}</p>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src={logoImg} alt="Shamshad Footwear" className="w-10 h-10 rounded-lg object-contain" />
+            <div>
+              <h1 className="text-lg font-bold text-foreground">Shamshad Footwear</h1>
+              <p className="text-xs text-muted-foreground">{currentClient.name} • {currentClient.city}</p>
+            </div>
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Logout
