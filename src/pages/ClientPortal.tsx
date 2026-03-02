@@ -73,6 +73,15 @@ interface Recovery {
   notes: string | null;
 }
 
+interface ManualBill {
+  id: string;
+  bill_number: string;
+  amount: number;
+  date: string;
+  status: string;
+  notes: string | null;
+}
+
 const formatPhoneNumber = (value: string) => {
   // Remove all non-digit characters
   const digits = value.replace(/\D/g, '');
@@ -94,6 +103,7 @@ const ClientPortal = () => {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [recoveries, setRecoveries] = useState<Recovery[]>([]);
+  const [manualBills, setManualBills] = useState<ManualBill[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
 
@@ -142,6 +152,7 @@ const ClientPortal = () => {
           id: ca.recoveries.id, amount: ca.amount, date: ca.recoveries.date, type: "city", notes: ca.recoveries.notes,
         }));
       setRecoveries([...directRecoveries, ...cityRecoveries]);
+      setManualBills(data.manualBills || []);
 
       setIsLoggedIn(true);
       setLoginError("");
@@ -160,6 +171,7 @@ const ClientPortal = () => {
     setLoginPin("");
     setInvoices([]);
     setRecoveries([]);
+    setManualBills([]);
   };
 
   // Data is now fetched at login time via edge function
@@ -319,10 +331,14 @@ const ClientPortal = () => {
 
             {/* Bills & Recoveries */}
             <Tabs defaultValue="bills" className="w-full">
-              <TabsList className="w-full max-w-xs">
+              <TabsList className="w-full max-w-md">
                 <TabsTrigger value="bills" className="flex-1 gap-2">
                   <FileText className="w-4 h-4" />
                   Bills ({invoices.length})
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="flex-1 gap-2">
+                  <FileText className="w-4 h-4" />
+                  Manual ({manualBills.length})
                 </TabsTrigger>
                 <TabsTrigger value="recoveries" className="flex-1 gap-2">
                   <CreditCard className="w-4 h-4" />
@@ -385,6 +401,58 @@ const ClientPortal = () => {
                       </h3>
                       <p className="text-muted-foreground">
                         Your purchase history will appear here.
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="manual" className="mt-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="bg-card rounded-xl shadow-card overflow-hidden"
+                >
+                  {manualBills.length > 0 ? (
+                    <div className="divide-y divide-border">
+                      {manualBills.map((bill) => (
+                        <div
+                          key={bill.id}
+                          className="p-4 flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="font-medium">{bill.bill_number}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(bill.date), "dd MMM yyyy")}
+                            </p>
+                            {bill.notes && (
+                              <p className="text-xs text-muted-foreground mt-1">{bill.notes}</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">
+                              Rs {bill.amount.toLocaleString()}
+                            </p>
+                            <span
+                              className={cn(
+                                "status-badge text-xs",
+                                bill.status === "paid" ? "status-badge-success" : "status-badge-warning"
+                              )}
+                            >
+                              {bill.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-12 text-center">
+                      <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-foreground mb-1">
+                        No manual bills
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Manual bills will appear here.
                       </p>
                     </div>
                   )}

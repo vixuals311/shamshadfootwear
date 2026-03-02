@@ -73,12 +73,20 @@ serve(async (req) => {
       .select("*, recoveries(*)")
       .eq("client_id", client.id);
 
+    // Fetch manual bills
+    const { data: manualBills } = await supabase
+      .from("manual_bills")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("date", { ascending: false });
+
     return new Response(
       JSON.stringify({
         client: safeClient,
         invoices: invoices || [],
         directRecoveries: directRecoveries || [],
         cityAmounts: cityAmounts || [],
+        manualBills: manualBills || [],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
