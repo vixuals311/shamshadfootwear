@@ -63,7 +63,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -886,23 +890,24 @@ const RecoveryPage = () => {
         </Popover>
       </motion.div>
 
-      {/* Recoveries Table / Cards */}
+      {/* Recoveries - Collapsible Sections */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-card rounded-xl shadow-card overflow-hidden"
+        className="space-y-4"
       >
-        <Tabs defaultValue="all" className="w-full">
-          <div className="border-b px-4 pt-4 overflow-x-auto">
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="client">By Client</TabsTrigger>
-              <TabsTrigger value="city">By City</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="all" className="m-0">
+        {/* Total Recoveries - Collapsible */}
+        <Collapsible defaultOpen className="bg-card rounded-xl shadow-card overflow-hidden">
+          <CollapsibleTrigger className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <CreditCard className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-foreground">All Recoveries</span>
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{filteredRecoveries.length}</span>
+            </div>
+            <span className="font-bold text-success">Rs {filteredRecoveries.reduce((s, r) => s + r.amount, 0).toLocaleString()}</span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
             {/* Desktop Table */}
             <table className="data-table hidden sm:table">
               <thead>
@@ -924,84 +929,66 @@ const RecoveryPage = () => {
                       </div>
                     </td>
                     <td>
-                      <span
-                        className={cn(
-                          "status-badge",
-                          recovery.type === "client"
-                            ? "status-badge-success"
-                            : "status-badge-warning"
-                        )}
-                      >
+                      <span className={cn("status-badge", recovery.type === "client" ? "status-badge-success" : "status-badge-warning")}>
                         {recovery.type === "client" ? "Client" : "City"}
                       </span>
                     </td>
                     <td className="font-medium">
                       {recovery.type === "client" ? recovery.clientName : recovery.city}
                       {recovery.type === "city" && recovery.clientAmounts && (
-                        <p className="text-xs text-muted-foreground">
-                          {recovery.clientAmounts.length} clients
-                        </p>
+                        <p className="text-xs text-muted-foreground">{recovery.clientAmounts.length} clients</p>
                       )}
                     </td>
-                    <td className="font-semibold text-success">
-                      Rs {recovery.amount.toLocaleString()}
-                    </td>
+                    <td className="font-semibold text-success">Rs {recovery.amount.toLocaleString()}</td>
                     <td className="text-muted-foreground">{recovery.notes || "-"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-
             {/* Mobile Cards */}
             <div className="sm:hidden divide-y">
               {filteredRecoveries.map((recovery) => (
                 <div key={recovery.id} className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={cn(
-                        "w-9 h-9 rounded-full flex items-center justify-center shrink-0",
-                        recovery.type === "client" ? "bg-success/10" : "bg-warning/10"
-                      )}>
-                        {recovery.type === "client" 
-                          ? <User className="w-4 h-4 text-success" /> 
-                          : <MapPin className="w-4 h-4 text-warning" />}
+                      <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0", recovery.type === "client" ? "bg-success/10" : "bg-warning/10")}>
+                        {recovery.type === "client" ? <User className="w-4 h-4 text-success" /> : <MapPin className="w-4 h-4 text-warning" />}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">
-                          {recovery.type === "client" ? recovery.clientName : recovery.city}
-                        </p>
+                        <p className="font-medium text-foreground truncate">{recovery.type === "client" ? recovery.clientName : recovery.city}</p>
                         <p className="text-xs text-muted-foreground">
                           {format(recovery.date, "dd MMM yyyy")}
                           {recovery.type === "city" && recovery.clientAmounts && ` • ${recovery.clientAmounts.length} clients`}
                         </p>
                       </div>
                     </div>
-                    <span className="font-bold text-success whitespace-nowrap">
-                      Rs {recovery.amount.toLocaleString()}
-                    </span>
+                    <span className="font-bold text-success whitespace-nowrap">Rs {recovery.amount.toLocaleString()}</span>
                   </div>
-                  {recovery.notes && (
-                    <p className="text-xs text-muted-foreground pl-12 truncate">{recovery.notes}</p>
-                  )}
+                  {recovery.notes && <p className="text-xs text-muted-foreground pl-12 truncate">{recovery.notes}</p>}
                 </div>
               ))}
             </div>
-
             {filteredRecoveries.length === 0 && (
               <div className="p-12 text-center">
                 <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-1">
-                  No recoveries found
-                </h3>
-                <p className="text-muted-foreground">
-                  Add your first recovery to get started.
-                </p>
+                <h3 className="text-lg font-medium text-foreground mb-1">No recoveries found</h3>
+                <p className="text-muted-foreground">Add your first recovery to get started.</p>
               </div>
             )}
-          </TabsContent>
+          </CollapsibleContent>
+        </Collapsible>
 
-          <TabsContent value="client" className="m-0">
-            {/* Desktop */}
+        {/* Client Recoveries - Collapsible */}
+        <Collapsible className="bg-card rounded-xl shadow-card overflow-hidden">
+          <CollapsibleTrigger className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <User className="w-5 h-5 text-success" />
+              <span className="font-semibold text-foreground">Client Recoveries</span>
+              <span className="text-xs bg-success/10 text-success px-2 py-0.5 rounded-full">{filteredRecoveries.filter(r => r.type === "client").length}</span>
+            </div>
+            <span className="font-bold text-success">Rs {filteredRecoveries.filter(r => r.type === "client").reduce((s, r) => s + r.amount, 0).toLocaleString()}</span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
             <table className="data-table hidden sm:table">
               <thead>
                 <tr>
@@ -1012,28 +999,23 @@ const RecoveryPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredRecoveries
-                  .filter((r) => r.type === "client")
-                  .map((recovery) => (
-                    <tr key={recovery.id}>
-                      <td className="whitespace-nowrap min-w-[140px]">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                          <CalendarIcon className="w-4 h-4 shrink-0" />
-                          <span>{format(recovery.date, "dd MMM yyyy")}</span>
-                        </div>
-                      </td>
-                      <td className="font-medium">{recovery.clientName}</td>
-                      <td className="font-semibold text-success">
-                        Rs {recovery.amount.toLocaleString()}
-                      </td>
-                      <td className="text-muted-foreground">{recovery.notes || "-"}</td>
-                    </tr>
-                  ))}
+                {filteredRecoveries.filter(r => r.type === "client").map((recovery) => (
+                  <tr key={recovery.id}>
+                    <td className="whitespace-nowrap min-w-[140px]">
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <CalendarIcon className="w-4 h-4 shrink-0" />
+                        <span>{format(recovery.date, "dd MMM yyyy")}</span>
+                      </div>
+                    </td>
+                    <td className="font-medium">{recovery.clientName}</td>
+                    <td className="font-semibold text-success">Rs {recovery.amount.toLocaleString()}</td>
+                    <td className="text-muted-foreground">{recovery.notes || "-"}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-            {/* Mobile */}
             <div className="sm:hidden divide-y">
-              {filteredRecoveries.filter((r) => r.type === "client").map((recovery) => (
+              {filteredRecoveries.filter(r => r.type === "client").map((recovery) => (
                 <div key={recovery.id} className="p-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium text-foreground truncate">{recovery.clientName}</p>
@@ -1044,10 +1026,20 @@ const RecoveryPage = () => {
                 </div>
               ))}
             </div>
-          </TabsContent>
+          </CollapsibleContent>
+        </Collapsible>
 
-          <TabsContent value="city" className="m-0">
-            {/* Desktop */}
+        {/* City Recoveries - Collapsible */}
+        <Collapsible className="bg-card rounded-xl shadow-card overflow-hidden">
+          <CollapsibleTrigger className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <MapPin className="w-5 h-5 text-warning" />
+              <span className="font-semibold text-foreground">City Recoveries</span>
+              <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full">{filteredRecoveries.filter(r => r.type === "city").length}</span>
+            </div>
+            <span className="font-bold text-success">Rs {filteredRecoveries.filter(r => r.type === "city").reduce((s, r) => s + r.amount, 0).toLocaleString()}</span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
             <table className="data-table hidden sm:table">
               <thead>
                 <tr>
@@ -1059,39 +1051,32 @@ const RecoveryPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredRecoveries
-                  .filter((r) => r.type === "city")
-                  .map((recovery) => (
-                    <tr key={recovery.id}>
-                      <td className="whitespace-nowrap min-w-[140px]">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                          <CalendarIcon className="w-4 h-4 shrink-0" />
-                          <span>{format(recovery.date, "dd MMM yyyy")}</span>
+                {filteredRecoveries.filter(r => r.type === "city").map((recovery) => (
+                  <tr key={recovery.id}>
+                    <td className="whitespace-nowrap min-w-[140px]">
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <CalendarIcon className="w-4 h-4 shrink-0" />
+                        <span>{format(recovery.date, "dd MMM yyyy")}</span>
+                      </div>
+                    </td>
+                    <td className="font-medium">{recovery.city}</td>
+                    <td>
+                      {recovery.clientAmounts && (
+                        <div className="text-xs space-y-1">
+                          {recovery.clientAmounts.map((ca, idx) => (
+                            <div key={idx} className="text-muted-foreground">{ca.clientName}: Rs {ca.amount.toLocaleString()}</div>
+                          ))}
                         </div>
-                      </td>
-                      <td className="font-medium">{recovery.city}</td>
-                      <td>
-                        {recovery.clientAmounts && (
-                          <div className="text-xs space-y-1">
-                            {recovery.clientAmounts.map((ca, idx) => (
-                              <div key={idx} className="text-muted-foreground">
-                                {ca.clientName}: Rs {ca.amount.toLocaleString()}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="font-semibold text-success">
-                        Rs {recovery.amount.toLocaleString()}
-                      </td>
-                      <td className="text-muted-foreground">{recovery.notes || "-"}</td>
-                    </tr>
-                  ))}
+                      )}
+                    </td>
+                    <td className="font-semibold text-success">Rs {recovery.amount.toLocaleString()}</td>
+                    <td className="text-muted-foreground">{recovery.notes || "-"}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-            {/* Mobile */}
             <div className="sm:hidden divide-y">
-              {filteredRecoveries.filter((r) => r.type === "city").map((recovery) => (
+              {filteredRecoveries.filter(r => r.type === "city").map((recovery) => (
                 <div key={recovery.id} className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -1113,8 +1098,8 @@ const RecoveryPage = () => {
                 </div>
               ))}
             </div>
-          </TabsContent>
-        </Tabs>
+          </CollapsibleContent>
+        </Collapsible>
       </motion.div>
 
       {/* Add Recovery Dialog - with category selection */}

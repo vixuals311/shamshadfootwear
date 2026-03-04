@@ -42,8 +42,10 @@ serve(async (req) => {
 
     const client = clients[0];
 
-    // Verify PIN if set
-    if (client.portal_pin && client.portal_pin !== pin) {
+    // Verify PIN - if no PIN set, default is last 4 digits of phone
+    const phoneDigits = phone.replace(/\D/g, "");
+    const effectivePin = client.portal_pin || phoneDigits.slice(-4);
+    if (effectivePin !== pin) {
       return new Response(JSON.stringify({ error: "Invalid PIN." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
