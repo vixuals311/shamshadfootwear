@@ -415,6 +415,10 @@ const Clients = () => {
     try {
       const openingBalance = parseFloat(newClient.openingBalance) || 0;
       
+      // Default PIN is last 4 digits of phone (digits only)
+      const phoneDigits = newClient.phone.replace(/\D/g, "");
+      const defaultPin = phoneDigits.slice(-4);
+
       const { data, error } = await supabase
         .from("clients")
         .insert({
@@ -426,6 +430,7 @@ const Clients = () => {
           opening_balance: openingBalance,
           current_balance: openingBalance,
           reference_number: newClient.referenceNumber || null,
+          portal_pin: defaultPin,
         })
         .select()
         .single();
