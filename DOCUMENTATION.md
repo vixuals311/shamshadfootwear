@@ -266,10 +266,11 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 ### 6.6 Client Portal PIN Management (UC-CLI-06)
 - **Actors:** Admin, Manager, Biller
 - **Flow:**
-  1. Click the key icon on a client card
-  2. Set or change a 4+ digit PIN for client portal access
-  3. Option to remove PIN (allows login without PIN)
-  4. Audit log entry created
+   1. Click the key icon on a client card
+   2. Set or change a 4+ digit PIN for client portal access
+   3. **Default PIN:** Last 4 digits of the client's phone number (auto-set on client creation)
+   4. Option to remove PIN (allows login without PIN)
+   5. Audit log entry created
 
 ### 6.7 Quick Recovery from Client Detail (UC-CLI-07)
 - **Actors:** Admin, Manager, Cashier
@@ -418,10 +419,10 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 - **Route:** `/recovery`
 - **Actors:** Admin, Manager, Cashier
 - **Features:**
-  - List of all recovery records
-  - Two types: **Client Recovery** (direct) and **City Recovery** (grouped)
-  - Search and filter capabilities
-  - Recovery totals and summaries
+   - List of all recovery records
+   - Two types: **Client Recovery** (direct) and **City Recovery** (grouped)
+   - Search and filter capabilities
+   - **Recovery Statistics:** Total, Client-wise, and City-wise breakdowns organized in collapsible sections (closed by default) to optimize vertical space
 
 ### 9.2 Record Client Recovery (UC-REC-02)
 - **Flow:**
