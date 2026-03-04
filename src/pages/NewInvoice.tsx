@@ -383,15 +383,17 @@ const NewInvoice = () => {
       return newItems;
     });
 
-    // Reset and auto-focus search
+    // Reset and auto-focus search input for quick next product entry
     setSelectedProduct(null);
     setSizeSelections([]);
-    setProductOpen(false);
     setProductSearch("");
     
+    // Keep product list open and focus the search input
     setTimeout(() => {
-      setProductOpen(true);
-    }, 100);
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+    }, 50);
   };
 
   const updateItemQuantity = (id: string, quantity: number) => {
@@ -464,10 +466,37 @@ const NewInvoice = () => {
     return { subtotal, totalDiscount, tax, total, received, balance };
   }, [items, taxPercent, amountReceived]);
 
-  const invoiceNumber = useMemo(() => 
-    existingInvoiceNumber || `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
-    [existingInvoiceNumber]
-  );
+  const [generatedInvoiceNumber, setGeneratedInvoiceNumber] = useState<string | null>(null);
+
+  // Generate sequential invoice number from DB
+  useEffect(() => {
+    if (existingInvoiceNumber || generatedInvoiceNumber) return;
+    const generateSequentialNumber = async () => {
+      try {
+        const currentYear = new Date().getFullYear();
+        const prefix = `INV-${currentYear}-`;
+        const { data } = await supabase
+          .from("invoices")
+          .select("invoice_number")
+          .ilike("invoice_number", `${prefix}%`)
+          .order("invoice_number", { ascending: false })
+          .limit(1);
+
+        let nextSerial = 1;
+        if (data && data.length > 0) {
+          const lastNum = data[0].invoice_number;
+          const lastSerial = parseInt(lastNum.replace(prefix, ""), 10);
+          if (!isNaN(lastSerial)) nextSerial = lastSerial + 1;
+        }
+        setGeneratedInvoiceNumber(`${prefix}${String(nextSerial).padStart(4, "0")}`);
+      } catch {
+        setGeneratedInvoiceNumber(`INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`);
+      }
+    };
+    generateSequentialNumber();
+  }, [existingInvoiceNumber, generatedInvoiceNumber]);
+
+  const invoiceNumber = existingInvoiceNumber || generatedInvoiceNumber || "Generating...";
 
   // Filter products based on search
   const filteredProducts = useMemo(() => {
@@ -1091,14 +1120,14 @@ const NewInvoice = () => {
                             ))}
                           </div>
                           {totalSelectedBundles > 0 && (
-                            <>
+                            <div className="sticky bottom-0 bg-card pt-2 pb-1 -mx-3 px-3 border-t border-border/30">
                               {sizeSelections.some(s => s.bundles > s.availableQuantity) && (
-                                <p className="text-xs text-warning mt-2">
+                                <p className="text-xs text-warning mb-2">
                                   ⚠ Some sizes exceed available stock. Bill will still be saved.
                                 </p>
                               )}
                               <Button
-                                className="w-full mt-2 h-11 sm:h-9 text-sm"
+                                className="w-full h-11 sm:h-9 text-sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   addSelectedSizesToInvoice();
@@ -1107,7 +1136,7 @@ const NewInvoice = () => {
                                 <Check className="w-4 h-4 mr-2" />
                                 Add {totalSelectedBundles} bundle{totalSelectedBundles > 1 ? 's' : ''}
                               </Button>
-                            </>
+                            </div>
                           )}
                         </div>
                       )}
