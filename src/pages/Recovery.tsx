@@ -898,7 +898,7 @@ const RecoveryPage = () => {
         className="space-y-4"
       >
         {/* Total Recoveries - Collapsible */}
-        <Collapsible defaultOpen className="bg-card rounded-xl shadow-card overflow-hidden">
+        <Collapsible className="bg-card rounded-xl shadow-card overflow-hidden">
           <CollapsibleTrigger className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/50 transition-colors">
             <div className="flex items-center gap-3">
               <CreditCard className="w-5 h-5 text-primary" />
