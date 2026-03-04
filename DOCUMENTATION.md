@@ -265,11 +265,10 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ### 6.6 Client Portal PIN Management (UC-CLI-06)
 - **Actors:** Admin, Manager, Biller
-- **Default PIN:** Last 4 digits of the client's phone number (set automatically on creation)
 - **Flow:**
   1. Click the key icon on a client card
   2. Set or change a 4+ digit PIN for client portal access
-  3. Option to remove PIN (reverts to default: last 4 digits of phone)
+  3. Option to remove PIN (allows login without PIN)
   4. Audit log entry created
 
 ### 6.7 Quick Recovery from Client Detail (UC-CLI-07)
@@ -419,13 +418,10 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 - **Route:** `/recovery`
 - **Actors:** Admin, Manager, Cashier
 - **Features:**
-  - Three **collapsible sections** on one page (no tabs):
-    - **All Recoveries** (expanded by default) — shows all records with type badge
-    - **Client Recoveries** (collapsed by default) — filtered to direct client recoveries
-    - **City Recoveries** (collapsed by default) — filtered to city-grouped recoveries
-  - Each section header shows record count and total amount
-  - Search and date filter apply across all sections
-  - Recovery totals and summaries in stat cards
+  - List of all recovery records
+  - Two types: **Client Recovery** (direct) and **City Recovery** (grouped)
+  - Search and filter capabilities
+  - Recovery totals and summaries
 
 ### 9.2 Record Client Recovery (UC-REC-02)
 - **Flow:**
@@ -659,11 +655,11 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 - **Actors:** External clients (customers)
 - **Flow:**
   1. Client enters phone number (formatted as `0XXX-XXXXXXX`, auto-formatted on input)
-  2. Client enters their PIN (default: last 4 digits of phone number)
+  2. If client has a PIN set, enter the PIN
   3. System calls the `client-portal-login` edge function
   4. Edge function:
      - Looks up client by phone number (using service role, bypasses RLS)
-     - Verifies PIN against stored `portal_pin`, or falls back to last 4 digits of phone if no custom PIN is set
+     - Verifies PIN if set
      - Returns client data, invoices, and recovery records
   5. On success, client sees their portal dashboard
 
