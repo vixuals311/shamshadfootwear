@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SupabaseAuthProvider, useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AuditProvider } from "@/context/AuditContext";
+import { OfflineSyncProvider } from "@/context/OfflineSyncContext";
 import { AppLayout } from "@/components/layout";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";

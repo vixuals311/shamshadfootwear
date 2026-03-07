@@ -11,6 +11,7 @@ import {
 import { useLocation, Link } from "react-router-dom";
 import { UserMenu } from "./UserMenu";
 import { useOnlineBilling } from "@/hooks/useOnlineBilling";
+import { OfflineIndicator } from "./OfflineIndicator";
 
 const pageTitle: Record<string, string> = {
   "/": "Dashboard",
@@ -85,6 +86,9 @@ export function Header({ onMenuClick }: HeaderProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Offline Status */}
+        <OfflineIndicator />
 
         {/* User Menu with Notifications */}
         <UserMenu />
