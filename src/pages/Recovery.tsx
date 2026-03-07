@@ -566,24 +566,45 @@ const RecoveryPage = () => {
       if (recoveryCategory === "client") {
         if (!clientRecovery.clientId || !clientRecovery.amount) return;
 
-        const { error } = await supabase.from("recoveries").insert({
+        const recoveryData = {
           client_id: clientRecovery.clientId,
           amount: parseFloat(clientRecovery.amount),
           notes: clientRecovery.notes || null,
           type: "client",
-        });
+        };
 
-        if (error) throw error;
+        if (navigator.onLine) {
+          const { error } = await supabase.from("recoveries").insert(recoveryData);
+          if (error) throw error;
 
-        // Update client balance
-        const client = clients.find((c) => c.id === clientRecovery.clientId);
-        if (client) {
-          await supabase
-            .from("clients")
-            .update({
-              current_balance: client.currentBalance - parseFloat(clientRecovery.amount),
-            })
-            .eq("id", clientRecovery.clientId);
+          // Update client balance
+          const client = clients.find((c) => c.id === clientRecovery.clientId);
+          if (client) {
+            await supabase
+              .from("clients")
+              .update({
+                current_balance: client.currentBalance - parseFloat(clientRecovery.amount),
+              })
+              .eq("id", clientRecovery.clientId);
+          }
+        } else {
+          // Queue for offline sync
+          const offlineId = `offline_${Date.now()}`;
+          await addToSyncQueue({ table: "recoveries", operation: "insert", data: { ...recoveryData, id: offlineId } });
+          await updateCachedRecord("recoveries", offlineId, { ...recoveryData, id: offlineId, date: new Date().toISOString() });
+
+          // Queue client balance update
+          const client = clients.find((c) => c.id === clientRecovery.clientId);
+          if (client) {
+            const newBalance = client.currentBalance - parseFloat(clientRecovery.amount);
+            await addToSyncQueue({ table: "clients", operation: "update", data: { current_balance: newBalance }, recordId: client.id });
+            await updateCachedRecord("clients", client.id, { ...client, current_balance: newBalance });
+          }
+
+          toast({
+            title: "Queued for sync",
+            description: "Recovery saved offline and will sync when back online.",
+          });
         }
 
         await log({
@@ -606,53 +627,92 @@ const RecoveryPage = () => {
 
         if (totalAmount === 0) return;
 
-        // Insert recovery with selected date
-        const { data: recoveryData, error: recoveryError } = await supabase
-          .from("recoveries")
-          .insert({
+        if (navigator.onLine) {
+          // Insert recovery with selected date
+          const { data: recoveryResult, error: recoveryError } = await supabase
+            .from("recoveries")
+            .insert({
+              city: cityRecoveryCity,
+              amount: totalAmount,
+              notes: cityRecoveryNotes || null,
+              type: "city",
+              date: format(cityRecoveryDate, "yyyy-MM-dd"),
+            })
+            .select()
+            .single();
+
+          if (recoveryError) throw recoveryError;
+
+          // Insert client amounts
+          const clientAmountInserts = clientAmounts.map((ca) => ({
+            recovery_id: recoveryResult.id,
+            client_id: ca.clientId,
+            amount: parseFloat(ca.recoveryAmount),
+          }));
+
+          const { error: amountsError } = await supabase
+            .from("recovery_client_amounts")
+            .insert(clientAmountInserts);
+
+          if (amountsError) throw amountsError;
+
+          // Update client balances
+          for (const ca of clientAmounts) {
+            const client = clients.find((c) => c.id === ca.clientId);
+            if (client) {
+              await supabase
+                .from("clients")
+                .update({
+                  current_balance: client.currentBalance - parseFloat(ca.recoveryAmount),
+                })
+                .eq("id", ca.clientId);
+            }
+          }
+
+          await log({
+            action: "create",
+            entityType: "recovery",
+            entityId: recoveryResult.id,
+            details: { type: "city", city: cityRecoveryCity, amount: totalAmount, clients: clientAmounts.length },
+          });
+        } else {
+          // Queue city recovery for offline sync
+          const offlineRecoveryId = `offline_${Date.now()}`;
+          const recoveryData = {
+            id: offlineRecoveryId,
             city: cityRecoveryCity,
             amount: totalAmount,
             notes: cityRecoveryNotes || null,
             type: "city",
             date: format(cityRecoveryDate, "yyyy-MM-dd"),
-          })
-          .select()
-          .single();
+          };
 
-        if (recoveryError) throw recoveryError;
+          await addToSyncQueue({ table: "recoveries", operation: "insert", data: recoveryData });
+          await updateCachedRecord("recoveries", offlineRecoveryId, recoveryData);
 
-        // Insert client amounts
-        const clientAmountInserts = clientAmounts.map((ca) => ({
-          recovery_id: recoveryData.id,
-          client_id: ca.clientId,
-          amount: parseFloat(ca.recoveryAmount),
-        }));
+          // Queue client amount inserts and balance updates
+          for (const ca of clientAmounts) {
+            const amountId = `offline_${Date.now()}_${ca.clientId}`;
+            await addToSyncQueue({
+              table: "recovery_client_amounts",
+              operation: "insert",
+              data: { id: amountId, recovery_id: offlineRecoveryId, client_id: ca.clientId, amount: parseFloat(ca.recoveryAmount) },
+            });
 
-        const { error: amountsError } = await supabase
-          .from("recovery_client_amounts")
-          .insert(clientAmountInserts);
-
-        if (amountsError) throw amountsError;
-
-        // Update client balances
-        for (const ca of clientAmounts) {
-          const client = clients.find((c) => c.id === ca.clientId);
-          if (client) {
-            await supabase
-              .from("clients")
-              .update({
-                current_balance: client.currentBalance - parseFloat(ca.recoveryAmount),
-              })
-              .eq("id", ca.clientId);
+            const client = clients.find((c) => c.id === ca.clientId);
+            if (client) {
+              const newBalance = client.currentBalance - parseFloat(ca.recoveryAmount);
+              await addToSyncQueue({ table: "clients", operation: "update", data: { current_balance: newBalance }, recordId: client.id });
+              await updateCachedRecord("clients", client.id, { ...client, current_balance: newBalance });
+            }
           }
+
+          toast({
+            title: "Queued for sync",
+            description: `City recovery saved offline. Will sync when back online.`,
+          });
         }
 
-        await log({
-          action: "create",
-          entityType: "recovery",
-          entityId: recoveryData.id,
-          details: { type: "city", city: cityRecoveryCity, amount: totalAmount, clients: clientAmounts.length },
-        });
         toast({ title: "Success", description: "City recovery added" });
         setCityRecoveryCity("");
         setCityRecoveryNotes("");
@@ -672,7 +732,6 @@ const RecoveryPage = () => {
       
       fetchData();
       setRecoveryCategory("client");
-      fetchData();
     } catch (error: any) {
       console.error("Error adding recovery:", error);
       toast({
