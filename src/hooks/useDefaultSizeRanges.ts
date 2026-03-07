@@ -97,6 +97,8 @@ export function useDefaultSizeRanges() {
     sizeRanges,
     loading,
     getSizeRangesForCategory,
+    getSizeRangeSortIndex,
+    sortBySizeRangeOrder,
     addSizeRange,
     deleteSizeRange,
     refetch: fetchSizeRanges,
