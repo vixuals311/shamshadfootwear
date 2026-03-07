@@ -359,72 +359,71 @@ const RecoveryPage = () => {
       // Get all clients in this city
       const cityClients = clients.filter((c) => c.city === city);
 
-      // Get all invoices and recoveries up to the selected date to calculate balance
-      const dateStr = format(date, "yyyy-MM-dd");
-      
-      // Fetch invoices for these clients up to the selected date
-      const { data: invoicesData } = await supabase
-        .from("invoices")
-        .select("client_id, balance_due, created_at")
-        .in("client_id", cityClients.map(c => c.id))
-        .lte("created_at", `${dateStr}T23:59:59.999Z`);
+      let clientBalances: CityClientRecovery[];
 
-      // Fetch recoveries for these clients up to the selected date
-      const { data: recoveriesData } = await supabase
-        .from("recoveries")
-        .select("client_id, amount, date")
-        .in("client_id", cityClients.map(c => c.id))
-        .lte("date", dateStr);
+      if (navigator.onLine) {
+        // Get all invoices and recoveries up to the selected date to calculate balance
+        const dateStr = format(date, "yyyy-MM-dd");
+        
+        const [{ data: invoicesData }, { data: recoveriesData }, { data: cityRecoveriesData }] = await Promise.all([
+          supabase
+            .from("invoices")
+            .select("client_id, balance_due, created_at")
+            .in("client_id", cityClients.map(c => c.id))
+            .lte("created_at", `${dateStr}T23:59:59.999Z`),
+          supabase
+            .from("recoveries")
+            .select("client_id, amount, date")
+            .in("client_id", cityClients.map(c => c.id))
+            .lte("date", dateStr),
+          supabase
+            .from("recovery_client_amounts")
+            .select(`client_id, amount, recoveries (date)`)
+            .in("client_id", cityClients.map(c => c.id)),
+        ]);
 
-      // Fetch city recoveries with client amounts up to the selected date
-      const { data: cityRecoveriesData } = await supabase
-        .from("recovery_client_amounts")
-        .select(`
-          client_id, amount,
-          recoveries (date)
-        `)
-        .in("client_id", cityClients.map(c => c.id));
+        // Check if there's a draft for this city/date
+        const existingDraft = getDraftForCityDate(city, date);
 
-      // Check if there's a draft for this city/date
-      const existingDraft = getDraftForCityDate(city, date);
+        clientBalances = cityClients.map((client) => {
+          const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
+          return {
+            clientId: client.id,
+            clientName: client.name,
+            phone: client.phone,
+            currentBalance: client.currentBalance,
+            recoveryAmount: draftClient?.recoveryAmount || "",
+            isCollected: draftClient?.isCollected || false,
+          };
+        });
 
-      // Calculate balance for each client as of the selected date
-      const clientBalances = cityClients.map((client) => {
-        // Check if this client has saved data in draft
-        const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
+        if (existingDraft) {
+          setActiveDraftId(existingDraft.id);
+          setCityRecoveryNotes(existingDraft.notes);
+        }
+      } else {
+        // Offline: just use cached client data
+        const existingDraft = getDraftForCityDate(city, date);
 
-        // Get client's invoices balance
-        const clientInvoices = invoicesData?.filter(i => i.client_id === client.id) || [];
-        const invoicesTotal = clientInvoices.reduce((sum, inv) => sum + (inv.balance_due || 0), 0);
+        clientBalances = cityClients.map((client) => {
+          const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
+          return {
+            clientId: client.id,
+            clientName: client.name,
+            phone: client.phone,
+            currentBalance: client.currentBalance,
+            recoveryAmount: draftClient?.recoveryAmount || "",
+            isCollected: draftClient?.isCollected || false,
+          };
+        });
 
-        // Get client's individual recoveries
-        const clientRecoveriesList = recoveriesData?.filter(r => r.client_id === client.id) || [];
-        const recoveriesTotal = clientRecoveriesList.reduce((sum, rec) => sum + (rec.amount || 0), 0);
-
-        // Get client's city recovery amounts
-        const clientCityRecoveries = cityRecoveriesData?.filter((r: any) => 
-          r.client_id === client.id && 
-          r.recoveries?.date && 
-          new Date(r.recoveries.date) <= date
-        ) || [];
-        const cityRecoveriesTotal = clientCityRecoveries.reduce((sum: number, rec: any) => sum + (rec.amount || 0), 0);
-
-        return {
-          clientId: client.id,
-          clientName: client.name,
-          phone: client.phone,
-          currentBalance: client.currentBalance,
-          recoveryAmount: draftClient?.recoveryAmount || "",
-          isCollected: draftClient?.isCollected || false,
-        };
-      });
+        if (existingDraft) {
+          setActiveDraftId(existingDraft.id);
+          setCityRecoveryNotes(existingDraft.notes);
+        }
+      }
 
       setCityClientRecoveries(clientBalances);
-      
-      if (existingDraft) {
-        setActiveDraftId(existingDraft.id);
-        setCityRecoveryNotes(existingDraft.notes);
-      }
     } catch (error) {
       console.error("Error loading city clients:", error);
       toast({
