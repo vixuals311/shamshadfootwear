@@ -184,9 +184,7 @@ const Inventory = () => {
         gender: p.gender as GenderCategory,
         stockDozens: p.stock_dozens,
         pairsPerDozen: p.pairs_per_dozen,
-        sizeBundles: sortBySizeRangeOrder((p.product_size_bundles || [])
-          .map((sb: any) => ({
-          .map((sb: any) => ({
+        sizeBundles: sortBySizeRangeOrder((p.product_size_bundles || []).map((sb: any) => ({
             id: sb.id,
             sizeRange: sb.size_range,
             pricePerPair: sb.price_per_pair,
