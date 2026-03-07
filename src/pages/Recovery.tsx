@@ -670,12 +670,14 @@ const RecoveryPage = () => {
             }
           }
 
-          await log({
-            action: "create",
-            entityType: "recovery",
-            entityId: recoveryResult.id,
-            details: { type: "city", city: cityRecoveryCity, amount: totalAmount, clients: clientAmounts.length },
-          });
+          try {
+            await log({
+              action: "create",
+              entityType: "recovery",
+              entityId: recoveryResult.id,
+              details: { type: "city", city: cityRecoveryCity, amount: totalAmount, clients: clientAmounts.length },
+            });
+          } catch { /* skip audit log if offline */ }
         } else {
           // Queue city recovery for offline sync
           const offlineRecoveryId = `offline_${Date.now()}`;
