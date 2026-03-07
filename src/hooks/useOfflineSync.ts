@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  offlineDb,
   addToSyncQueue,
   getPendingSyncCount,
   getPendingSyncEntries,
@@ -9,6 +8,8 @@ import {
   markSyncEntryFailed,
   cacheTable,
   getCachedData,
+  updateCachedRecord,
+  removeCachedRecord,
   type SyncQueueEntry,
 } from "@/lib/offlineDb";
 
@@ -26,8 +27,6 @@ const CACHEABLE_TABLES = [
   "manual_bills",
 ] as const;
 
-type CacheableTable = (typeof CACHEABLE_TABLES)[number];
-
 export function useOfflineSync() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
@@ -39,7 +38,6 @@ export function useOfflineSync() {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      // Auto-sync when coming back online
       syncPendingChanges();
     };
     const handleOffline = () => setIsOnline(false);
@@ -92,7 +90,7 @@ export function useOfflineSync() {
     }
   }, [cacheAllData]);
 
-  // Periodic background cache refresh (every 5 minutes when online)
+  // Periodic background cache refresh (every 5 minutes)
   useEffect(() => {
     const interval = setInterval(() => {
       if (navigator.onLine) {
@@ -114,20 +112,18 @@ export function useOfflineSync() {
       for (const entry of entries) {
         try {
           await processSyncEntry(entry);
-          await removeSyncEntry(entry.id!);
+          await removeSyncEntry(entry.id);
         } catch (error: any) {
           console.error(`Sync failed for entry ${entry.id}:`, error);
-          await markSyncEntryFailed(entry.id!, error.message || "Unknown error");
+          await markSyncEntryFailed(entry.id, error.message || "Unknown error");
 
-          // Skip entries that have failed too many times
           if ((entry.retryCount || 0) >= 5) {
             console.warn(`Removing sync entry ${entry.id} after 5 failures`);
-            await removeSyncEntry(entry.id!);
+            await removeSyncEntry(entry.id);
           }
         }
       }
 
-      // Refresh cache after sync
       await cacheAllData();
       const count = await getPendingSyncCount();
       setPendingCount(count);
@@ -153,22 +149,17 @@ export function useOfflineSync() {
 async function processSyncEntry(entry: SyncQueueEntry) {
   const { table, operation, data, recordId } = entry;
 
-  // Map cache table names back to real Supabase table names
-  const realTable = table
-    .replace("_cache", "")
-    .replace("payments_cache", "invoices"); // payments are derived, not a direct table
-
   switch (operation) {
     case "insert": {
-      const { error } = await supabase.from(realTable).insert(data);
+      const { error } = await supabase.from(table as any).insert(data as any);
       if (error) throw error;
       break;
     }
     case "update": {
       if (!recordId) throw new Error("recordId required for update");
       const { error } = await supabase
-        .from(realTable)
-        .update(data)
+        .from(table as any)
+        .update(data as any)
         .eq("id", recordId);
       if (error) throw error;
       break;
@@ -176,14 +167,14 @@ async function processSyncEntry(entry: SyncQueueEntry) {
     case "delete": {
       if (!recordId) throw new Error("recordId required for delete");
       const { error } = await supabase
-        .from(realTable)
+        .from(table as any)
         .delete()
         .eq("id", recordId);
       if (error) throw error;
       break;
     }
     case "upsert": {
-      const { error } = await supabase.from(realTable).upsert(data);
+      const { error } = await supabase.from(table as any).upsert(data as any);
       if (error) throw error;
       break;
     }
@@ -199,7 +190,6 @@ export async function offlineQuery<T = any>(
     try {
       const result = await queryFn();
       if (!result.error && result.data) {
-        // Update cache with fresh data
         if (Array.isArray(result.data)) {
           await cacheTable(tableName, result.data);
         }
@@ -210,7 +200,6 @@ export async function offlineQuery<T = any>(
     }
   }
 
-  // Offline or network error: use cache
   const cachedData = await getCachedData(tableName);
   return { data: cachedData as T, error: null, fromCache: true };
 }
@@ -224,40 +213,35 @@ export async function offlineMutation(
 ): Promise<{ queued: boolean; error?: string }> {
   if (navigator.onLine) {
     try {
-      let result;
+      let result: any;
       switch (operation) {
         case "insert":
-          result = await supabase.from(tableName).insert(data).select();
+          result = await supabase.from(tableName as any).insert(data as any).select();
           break;
         case "update":
           result = await supabase
-            .from(tableName)
-            .update(data)
+            .from(tableName as any)
+            .update(data as any)
             .eq("id", recordId!)
             .select();
           break;
         case "delete":
-          result = await supabase.from(tableName).delete().eq("id", recordId!);
+          result = await supabase.from(tableName as any).delete().eq("id", recordId!);
           break;
         case "upsert":
-          result = await supabase.from(tableName).upsert(data).select();
+          result = await supabase.from(tableName as any).upsert(data as any).select();
           break;
       }
 
-      if (result?.error) {
-        throw result.error;
-      }
+      if (result?.error) throw result.error;
 
-      // Also update local cache
-      if (operation === "delete") {
-        const table = (offlineDb as any)[tableName];
-        if (table && recordId) {
-          await table.delete(recordId);
-        }
+      // Update local cache
+      if (operation === "delete" && recordId) {
+        await removeCachedRecord(tableName, recordId);
       } else if (result?.data) {
-        const table = (offlineDb as any)[tableName];
-        if (table) {
-          await table.bulkPut(Array.isArray(result.data) ? result.data : [result.data]);
+        const records = Array.isArray(result.data) ? result.data : [result.data];
+        for (const rec of records) {
+          await updateCachedRecord(tableName, rec.id, rec);
         }
       }
 
@@ -270,19 +254,14 @@ export async function offlineMutation(
   // Queue for later sync
   await addToSyncQueue({ table: tableName, operation, data, recordId });
 
-  // Also update local cache for immediate UI feedback
-  const table = (offlineDb as any)[tableName];
-  if (table) {
-    if (operation === "delete" && recordId) {
-      await table.delete(recordId);
-    } else if (operation === "insert" || operation === "upsert") {
-      await table.put(data);
-    } else if (operation === "update" && recordId) {
-      const existing = await table.get(recordId);
-      if (existing) {
-        await table.put({ ...existing, ...data });
-      }
-    }
+  // Update local cache for immediate UI feedback
+  if (operation === "delete" && recordId) {
+    await removeCachedRecord(tableName, recordId);
+  } else if (operation === "insert" || operation === "upsert") {
+    const id = data.id || `offline_${Date.now()}`;
+    await updateCachedRecord(tableName, id, { ...data, id });
+  } else if (operation === "update" && recordId) {
+    await updateCachedRecord(tableName, recordId, data);
   }
 
   return { queued: true };
