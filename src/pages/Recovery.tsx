@@ -606,11 +606,13 @@ const RecoveryPage = () => {
           });
         }
 
-        await log({
-          action: "create",
-          entityType: "recovery",
-          details: { type: "client", clientName: clientRecovery.clientName, amount: parseFloat(clientRecovery.amount) },
-        });
+        try {
+          await log({
+            action: "create",
+            entityType: "recovery",
+            details: { type: "client", clientName: clientRecovery.clientName, amount: parseFloat(clientRecovery.amount) },
+          });
+        } catch { /* skip audit log if offline */ }
         toast({ title: "Success", description: "Client recovery added" });
         setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "" });
       } else {
