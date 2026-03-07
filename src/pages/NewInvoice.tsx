@@ -63,6 +63,7 @@ import { InvoiceItem } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
+import { useDefaultSizeRanges } from "@/hooks/useDefaultSizeRanges";
 import { format } from "date-fns";
 
 interface Client {
