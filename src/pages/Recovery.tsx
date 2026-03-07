@@ -736,6 +736,18 @@ const RecoveryPage = () => {
       fetchData();
       setRecoveryCategory("client");
     } catch (error: any) {
+      // If it's a network error while offline, don't show error - data was already queued
+      if (!navigator.onLine && (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError"))) {
+        setShowAddRecoveryConfirm(false);
+        setIsAddRecoveryOpen(false);
+        setRecoveryCategory("client");
+        if (activeDraftId) {
+          deleteDraft(activeDraftId);
+          setActiveDraftId(null);
+        }
+        fetchData();
+        return;
+      }
       console.error("Error adding recovery:", error);
       toast({
         title: "Error",
