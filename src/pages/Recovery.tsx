@@ -606,11 +606,13 @@ const RecoveryPage = () => {
           });
         }
 
-        await log({
-          action: "create",
-          entityType: "recovery",
-          details: { type: "client", clientName: clientRecovery.clientName, amount: parseFloat(clientRecovery.amount) },
-        });
+        try {
+          await log({
+            action: "create",
+            entityType: "recovery",
+            details: { type: "client", clientName: clientRecovery.clientName, amount: parseFloat(clientRecovery.amount) },
+          });
+        } catch { /* skip audit log if offline */ }
         toast({ title: "Success", description: "Client recovery added" });
         setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "" });
       } else {
@@ -668,12 +670,14 @@ const RecoveryPage = () => {
             }
           }
 
-          await log({
-            action: "create",
-            entityType: "recovery",
-            entityId: recoveryResult.id,
-            details: { type: "city", city: cityRecoveryCity, amount: totalAmount, clients: clientAmounts.length },
-          });
+          try {
+            await log({
+              action: "create",
+              entityType: "recovery",
+              entityId: recoveryResult.id,
+              details: { type: "city", city: cityRecoveryCity, amount: totalAmount, clients: clientAmounts.length },
+            });
+          } catch { /* skip audit log if offline */ }
         } else {
           // Queue city recovery for offline sync
           const offlineRecoveryId = `offline_${Date.now()}`;
@@ -732,6 +736,18 @@ const RecoveryPage = () => {
       fetchData();
       setRecoveryCategory("client");
     } catch (error: any) {
+      // If it's a network error while offline, don't show error - data was already queued
+      if (!navigator.onLine && (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError"))) {
+        setShowAddRecoveryConfirm(false);
+        setIsAddRecoveryOpen(false);
+        setRecoveryCategory("client");
+        if (activeDraftId) {
+          deleteDraft(activeDraftId);
+          setActiveDraftId(null);
+        }
+        fetchData();
+        return;
+      }
       console.error("Error adding recovery:", error);
       toast({
         title: "Error",
