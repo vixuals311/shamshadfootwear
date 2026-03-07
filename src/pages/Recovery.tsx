@@ -70,6 +70,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useRecoveryDrafts, DraftClientRecovery, RecoveryDraft } from "@/hooks/useRecoveryDrafts";
+import { getCachedData, addToSyncQueue, updateCachedRecord } from "@/lib/offlineDb";
 
 interface Client {
   id: string;
