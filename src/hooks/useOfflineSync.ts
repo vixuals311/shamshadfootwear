@@ -137,6 +137,9 @@ export function useOfflineSync() {
     }
   }, [cacheAllData]);
 
+  // Keep ref updated for event handlers
+  syncRef.current = syncPendingChanges;
+
   return {
     isOnline,
     pendingCount,
