@@ -45,7 +45,7 @@ export function useDefaultSizeRanges() {
     return index === -1 ? 9999 : index; // Unknown ranges go to end
   };
 
-  const sortBySizeRangeOrder = <T extends { sizeRange?: string; size_range?: string }>(items: T[]): T[] => {
+  const sortBySizeRangeOrder = <T extends Record<string, any>>(items: T[]): T[] => {
     return [...items].sort((a, b) => {
       const aRange = a.sizeRange || a.size_range || "";
       const bRange = b.sizeRange || b.size_range || "";
