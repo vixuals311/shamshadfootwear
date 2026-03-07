@@ -152,60 +152,124 @@ const RecoveryPage = () => {
     try {
       setLoading(true);
 
-      // Fetch clients
-      const { data: clientsData, error: clientsError } = await supabase
-        .from("clients")
-        .select("id, name, phone, city, current_balance")
-        .order("name");
+      let formattedClients: Client[] = [];
+      let formattedRecoveries: Recovery[] = [];
 
-      if (clientsError) throw clientsError;
+      if (navigator.onLine) {
+        // Fetch clients
+        const { data: clientsData, error: clientsError } = await supabase
+          .from("clients")
+          .select("id, name, phone, city, current_balance")
+          .order("name");
 
-      const formattedClients: Client[] = (clientsData || []).map((c) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone || "",
-        city: c.city || "Unknown",
-        currentBalance: c.current_balance || 0,
-      }));
+        if (clientsError) throw clientsError;
+
+        formattedClients = (clientsData || []).map((c) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone || "",
+          city: c.city || "Unknown",
+          currentBalance: c.current_balance || 0,
+        }));
+
+        // Fetch recoveries with client amounts
+        const { data: recoveriesData, error: recoveriesError } = await supabase
+          .from("recoveries")
+          .select(`
+            id, client_id, city, amount, date, notes, type,
+            clients (name),
+            recovery_client_amounts (client_id, amount, clients (name))
+          `)
+          .order("date", { ascending: false });
+
+        if (recoveriesError) throw recoveriesError;
+
+        formattedRecoveries = (recoveriesData || []).map((r: any) => ({
+          id: r.id,
+          clientId: r.client_id,
+          clientName: r.clients?.name,
+          city: r.city,
+          amount: r.amount,
+          date: new Date(r.date),
+          notes: r.notes,
+          type: r.type as "client" | "city",
+          clientAmounts: r.recovery_client_amounts?.map((rca: any) => ({
+            clientId: rca.client_id,
+            clientName: rca.clients?.name || "Unknown",
+            amount: rca.amount,
+          })),
+        }));
+      } else {
+        // Offline: load from IndexedDB cache
+        const cachedClients = await getCachedData("clients");
+        formattedClients = (cachedClients || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone || "",
+          city: c.city || "Unknown",
+          currentBalance: c.current_balance || 0,
+        }));
+
+        const cachedRecoveries = await getCachedData("recoveries");
+        formattedRecoveries = (cachedRecoveries || []).map((r: any) => ({
+          id: r.id,
+          clientId: r.client_id,
+          clientName: r.client_name || "Unknown",
+          city: r.city,
+          amount: r.amount,
+          date: new Date(r.date),
+          notes: r.notes,
+          type: r.type as "client" | "city",
+          clientAmounts: [],
+        }));
+
+        toast({
+          title: "Offline Mode",
+          description: "Showing cached data. Changes will sync when back online.",
+        });
+      }
 
       setClients(formattedClients);
-
-      // Fetch recoveries with client amounts
-      const { data: recoveriesData, error: recoveriesError } = await supabase
-        .from("recoveries")
-        .select(`
-          id, client_id, city, amount, date, notes, type,
-          clients (name),
-          recovery_client_amounts (client_id, amount, clients (name))
-        `)
-        .order("date", { ascending: false });
-
-      if (recoveriesError) throw recoveriesError;
-
-      const formattedRecoveries: Recovery[] = (recoveriesData || []).map((r: any) => ({
-        id: r.id,
-        clientId: r.client_id,
-        clientName: r.clients?.name,
-        city: r.city,
-        amount: r.amount,
-        date: new Date(r.date),
-        notes: r.notes,
-        type: r.type as "client" | "city",
-        clientAmounts: r.recovery_client_amounts?.map((rca: any) => ({
-          clientId: rca.client_id,
-          clientName: rca.clients?.name || "Unknown",
-          amount: rca.amount,
-        })),
-      }));
-
       setRecoveries(formattedRecoveries);
     } catch (error: any) {
       console.error("Error fetching data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load data",
-        variant: "destructive",
-      });
+      // On network error, try cache as fallback
+      try {
+        const cachedClients = await getCachedData("clients");
+        const formattedClients = (cachedClients || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone || "",
+          city: c.city || "Unknown",
+          currentBalance: c.current_balance || 0,
+        }));
+        setClients(formattedClients);
+
+        const cachedRecoveries = await getCachedData("recoveries");
+        const formattedRecoveries = (cachedRecoveries || []).map((r: any) => ({
+          id: r.id,
+          clientId: r.client_id,
+          clientName: r.client_name || "Unknown",
+          city: r.city,
+          amount: r.amount,
+          date: new Date(r.date),
+          notes: r.notes,
+          type: r.type as "client" | "city",
+          clientAmounts: [],
+        }));
+        setRecoveries(formattedRecoveries);
+
+        toast({
+          title: "Offline Mode",
+          description: "Showing cached data. Changes will sync when back online.",
+        });
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to load data",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
