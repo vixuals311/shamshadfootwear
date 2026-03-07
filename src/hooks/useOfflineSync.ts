@@ -33,6 +33,7 @@ export function useOfflineSync() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const syncInProgress = useRef(false);
+  const hasCachedInitially = useRef(false);
 
   // Track online/offline status
   const syncRef = useRef<() => Promise<void>>();
@@ -60,16 +61,16 @@ export function useOfflineSync() {
       setPendingCount(count);
     };
     updateCount();
-    const interval = setInterval(updateCount, 5000);
+    const interval = setInterval(updateCount, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // Cache all tables when online (only called manually or after sync)
+  // Cache all tables when online
   const cacheAllData = useCallback(async () => {
     if (!navigator.onLine) return;
 
     try {
-      for (const tableName of CACHEABLE_TABLES) {
+      const promises = CACHEABLE_TABLES.map(async (tableName) => {
         const { data, error } = await supabase
           .from(tableName)
           .select("*")
@@ -78,12 +79,22 @@ export function useOfflineSync() {
         if (!error && data) {
           await cacheTable(tableName, data);
         }
-      }
+      });
+
+      await Promise.all(promises);
       setLastSyncTime(new Date().toISOString());
     } catch (error) {
       console.error("Error caching data:", error);
     }
   }, []);
+
+  // Initial cache on first load when online (once only)
+  useEffect(() => {
+    if (navigator.onLine && !hasCachedInitially.current) {
+      hasCachedInitially.current = true;
+      cacheAllData();
+    }
+  }, [cacheAllData]);
 
   // Process sync queue
   const syncPendingChanges = useCallback(async () => {

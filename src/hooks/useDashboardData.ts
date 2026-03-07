@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getCachedData } from "@/lib/offlineDb";
 
 interface DashboardStats {
   totalRevenue: number;
@@ -37,12 +38,28 @@ interface MonthlySalesData {
   payments: number;
 }
 
+async function fetchTableWithFallback(tableName: string, selectColumns: string) {
+  if (navigator.onLine) {
+    try {
+      const { data, error } = await supabase
+        .from(tableName as any)
+        .select(selectColumns)
+        .limit(5000);
+      if (!error && data) return data as any[];
+    } catch {
+      // fall through to cache
+    }
+  }
+  return getCachedData(tableName);
+}
+
 export function useDashboardData() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
   const [monthlySales, setMonthlySales] = useState<MonthlySalesData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -52,42 +69,18 @@ export function useDashboardData() {
     try {
       setLoading(true);
 
-      // Fetch invoices for stats
-      const { data: invoices, error: invoicesError } = await supabase
-        .from("invoices")
-        .select("id, total, status, amount_received, created_at");
+      // Fetch all data in parallel with offline fallback
+      const [invoices, clients, products, recoveries] = await Promise.all([
+        fetchTableWithFallback("invoices", "id, total, status, amount_received, created_at, invoice_number, client_id"),
+        fetchTableWithFallback("clients", "id, name, created_at"),
+        fetchTableWithFallback("products", "id, name, stock_dozens, pairs_per_dozen"),
+        fetchTableWithFallback("recoveries", "amount, date"),
+      ]);
 
-      if (invoicesError) throw invoicesError;
+      setFromCache(!navigator.onLine);
 
-      // Fetch clients
-      const { data: clients, error: clientsError } = await supabase
-        .from("clients")
-        .select("id, created_at");
-
-      if (clientsError) throw clientsError;
-
-      // Fetch products with stock
-      const { data: products, error: productsError } = await supabase
-        .from("products")
-        .select("id, name, stock_dozens, pairs_per_dozen");
-
-      if (productsError) throw productsError;
-
-      // Fetch recent invoices with client info
-      const { data: recentInvData, error: recentError } = await supabase
-        .from("invoices")
-        .select("id, invoice_number, total, status, created_at, clients (name)")
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      if (recentError) throw recentError;
-
-      // Fetch recoveries for payments data
-      const { data: recoveries, error: recoveriesError } = await supabase
-        .from("recoveries")
-        .select("amount, date");
-
-      if (recoveriesError) throw recoveriesError;
+      // Build a client name map for recent invoices
+      const clientMap = new Map((clients || []).map((c: any) => [c.id, c.name]));
 
       // Calculate stats
       const now = new Date();
@@ -96,78 +89,69 @@ export function useDashboardData() {
       const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
       const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
 
-      // Total revenue (all paid invoices)
       const totalRevenue = (invoices || [])
-        .filter(i => i.status === "paid")
-        .reduce((sum, i) => sum + i.total, 0);
+        .filter((i: any) => i.status === "paid")
+        .reduce((sum: number, i: any) => sum + i.total, 0);
 
-      // Revenue this month vs last month
       const thisMonthRevenue = (invoices || [])
-        .filter(i => {
+        .filter((i: any) => {
           const d = new Date(i.created_at);
           return d.getMonth() === thisMonth && d.getFullYear() === thisYear && i.status === "paid";
         })
-        .reduce((sum, i) => sum + i.total, 0);
+        .reduce((sum: number, i: any) => sum + i.total, 0);
 
       const lastMonthRevenue = (invoices || [])
-        .filter(i => {
+        .filter((i: any) => {
           const d = new Date(i.created_at);
           return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear && i.status === "paid";
         })
-        .reduce((sum, i) => sum + i.total, 0);
+        .reduce((sum: number, i: any) => sum + i.total, 0);
 
       const revenueChange = lastMonthRevenue > 0 
         ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
         : "0";
 
-      // Active invoices (pending + partial)
-      const activeInvoices = (invoices || []).filter(i => i.status === "pending" || i.status === "partial").length;
-      const newInvoicesThisMonth = (invoices || []).filter(i => {
+      const activeInvoices = (invoices || []).filter((i: any) => i.status === "pending" || i.status === "partial").length;
+      const newInvoicesThisMonth = (invoices || []).filter((i: any) => {
         const d = new Date(i.created_at);
         return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
       }).length;
 
-      // Products in stock
-      const totalPairs = (products || []).reduce((sum, p) => sum + (p.stock_dozens * p.pairs_per_dozen), 0);
+      const totalPairs = (products || []).reduce((sum: number, p: any) => sum + (p.stock_dozens * p.pairs_per_dozen), 0);
 
-      // Active clients
       const activeClientsCount = (clients || []).length;
-      const newClientsThisMonth = (clients || []).filter(c => {
+      const newClientsThisMonth = (clients || []).filter((c: any) => {
         const d = new Date(c.created_at);
         return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
       }).length;
 
-      // Paid this month
       const paidThisMonth = (invoices || [])
-        .filter(i => {
+        .filter((i: any) => {
           const d = new Date(i.created_at);
           return d.getMonth() === thisMonth && d.getFullYear() === thisYear && i.status === "paid";
         })
-        .reduce((sum, i) => sum + i.total, 0);
+        .reduce((sum: number, i: any) => sum + i.total, 0);
 
-      // Pending payments
       const pendingPayments = (invoices || [])
-        .filter(i => i.status === "pending" || i.status === "partial")
-        .reduce((sum, i) => sum + (i.total - i.amount_received), 0);
+        .filter((i: any) => i.status === "pending" || i.status === "partial")
+        .reduce((sum: number, i: any) => sum + (i.total - i.amount_received), 0);
 
-      // Overdue (older than 30 days and still pending)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const overdueAmount = (invoices || [])
-        .filter(i => {
+        .filter((i: any) => {
           const d = new Date(i.created_at);
           return d < thirtyDaysAgo && (i.status === "pending" || i.status === "partial");
         })
-        .reduce((sum, i) => sum + (i.total - i.amount_received), 0);
+        .reduce((sum: number, i: any) => sum + (i.total - i.amount_received), 0);
 
-      // Low stock products (less than 10 dozens)
       const lowStock = (products || [])
-        .filter(p => p.stock_dozens < 10)
-        .map(p => ({
+        .filter((p: any) => p.stock_dozens < 10)
+        .map((p: any) => ({
           id: p.id,
           name: p.name,
           stock: p.stock_dozens * p.pairs_per_dozen,
-          threshold: 120, // 10 dozens * 12 pairs
+          threshold: 120,
         }))
         .slice(0, 5);
 
@@ -180,18 +164,18 @@ export function useDashboardData() {
         const year = thisMonth - i < 0 ? thisYear - 1 : thisYear;
         
         const monthSales = (invoices || [])
-          .filter(inv => {
+          .filter((inv: any) => {
             const d = new Date(inv.created_at);
             return d.getMonth() === month && d.getFullYear() === year;
           })
-          .reduce((sum, inv) => sum + inv.total, 0);
+          .reduce((sum: number, inv: any) => sum + inv.total, 0);
 
         const monthPayments = (recoveries || [])
-          .filter(r => {
+          .filter((r: any) => {
             const d = new Date(r.date);
             return d.getMonth() === month && d.getFullYear() === year;
           })
-          .reduce((sum, r) => sum + r.amount, 0);
+          .reduce((sum: number, r: any) => sum + r.amount, 0);
 
         salesData.push({
           name: monthNames[month],
@@ -200,8 +184,12 @@ export function useDashboardData() {
         });
       }
 
-      // Format recent invoices
-      const formattedRecentInvoices: RecentInvoice[] = (recentInvData || []).map((inv: any) => {
+      // Recent invoices (sorted by created_at, top 5)
+      const sortedInvoices = [...(invoices || [])]
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5);
+
+      const formattedRecentInvoices: RecentInvoice[] = sortedInvoices.map((inv: any) => {
         const createdDate = new Date(inv.created_at);
         const diffDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
         let dateStr = "Today";
@@ -212,7 +200,7 @@ export function useDashboardData() {
         return {
           id: inv.id,
           invoiceNumber: inv.invoice_number,
-          client: inv.clients?.name || "Unknown",
+          client: clientMap.get(inv.client_id) || "Unknown",
           amount: inv.total,
           status: inv.status as RecentInvoice["status"],
           date: dateStr,
@@ -225,7 +213,7 @@ export function useDashboardData() {
         activeInvoices,
         invoiceChange: `+${newInvoicesThisMonth} new`,
         productsInStock: totalPairs,
-        stockChange: "", // Would need historical data
+        stockChange: "",
         activeClients: activeClientsCount,
         clientChange: `+${newClientsThisMonth} new`,
         paidThisMonth,
@@ -244,5 +232,5 @@ export function useDashboardData() {
     }
   };
 
-  return { stats, recentInvoices, lowStockProducts, monthlySales, loading, refetch: fetchDashboardData };
+  return { stats, recentInvoices, lowStockProducts, monthlySales, loading, fromCache, refetch: fetchDashboardData };
 }
