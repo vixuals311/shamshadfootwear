@@ -207,7 +207,7 @@ const NewInvoice = () => {
     };
 
     fetchData();
-  }, [toast]);
+  }, [toast, sortBySizeRangeOrder]);
 
   // Fetch existing invoice data if in edit mode
   useEffect(() => {
