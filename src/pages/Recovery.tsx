@@ -147,122 +147,97 @@ const RecoveryPage = () => {
   const [cityClientSearch, setCityClientSearch] = useState("");
   const [loadingCityClients, setLoadingCityClients] = useState(false);
 
-  // Fetch data from Supabase
+  // Helper to detect network errors
+  const isNetworkError = (error: any): boolean => {
+    const msg = error?.message || String(error);
+    return msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('TypeError') || msg.includes('Load failed');
+  };
+
+  // Load from cache helper
+  const loadFromCache = async () => {
+    const cachedClients = await getCachedData("clients");
+    const formattedClients = (cachedClients || []).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      phone: c.phone || "",
+      city: c.city || "Unknown",
+      currentBalance: c.current_balance || 0,
+    }));
+    setClients(formattedClients);
+
+    const cachedRecoveries = await getCachedData("recoveries");
+    const formattedRecoveries = (cachedRecoveries || []).map((r: any) => ({
+      id: r.id,
+      clientId: r.client_id,
+      clientName: r.client_name || "Unknown",
+      city: r.city,
+      amount: r.amount,
+      date: new Date(r.date),
+      notes: r.notes,
+      type: r.type as "client" | "city",
+      clientAmounts: [],
+    }));
+    setRecoveries(formattedRecoveries);
+
+    toast({
+      title: "Offline Mode",
+      description: "Showing cached data. Changes will sync when back online.",
+    });
+  };
+
+  // Fetch data — always try network first, fall back to cache on any error
   const fetchData = async () => {
     try {
       setLoading(true);
 
-      let formattedClients: Client[] = [];
-      let formattedRecoveries: Recovery[] = [];
+      const { data: clientsData, error: clientsError } = await supabase
+        .from("clients")
+        .select("id, name, phone, city, current_balance")
+        .order("name");
 
-      if (navigator.onLine) {
-        // Fetch clients
-        const { data: clientsData, error: clientsError } = await supabase
-          .from("clients")
-          .select("id, name, phone, city, current_balance")
-          .order("name");
+      if (clientsError) throw clientsError;
 
-        if (clientsError) throw clientsError;
+      const formattedClients = (clientsData || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone || "",
+        city: c.city || "Unknown",
+        currentBalance: c.current_balance || 0,
+      }));
 
-        formattedClients = (clientsData || []).map((c) => ({
-          id: c.id,
-          name: c.name,
-          phone: c.phone || "",
-          city: c.city || "Unknown",
-          currentBalance: c.current_balance || 0,
-        }));
+      const { data: recoveriesData, error: recoveriesError } = await supabase
+        .from("recoveries")
+        .select(`
+          id, client_id, city, amount, date, notes, type,
+          clients (name),
+          recovery_client_amounts (client_id, amount, clients (name))
+        `)
+        .order("date", { ascending: false });
 
-        // Fetch recoveries with client amounts
-        const { data: recoveriesData, error: recoveriesError } = await supabase
-          .from("recoveries")
-          .select(`
-            id, client_id, city, amount, date, notes, type,
-            clients (name),
-            recovery_client_amounts (client_id, amount, clients (name))
-          `)
-          .order("date", { ascending: false });
+      if (recoveriesError) throw recoveriesError;
 
-        if (recoveriesError) throw recoveriesError;
-
-        formattedRecoveries = (recoveriesData || []).map((r: any) => ({
-          id: r.id,
-          clientId: r.client_id,
-          clientName: r.clients?.name,
-          city: r.city,
-          amount: r.amount,
-          date: new Date(r.date),
-          notes: r.notes,
-          type: r.type as "client" | "city",
-          clientAmounts: r.recovery_client_amounts?.map((rca: any) => ({
-            clientId: rca.client_id,
-            clientName: rca.clients?.name || "Unknown",
-            amount: rca.amount,
-          })),
-        }));
-      } else {
-        // Offline: load from IndexedDB cache
-        const cachedClients = await getCachedData("clients");
-        formattedClients = (cachedClients || []).map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          phone: c.phone || "",
-          city: c.city || "Unknown",
-          currentBalance: c.current_balance || 0,
-        }));
-
-        const cachedRecoveries = await getCachedData("recoveries");
-        formattedRecoveries = (cachedRecoveries || []).map((r: any) => ({
-          id: r.id,
-          clientId: r.client_id,
-          clientName: r.client_name || "Unknown",
-          city: r.city,
-          amount: r.amount,
-          date: new Date(r.date),
-          notes: r.notes,
-          type: r.type as "client" | "city",
-          clientAmounts: [],
-        }));
-
-        toast({
-          title: "Offline Mode",
-          description: "Showing cached data. Changes will sync when back online.",
-        });
-      }
+      const formattedRecoveries = (recoveriesData || []).map((r: any) => ({
+        id: r.id,
+        clientId: r.client_id,
+        clientName: r.clients?.name,
+        city: r.city,
+        amount: r.amount,
+        date: new Date(r.date),
+        notes: r.notes,
+        type: r.type as "client" | "city",
+        clientAmounts: r.recovery_client_amounts?.map((rca: any) => ({
+          clientId: rca.client_id,
+          clientName: rca.clients?.name || "Unknown",
+          amount: rca.amount,
+        })),
+      }));
 
       setClients(formattedClients);
       setRecoveries(formattedRecoveries);
     } catch (error: any) {
       console.error("Error fetching data:", error);
-      // On network error, try cache as fallback
       try {
-        const cachedClients = await getCachedData("clients");
-        const formattedClients = (cachedClients || []).map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          phone: c.phone || "",
-          city: c.city || "Unknown",
-          currentBalance: c.current_balance || 0,
-        }));
-        setClients(formattedClients);
-
-        const cachedRecoveries = await getCachedData("recoveries");
-        const formattedRecoveries = (cachedRecoveries || []).map((r: any) => ({
-          id: r.id,
-          clientId: r.client_id,
-          clientName: r.client_name || "Unknown",
-          city: r.city,
-          amount: r.amount,
-          date: new Date(r.date),
-          notes: r.notes,
-          type: r.type as "client" | "city",
-          clientAmounts: [],
-        }));
-        setRecoveries(formattedRecoveries);
-
-        toast({
-          title: "Offline Mode",
-          description: "Showing cached data. Changes will sync when back online.",
-        });
+        await loadFromCache();
       } catch {
         toast({
           title: "Error",
@@ -361,8 +336,8 @@ const RecoveryPage = () => {
 
       let clientBalances: CityClientRecovery[];
 
-      if (navigator.onLine) {
-        // Get all invoices and recoveries up to the selected date to calculate balance
+      // Always try network first, fall back to cached data on error
+      try {
         const dateStr = format(date, "yyyy-MM-dd");
         
         const [{ data: invoicesData }, { data: recoveriesData }, { data: cityRecoveriesData }] = await Promise.all([
@@ -381,56 +356,40 @@ const RecoveryPage = () => {
             .select(`client_id, amount, recoveries (date)`)
             .in("client_id", cityClients.map(c => c.id)),
         ]);
+      } catch (networkErr) {
+        // Network failed — just use cached client data (already in cityClients)
+        console.warn("Network unavailable for city clients, using cached data");
+      }
 
-        // Check if there's a draft for this city/date
-        const existingDraft = getDraftForCityDate(city, date);
+      const existingDraft = getDraftForCityDate(city, date);
 
-        clientBalances = cityClients.map((client) => {
-          const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
-          return {
-            clientId: client.id,
-            clientName: client.name,
-            phone: client.phone,
-            currentBalance: client.currentBalance,
-            recoveryAmount: draftClient?.recoveryAmount || "",
-            isCollected: draftClient?.isCollected || false,
-          };
-        });
+      clientBalances = cityClients.map((client) => {
+        const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
+        return {
+          clientId: client.id,
+          clientName: client.name,
+          phone: client.phone,
+          currentBalance: client.currentBalance,
+          recoveryAmount: draftClient?.recoveryAmount || "",
+          isCollected: draftClient?.isCollected || false,
+        };
+      });
 
-        if (existingDraft) {
-          setActiveDraftId(existingDraft.id);
-          setCityRecoveryNotes(existingDraft.notes);
-        }
-      } else {
-        // Offline: just use cached client data
-        const existingDraft = getDraftForCityDate(city, date);
-
-        clientBalances = cityClients.map((client) => {
-          const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
-          return {
-            clientId: client.id,
-            clientName: client.name,
-            phone: client.phone,
-            currentBalance: client.currentBalance,
-            recoveryAmount: draftClient?.recoveryAmount || "",
-            isCollected: draftClient?.isCollected || false,
-          };
-        });
-
-        if (existingDraft) {
-          setActiveDraftId(existingDraft.id);
-          setCityRecoveryNotes(existingDraft.notes);
-        }
+      if (existingDraft) {
+        setActiveDraftId(existingDraft.id);
+        setCityRecoveryNotes(existingDraft.notes);
       }
 
       setCityClientRecoveries(clientBalances);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading city clients:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load client data",
-        variant: "destructive",
-      });
+      if (!isNetworkError(error)) {
+        toast({
+          title: "Error",
+          description: "Failed to load client data",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoadingCityClients(false);
     }
@@ -572,7 +531,8 @@ const RecoveryPage = () => {
           type: "client",
         };
 
-        if (navigator.onLine) {
+        let onlineSaved = false;
+        try {
           const { error } = await supabase.from("recoveries").insert(recoveryData);
           if (error) throw error;
 
@@ -586,24 +546,20 @@ const RecoveryPage = () => {
               })
               .eq("id", clientRecovery.clientId);
           }
-        } else {
-          // Queue for offline sync
+          onlineSaved = true;
+        } catch (netErr: any) {
+          if (!isNetworkError(netErr)) throw netErr;
+          // Network error — queue offline
           const offlineId = `offline_${Date.now()}`;
           await addToSyncQueue({ table: "recoveries", operation: "insert", data: { ...recoveryData, id: offlineId } });
           await updateCachedRecord("recoveries", offlineId, { ...recoveryData, id: offlineId, date: new Date().toISOString() });
 
-          // Queue client balance update
           const client = clients.find((c) => c.id === clientRecovery.clientId);
           if (client) {
             const newBalance = client.currentBalance - parseFloat(clientRecovery.amount);
             await addToSyncQueue({ table: "clients", operation: "update", data: { current_balance: newBalance }, recordId: client.id });
             await updateCachedRecord("clients", client.id, { ...client, current_balance: newBalance });
           }
-
-          toast({
-            title: "Queued for sync",
-            description: "Recovery saved offline and will sync when back online.",
-          });
         }
 
         try {
@@ -613,7 +569,11 @@ const RecoveryPage = () => {
             details: { type: "client", clientName: clientRecovery.clientName, amount: parseFloat(clientRecovery.amount) },
           });
         } catch { /* skip audit log if offline */ }
-        toast({ title: "Success", description: "Client recovery added" });
+
+        toast({
+          title: onlineSaved ? "Success" : "Queued for sync",
+          description: onlineSaved ? "Client recovery added" : "Recovery saved offline and will sync when back online.",
+        });
         setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "" });
       } else {
         if (!cityRecoveryCity) return;
@@ -628,8 +588,8 @@ const RecoveryPage = () => {
 
         if (totalAmount === 0) return;
 
-        if (navigator.onLine) {
-          // Insert recovery with selected date
+        let onlineSaved = false;
+        try {
           const { data: recoveryResult, error: recoveryError } = await supabase
             .from("recoveries")
             .insert({
@@ -644,7 +604,6 @@ const RecoveryPage = () => {
 
           if (recoveryError) throw recoveryError;
 
-          // Insert client amounts
           const clientAmountInserts = clientAmounts.map((ca) => ({
             recovery_id: recoveryResult.id,
             client_id: ca.clientId,
@@ -657,7 +616,6 @@ const RecoveryPage = () => {
 
           if (amountsError) throw amountsError;
 
-          // Update client balances
           for (const ca of clientAmounts) {
             const client = clients.find((c) => c.id === ca.clientId);
             if (client) {
@@ -678,8 +636,10 @@ const RecoveryPage = () => {
               details: { type: "city", city: cityRecoveryCity, amount: totalAmount, clients: clientAmounts.length },
             });
           } catch { /* skip audit log if offline */ }
-        } else {
-          // Queue city recovery for offline sync
+          onlineSaved = true;
+        } catch (netErr: any) {
+          if (!isNetworkError(netErr)) throw netErr;
+          // Network error — queue offline
           const offlineRecoveryId = `offline_${Date.now()}`;
           const recoveryData = {
             id: offlineRecoveryId,
@@ -693,7 +653,6 @@ const RecoveryPage = () => {
           await addToSyncQueue({ table: "recoveries", operation: "insert", data: recoveryData });
           await updateCachedRecord("recoveries", offlineRecoveryId, recoveryData);
 
-          // Queue client amount inserts and balance updates
           for (const ca of clientAmounts) {
             const amountId = `offline_${Date.now()}_${ca.clientId}`;
             await addToSyncQueue({
@@ -709,14 +668,12 @@ const RecoveryPage = () => {
               await updateCachedRecord("clients", client.id, { ...client, current_balance: newBalance });
             }
           }
-
-          toast({
-            title: "Queued for sync",
-            description: `City recovery saved offline. Will sync when back online.`,
-          });
         }
 
-        toast({ title: "Success", description: "City recovery added" });
+        toast({
+          title: onlineSaved ? "Success" : "Queued for sync",
+          description: onlineSaved ? "City recovery added" : "City recovery saved offline. Will sync when back online.",
+        });
         setCityRecoveryCity("");
         setCityRecoveryNotes("");
         setCityRecoveryDate(new Date());
@@ -727,7 +684,6 @@ const RecoveryPage = () => {
       setIsAddRecoveryOpen(false);
       setRecoveryCategory("client");
       
-      // Delete the draft if recovery was successfully added
       if (activeDraftId) {
         deleteDraft(activeDraftId);
         setActiveDraftId(null);
@@ -736,8 +692,8 @@ const RecoveryPage = () => {
       fetchData();
       setRecoveryCategory("client");
     } catch (error: any) {
-      // If it's a network error while offline, don't show error - data was already queued
-      if (!navigator.onLine && (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError"))) {
+      // If network error, data was queued — close dialog gracefully
+      if (isNetworkError(error)) {
         setShowAddRecoveryConfirm(false);
         setIsAddRecoveryOpen(false);
         setRecoveryCategory("client");
