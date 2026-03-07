@@ -147,15 +147,108 @@ const RecoveryPage = () => {
   const [cityClientSearch, setCityClientSearch] = useState("");
   const [loadingCityClients, setLoadingCityClients] = useState(false);
 
-  // Fetch data from Supabase
+  // Helper to detect network errors
+  const isNetworkError = (error: any): boolean => {
+    const msg = error?.message || String(error);
+    return msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('TypeError') || msg.includes('Load failed');
+  };
+
+  // Load from cache helper
+  const loadFromCache = async () => {
+    const cachedClients = await getCachedData("clients");
+    const formattedClients = (cachedClients || []).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      phone: c.phone || "",
+      city: c.city || "Unknown",
+      currentBalance: c.current_balance || 0,
+    }));
+    setClients(formattedClients);
+
+    const cachedRecoveries = await getCachedData("recoveries");
+    const formattedRecoveries = (cachedRecoveries || []).map((r: any) => ({
+      id: r.id,
+      clientId: r.client_id,
+      clientName: r.client_name || "Unknown",
+      city: r.city,
+      amount: r.amount,
+      date: new Date(r.date),
+      notes: r.notes,
+      type: r.type as "client" | "city",
+      clientAmounts: [],
+    }));
+    setRecoveries(formattedRecoveries);
+
+    toast({
+      title: "Offline Mode",
+      description: "Showing cached data. Changes will sync when back online.",
+    });
+  };
+
+  // Fetch data — always try network first, fall back to cache on any error
   const fetchData = async () => {
     try {
       setLoading(true);
 
-      let formattedClients: Client[] = [];
-      let formattedRecoveries: Recovery[] = [];
+      const { data: clientsData, error: clientsError } = await supabase
+        .from("clients")
+        .select("id, name, phone, city, current_balance")
+        .order("name");
 
-      if (navigator.onLine) {
+      if (clientsError) throw clientsError;
+
+      const formattedClients = (clientsData || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone || "",
+        city: c.city || "Unknown",
+        currentBalance: c.current_balance || 0,
+      }));
+
+      const { data: recoveriesData, error: recoveriesError } = await supabase
+        .from("recoveries")
+        .select(`
+          id, client_id, city, amount, date, notes, type,
+          clients (name),
+          recovery_client_amounts (client_id, amount, clients (name))
+        `)
+        .order("date", { ascending: false });
+
+      if (recoveriesError) throw recoveriesError;
+
+      const formattedRecoveries = (recoveriesData || []).map((r: any) => ({
+        id: r.id,
+        clientId: r.client_id,
+        clientName: r.clients?.name,
+        city: r.city,
+        amount: r.amount,
+        date: new Date(r.date),
+        notes: r.notes,
+        type: r.type as "client" | "city",
+        clientAmounts: r.recovery_client_amounts?.map((rca: any) => ({
+          clientId: rca.client_id,
+          clientName: rca.clients?.name || "Unknown",
+          amount: rca.amount,
+        })),
+      }));
+
+      setClients(formattedClients);
+      setRecoveries(formattedRecoveries);
+    } catch (error: any) {
+      console.error("Error fetching data:", error);
+      try {
+        await loadFromCache();
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to load data",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
         // Fetch clients
         const { data: clientsData, error: clientsError } = await supabase
           .from("clients")
