@@ -336,8 +336,8 @@ const RecoveryPage = () => {
 
       let clientBalances: CityClientRecovery[];
 
-      if (navigator.onLine) {
-        // Get all invoices and recoveries up to the selected date to calculate balance
+      // Always try network first, fall back to cached data on error
+      try {
         const dateStr = format(date, "yyyy-MM-dd");
         
         const [{ data: invoicesData }, { data: recoveriesData }, { data: cityRecoveriesData }] = await Promise.all([
@@ -356,56 +356,40 @@ const RecoveryPage = () => {
             .select(`client_id, amount, recoveries (date)`)
             .in("client_id", cityClients.map(c => c.id)),
         ]);
+      } catch (networkErr) {
+        // Network failed — just use cached client data (already in cityClients)
+        console.warn("Network unavailable for city clients, using cached data");
+      }
 
-        // Check if there's a draft for this city/date
-        const existingDraft = getDraftForCityDate(city, date);
+      const existingDraft = getDraftForCityDate(city, date);
 
-        clientBalances = cityClients.map((client) => {
-          const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
-          return {
-            clientId: client.id,
-            clientName: client.name,
-            phone: client.phone,
-            currentBalance: client.currentBalance,
-            recoveryAmount: draftClient?.recoveryAmount || "",
-            isCollected: draftClient?.isCollected || false,
-          };
-        });
+      clientBalances = cityClients.map((client) => {
+        const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
+        return {
+          clientId: client.id,
+          clientName: client.name,
+          phone: client.phone,
+          currentBalance: client.currentBalance,
+          recoveryAmount: draftClient?.recoveryAmount || "",
+          isCollected: draftClient?.isCollected || false,
+        };
+      });
 
-        if (existingDraft) {
-          setActiveDraftId(existingDraft.id);
-          setCityRecoveryNotes(existingDraft.notes);
-        }
-      } else {
-        // Offline: just use cached client data
-        const existingDraft = getDraftForCityDate(city, date);
-
-        clientBalances = cityClients.map((client) => {
-          const draftClient = existingDraft?.clients.find(c => c.clientId === client.id);
-          return {
-            clientId: client.id,
-            clientName: client.name,
-            phone: client.phone,
-            currentBalance: client.currentBalance,
-            recoveryAmount: draftClient?.recoveryAmount || "",
-            isCollected: draftClient?.isCollected || false,
-          };
-        });
-
-        if (existingDraft) {
-          setActiveDraftId(existingDraft.id);
-          setCityRecoveryNotes(existingDraft.notes);
-        }
+      if (existingDraft) {
+        setActiveDraftId(existingDraft.id);
+        setCityRecoveryNotes(existingDraft.notes);
       }
 
       setCityClientRecoveries(clientBalances);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading city clients:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load client data",
-        variant: "destructive",
-      });
+      if (!isNetworkError(error)) {
+        toast({
+          title: "Error",
+          description: "Failed to load client data",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoadingCityClients(false);
     }
