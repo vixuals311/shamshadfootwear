@@ -35,10 +35,12 @@ export function useOfflineSync() {
   const syncInProgress = useRef(false);
 
   // Track online/offline status
+  const syncRef = useRef<() => Promise<void>>();
+
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      syncPendingChanges();
+      syncRef.current?.();
     };
     const handleOffline = () => setIsOnline(false);
 
@@ -134,6 +136,9 @@ export function useOfflineSync() {
       setIsSyncing(false);
     }
   }, [cacheAllData]);
+
+  // Keep ref updated for event handlers
+  syncRef.current = syncPendingChanges;
 
   return {
     isOnline,
