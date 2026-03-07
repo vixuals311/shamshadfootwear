@@ -191,7 +191,7 @@ const Inventory = () => {
             pairsPerBundle: sb.pairs_per_bundle,
             quantity: sb.quantity ?? 0,
             costPerPair: sb.cost_per_pair ?? null,
-          }))),
+          }))) as any[],
         defaultPairsPerBundle: 6,
         supplier: p.supplier || "",
       }));
