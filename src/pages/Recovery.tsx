@@ -531,7 +531,8 @@ const RecoveryPage = () => {
           type: "client",
         };
 
-        if (navigator.onLine) {
+        let onlineSaved = false;
+        try {
           const { error } = await supabase.from("recoveries").insert(recoveryData);
           if (error) throw error;
 
@@ -545,24 +546,20 @@ const RecoveryPage = () => {
               })
               .eq("id", clientRecovery.clientId);
           }
-        } else {
-          // Queue for offline sync
+          onlineSaved = true;
+        } catch (netErr: any) {
+          if (!isNetworkError(netErr)) throw netErr;
+          // Network error — queue offline
           const offlineId = `offline_${Date.now()}`;
           await addToSyncQueue({ table: "recoveries", operation: "insert", data: { ...recoveryData, id: offlineId } });
           await updateCachedRecord("recoveries", offlineId, { ...recoveryData, id: offlineId, date: new Date().toISOString() });
 
-          // Queue client balance update
           const client = clients.find((c) => c.id === clientRecovery.clientId);
           if (client) {
             const newBalance = client.currentBalance - parseFloat(clientRecovery.amount);
             await addToSyncQueue({ table: "clients", operation: "update", data: { current_balance: newBalance }, recordId: client.id });
             await updateCachedRecord("clients", client.id, { ...client, current_balance: newBalance });
           }
-
-          toast({
-            title: "Queued for sync",
-            description: "Recovery saved offline and will sync when back online.",
-          });
         }
 
         try {
@@ -572,7 +569,11 @@ const RecoveryPage = () => {
             details: { type: "client", clientName: clientRecovery.clientName, amount: parseFloat(clientRecovery.amount) },
           });
         } catch { /* skip audit log if offline */ }
-        toast({ title: "Success", description: "Client recovery added" });
+
+        toast({
+          title: onlineSaved ? "Success" : "Queued for sync",
+          description: onlineSaved ? "Client recovery added" : "Recovery saved offline and will sync when back online.",
+        });
         setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "" });
       } else {
         if (!cityRecoveryCity) return;
@@ -587,8 +588,8 @@ const RecoveryPage = () => {
 
         if (totalAmount === 0) return;
 
-        if (navigator.onLine) {
-          // Insert recovery with selected date
+        let onlineSaved = false;
+        try {
           const { data: recoveryResult, error: recoveryError } = await supabase
             .from("recoveries")
             .insert({
@@ -603,7 +604,6 @@ const RecoveryPage = () => {
 
           if (recoveryError) throw recoveryError;
 
-          // Insert client amounts
           const clientAmountInserts = clientAmounts.map((ca) => ({
             recovery_id: recoveryResult.id,
             client_id: ca.clientId,
@@ -616,7 +616,6 @@ const RecoveryPage = () => {
 
           if (amountsError) throw amountsError;
 
-          // Update client balances
           for (const ca of clientAmounts) {
             const client = clients.find((c) => c.id === ca.clientId);
             if (client) {
@@ -637,8 +636,10 @@ const RecoveryPage = () => {
               details: { type: "city", city: cityRecoveryCity, amount: totalAmount, clients: clientAmounts.length },
             });
           } catch { /* skip audit log if offline */ }
-        } else {
-          // Queue city recovery for offline sync
+          onlineSaved = true;
+        } catch (netErr: any) {
+          if (!isNetworkError(netErr)) throw netErr;
+          // Network error — queue offline
           const offlineRecoveryId = `offline_${Date.now()}`;
           const recoveryData = {
             id: offlineRecoveryId,
@@ -652,7 +653,6 @@ const RecoveryPage = () => {
           await addToSyncQueue({ table: "recoveries", operation: "insert", data: recoveryData });
           await updateCachedRecord("recoveries", offlineRecoveryId, recoveryData);
 
-          // Queue client amount inserts and balance updates
           for (const ca of clientAmounts) {
             const amountId = `offline_${Date.now()}_${ca.clientId}`;
             await addToSyncQueue({
@@ -668,14 +668,12 @@ const RecoveryPage = () => {
               await updateCachedRecord("clients", client.id, { ...client, current_balance: newBalance });
             }
           }
-
-          toast({
-            title: "Queued for sync",
-            description: `City recovery saved offline. Will sync when back online.`,
-          });
         }
 
-        toast({ title: "Success", description: "City recovery added" });
+        toast({
+          title: onlineSaved ? "Success" : "Queued for sync",
+          description: onlineSaved ? "City recovery added" : "City recovery saved offline. Will sync when back online.",
+        });
         setCityRecoveryCity("");
         setCityRecoveryNotes("");
         setCityRecoveryDate(new Date());
@@ -686,7 +684,6 @@ const RecoveryPage = () => {
       setIsAddRecoveryOpen(false);
       setRecoveryCategory("client");
       
-      // Delete the draft if recovery was successfully added
       if (activeDraftId) {
         deleteDraft(activeDraftId);
         setActiveDraftId(null);
@@ -695,8 +692,8 @@ const RecoveryPage = () => {
       fetchData();
       setRecoveryCategory("client");
     } catch (error: any) {
-      // If it's a network error while offline, don't show error - data was already queued
-      if (!navigator.onLine && (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError"))) {
+      // If network error, data was queued — close dialog gracefully
+      if (isNetworkError(error)) {
         setShowAddRecoveryConfirm(false);
         setIsAddRecoveryOpen(false);
         setRecoveryCategory("client");
