@@ -42,6 +42,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -98,6 +99,7 @@ interface ReturnRecord {
 
 export default function Returns() {
   const { toast } = useToast();
+  const { log } = useAuditLog();
   const { user } = useSupabaseAuthContext();
   const [returns, setReturns] = useState<ReturnRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -324,6 +326,21 @@ export default function Returns() {
         }
       }
 
+      await log({
+        action: "create",
+        entityType: "return",
+        entityId: returnData.id,
+        details: {
+          returnNumber,
+          invoiceNumber: selectedInvoice.invoice_number,
+          clientName: selectedInvoice.clients?.name,
+          amount: totalReturnAmount,
+          adjustmentType,
+          restock,
+          itemCount: returnItems.length,
+        },
+      });
+
       toast({
         title: "Return recorded",
         description: `Return ${returnNumber} saved successfully`,
@@ -394,6 +411,7 @@ export default function Returns() {
               ],
               "returns"
             );
+            log({ action: "export", entityType: "return", details: { format: "csv", count: filteredReturns.length } });
           }}>
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Export</span>
