@@ -63,6 +63,7 @@ import { InvoiceItem } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
+import { useDefaultSizeRanges } from "@/hooks/useDefaultSizeRanges";
 import { format } from "date-fns";
 
 interface Client {
@@ -110,6 +111,7 @@ const NewInvoice = () => {
   const isEditMode = !!invoiceId;
   const { toast } = useToast();
   const { log } = useAuditLog();
+  const { sortBySizeRangeOrder } = useDefaultSizeRanges();
   const searchInputRef = useRef<HTMLInputElement>(null);
   
   const [clients, setClients] = useState<Client[]>([]);
@@ -178,9 +180,8 @@ const NewInvoice = () => {
           category: p.category,
           stock_dozens: p.stock_dozens,
           pairs_per_dozen: p.pairs_per_dozen,
-          size_bundles: (p.product_size_bundles || [])
-            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-            .map((sb: any) => ({ size_range: sb.size_range, price_per_pair: sb.price_per_pair, pairs_per_bundle: sb.pairs_per_bundle, available_quantity: sb.quantity || 0 })),
+          size_bundles: sortBySizeRangeOrder((p.product_size_bundles || [])
+            .map((sb: any) => ({ size_range: sb.size_range, price_per_pair: sb.price_per_pair, pairs_per_bundle: sb.pairs_per_bundle, available_quantity: sb.quantity || 0 }))) as any[],
         }));
 
         setProducts(formattedProducts);
@@ -206,7 +207,7 @@ const NewInvoice = () => {
     };
 
     fetchData();
-  }, [toast]);
+  }, [toast, sortBySizeRangeOrder]);
 
   // Fetch existing invoice data if in edit mode
   useEffect(() => {

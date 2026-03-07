@@ -104,7 +104,7 @@ const Inventory = () => {
   const [newBrandName, setNewBrandName] = useState("");
   const [customSizeRange, setCustomSizeRange] = useState("");
 
-  const { sizeRanges, getSizeRangesForCategory, addSizeRange, deleteSizeRange } = useDefaultSizeRanges();
+  const { sizeRanges, getSizeRangesForCategory, sortBySizeRangeOrder, addSizeRange, deleteSizeRange } = useDefaultSizeRanges();
 
   // Size range management
   const [newSizeRangeCategory, setNewSizeRangeCategory] = useState<ProductCategory>("men");
@@ -184,16 +184,14 @@ const Inventory = () => {
         gender: p.gender as GenderCategory,
         stockDozens: p.stock_dozens,
         pairsPerDozen: p.pairs_per_dozen,
-        sizeBundles: (p.product_size_bundles || [])
-          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-          .map((sb: any) => ({
+        sizeBundles: sortBySizeRangeOrder((p.product_size_bundles || []).map((sb: any) => ({
             id: sb.id,
             sizeRange: sb.size_range,
             pricePerPair: sb.price_per_pair,
             pairsPerBundle: sb.pairs_per_bundle,
             quantity: sb.quantity ?? 0,
             costPerPair: sb.cost_per_pair ?? null,
-          })),
+          }))) as any[],
         defaultPairsPerBundle: 6,
         supplier: p.supplier || "",
       }));
@@ -213,7 +211,8 @@ const Inventory = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sizeRanges]);
 
   // Get unique categories
   const categories = useMemo(() => {

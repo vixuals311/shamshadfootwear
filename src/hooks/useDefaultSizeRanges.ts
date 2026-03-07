@@ -39,6 +39,20 @@ export function useDefaultSizeRanges() {
     return sizeRanges.filter((sr) => sr.category === category);
   };
 
+  // Returns a comparator function that sorts size_range strings by their display_order in settings
+  const getSizeRangeSortIndex = (sizeRange: string): number => {
+    const index = sizeRanges.findIndex((sr) => sr.size_range === sizeRange);
+    return index === -1 ? 9999 : index; // Unknown ranges go to end
+  };
+
+  const sortBySizeRangeOrder = <T extends Record<string, any>>(items: T[]): T[] => {
+    return [...items].sort((a, b) => {
+      const aRange = a.sizeRange || a.size_range || "";
+      const bRange = b.sizeRange || b.size_range || "";
+      return getSizeRangeSortIndex(aRange) - getSizeRangeSortIndex(bRange);
+    });
+  };
+
   const addSizeRange = async (
     category: ProductCategory,
     sizeRange: string,
@@ -83,6 +97,8 @@ export function useDefaultSizeRanges() {
     sizeRanges,
     loading,
     getSizeRangesForCategory,
+    getSizeRangeSortIndex,
+    sortBySizeRangeOrder,
     addSizeRange,
     deleteSizeRange,
     refetch: fetchSizeRanges,
