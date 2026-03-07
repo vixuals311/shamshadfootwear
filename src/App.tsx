@@ -139,13 +139,15 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <SupabaseAuthProvider>
       <AuditProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
+        <OfflineSyncProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
+        </OfflineSyncProvider>
       </AuditProvider>
     </SupabaseAuthProvider>
   </QueryClientProvider>
