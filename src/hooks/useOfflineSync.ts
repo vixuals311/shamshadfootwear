@@ -64,7 +64,7 @@ export function useOfflineSync() {
     return () => clearInterval(interval);
   }, []);
 
-  // Cache all tables when online
+  // Cache all tables when online (only called manually or after sync)
   const cacheAllData = useCallback(async () => {
     if (!navigator.onLine) return;
 
@@ -84,23 +84,6 @@ export function useOfflineSync() {
       console.error("Error caching data:", error);
     }
   }, []);
-
-  // Initial cache on mount if online
-  useEffect(() => {
-    if (navigator.onLine) {
-      cacheAllData();
-    }
-  }, [cacheAllData]);
-
-  // Periodic background cache refresh (every 5 minutes)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (navigator.onLine) {
-        cacheAllData();
-      }
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [cacheAllData]);
 
   // Process sync queue
   const syncPendingChanges = useCallback(async () => {
