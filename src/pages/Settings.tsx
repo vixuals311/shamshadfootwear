@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { DataBackupRestore } from "@/components/admin/DataBackupRestore";
 
@@ -120,6 +121,7 @@ const LANDING_PAGE_OPTIONS = [
 
 const Settings = () => {
   const { toast } = useToast();
+  const { log } = useAuditLog();
   const { profile, role, hasPermission, user } = useSupabaseAuthContext();
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -570,6 +572,21 @@ const Settings = () => {
       setInitialLandingPages({ ...landingPages });
       setInitialOnlineBillingEnabled(onlineBillingEnabled);
 
+      await log({
+        action: "update",
+        entityType: "settings",
+        details: { 
+          sections: [
+            ...(JSON.stringify(profileSettings) !== JSON.stringify(initialProfileSettings) ? ["profile"] : []),
+            ...(JSON.stringify(businessSettings) !== JSON.stringify(initialBusinessSettings) ? ["business"] : []),
+            ...(JSON.stringify(notificationSettings) !== JSON.stringify(initialNotificationSettings) ? ["notifications"] : []),
+            ...(JSON.stringify(securitySettings) !== JSON.stringify(initialSecuritySettings) ? ["security"] : []),
+            ...(JSON.stringify(landingPages) !== JSON.stringify(initialLandingPages) ? ["landing_pages"] : []),
+            ...(onlineBillingEnabled !== initialOnlineBillingEnabled ? ["online_billing"] : []),
+          ],
+        },
+      });
+
       toast({
         title: "Success",
         description: "All settings saved successfully",
@@ -598,6 +615,7 @@ const Settings = () => {
 
       if (error) throw error;
 
+      await log({ action: "create", entityType: "settings", details: { type: "payment_account", name: newAccountName.trim() } });
       toast({ title: "Success", description: "Bank account added" });
       setNewAccountName("");
       setIsAddAccountOpen(false);
@@ -625,6 +643,7 @@ const Settings = () => {
 
       if (error) throw error;
 
+      await log({ action: "delete", entityType: "settings", entityId: deleteAccountId, details: { type: "payment_account" } });
       toast({ title: "Success", description: "Bank account deleted" });
       setDeleteAccountId(null);
       fetchData();
@@ -652,6 +671,7 @@ const Settings = () => {
 
       if (error) throw error;
 
+      await log({ action: "create", entityType: "settings", details: { type: "product_category", name: newCategoryName.trim() } });
       toast({ title: "Success", description: "Category added" });
       setNewCategoryName("");
       setIsAddCategoryOpen(false);
@@ -685,6 +705,7 @@ const Settings = () => {
 
       if (error) throw error;
 
+      await log({ action: "delete", entityType: "settings", entityId: deleteCategoryId, details: { type: "product_category", name: deleteCategoryName } });
       toast({ title: "Success", description: "Category deleted" });
       setDeleteCategoryId(null);
       setDeleteCategoryName("");

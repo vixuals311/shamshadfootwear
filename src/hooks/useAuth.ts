@@ -134,12 +134,25 @@ export function useSupabaseAuth() {
 
   const signOut = async () => {
     try {
+      const userName = profile?.name || user?.email || "Unknown";
+      const userId = user?.id || null;
+      
       if (user) {
         await supabase
           .from("user_sessions")
           .update({ is_active: false })
           .eq("user_id", user.id);
       }
+      
+      // Log logout before signing out (while we still have auth)
+      await supabase.from("audit_logs").insert({
+        action: "logout",
+        entity_type: "user",
+        user_id: userId,
+        user_name: userName,
+        details: { method: "manual" },
+      });
+      
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);
@@ -160,6 +173,16 @@ export function useSupabaseAuth() {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         if (currentSession?.user) {
+          // Log login event
+          if (event === "SIGNED_IN") {
+            supabase.from("audit_logs").insert({
+              action: "login",
+              entity_type: "user",
+              user_id: currentSession.user.id,
+              user_name: currentSession.user.email || "Unknown",
+              details: { method: "password", event },
+            }).then(() => {});
+          }
           setTimeout(() => {
             fetchProfile(currentSession.user.id);
             fetchRole(currentSession.user.id);

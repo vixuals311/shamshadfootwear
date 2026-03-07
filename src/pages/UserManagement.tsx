@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
-import { useAudit } from "@/context/AuditContext";
 import { UserRole, ROLE_DEFAULT_PAGES, PAGE_METADATA, PageKey } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { format } from "date-fns";
 
 type AppRole = "admin" | "manager" | "biller" | "cashier";
@@ -58,7 +58,7 @@ const ASSIGNABLE_PAGES: PageKey[] = [
 
 const UserManagement = () => {
   const { user, profile, hasPermission } = useSupabaseAuthContext();
-  const { addLog } = useAudit();
+  const { log: auditLog } = useAuditLog();
   const { toast } = useToast();
   
   const [users, setUsers] = useState<UserWithRole[]>([]);
@@ -144,9 +144,12 @@ const UserManagement = () => {
         if (roleError) {
           await supabase.from("user_roles").insert({ user_id: authData.user.id, role: newUser.role });
         }
-        if (profile) {
-          addLog(user?.id || "", profile.name, "create", "user", undefined, newUser.name, `Created new ${newUser.role} user`);
-        }
+        await auditLog({
+          action: "create",
+          entityType: "user",
+          entityId: authData.user.id,
+          details: { name: newUser.name, email: newUser.email, role: newUser.role },
+        });
         toast({ title: "User created", description: `${newUser.name} has been added as a ${newUser.role}` });
         setNewUser({ name: "", email: "", phone: "", password: "", role: "biller" });
         setShowAddConfirm(false);
@@ -167,9 +170,12 @@ const UserManagement = () => {
     try {
       const { error } = await supabase.from("profiles").update({ is_active: !targetUser.is_active }).eq("user_id", userId);
       if (error) throw error;
-      if (profile) {
-        addLog(user?.id || "", profile.name, "update", "user", userId, targetUser.name, `${targetUser.is_active ? "Deactivated" : "Activated"} user`);
-      }
+      await auditLog({
+        action: "update",
+        entityType: "user",
+        entityId: userId,
+        details: { name: targetUser.name, action: targetUser.is_active ? "deactivated" : "activated" },
+      });
       toast({ title: targetUser.is_active ? "User deactivated" : "User activated", description: `${targetUser.name} has been ${targetUser.is_active ? "deactivated" : "activated"}` });
       fetchUsers();
     } catch (error: any) {
@@ -184,9 +190,12 @@ const UserManagement = () => {
     try {
       const { error } = await supabase.from("profiles").update({ is_active: false }).eq("user_id", deleteUserId);
       if (error) throw error;
-      if (profile) {
-        addLog(user?.id || "", profile.name, "delete", "user", deleteUserId, targetUser.name, "Deactivated user (marked as deleted)");
-      }
+      await auditLog({
+        action: "delete",
+        entityType: "user",
+        entityId: deleteUserId,
+        details: { name: targetUser.name },
+      });
       toast({ title: "User removed", description: `${targetUser.name} has been deactivated` });
       setDeleteUserId(null);
       fetchUsers();
@@ -202,9 +211,12 @@ const UserManagement = () => {
       if (error) throw error;
       // Clear custom overrides when role changes so defaults take effect
       await supabase.from("user_page_permissions").delete().eq("user_id", editRoleUser.user_id);
-      if (profile) {
-        addLog(user?.id || "", profile.name, "update", "user", editRoleUser.user_id, editRoleUser.name, `Changed role from ${editRoleUser.role} to ${editRoleValue}`);
-      }
+      await auditLog({
+        action: "update",
+        entityType: "user",
+        entityId: editRoleUser.user_id,
+        details: { name: editRoleUser.name, previousRole: editRoleUser.role, newRole: editRoleValue },
+      });
       toast({ title: "Role updated", description: `${editRoleUser.name}'s role changed to ${editRoleValue}` });
       setEditRoleUser(null);
       fetchUsers();
@@ -263,9 +275,12 @@ const UserManagement = () => {
         if (error) throw error;
       }
 
-      if (profile) {
-        addLog(user?.id || "", profile.name, "update", "user", permUser.user_id, permUser.name, "Updated page permissions");
-      }
+      await auditLog({
+        action: "update",
+        entityType: "user",
+        entityId: permUser.user_id,
+        details: { name: permUser.name, action: "updated_page_permissions", overrides: overrides.length },
+      });
       toast({ title: "Permissions updated", description: `Page access updated for ${permUser.name}` });
       setPermUser(null);
     } catch (error: any) {

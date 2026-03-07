@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
 
 interface Payment {
   id: string;
@@ -42,6 +43,7 @@ interface PaymentAccount {
 
 const Payments = () => {
   const { toast } = useToast();
+  const { log } = useAuditLog();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [accounts, setAccounts] = useState<PaymentAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +198,7 @@ const Payments = () => {
               ],
               "payments"
             );
+            log({ action: "export", entityType: "payment", details: { format: "csv", count: filteredPayments.length } });
           }}>
             <Download className="w-4 h-4" />
             Export

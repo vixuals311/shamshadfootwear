@@ -68,6 +68,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { useRecoveryDrafts, DraftClientRecovery, RecoveryDraft } from "@/hooks/useRecoveryDrafts";
 
 interface Client {
@@ -106,6 +107,7 @@ interface SortableCityItem {
 
 const RecoveryPage = () => {
   const { toast } = useToast();
+  const { log } = useAuditLog();
   const { drafts, saveDraft, deleteDraft, getDraftForCityDate } = useRecoveryDrafts();
   const [clients, setClients] = useState<Client[]>([]);
   const [recoveries, setRecoveries] = useState<Recovery[]>([]);
@@ -519,6 +521,11 @@ const RecoveryPage = () => {
             .eq("id", clientRecovery.clientId);
         }
 
+        await log({
+          action: "create",
+          entityType: "recovery",
+          details: { type: "client", clientName: clientRecovery.clientName, amount: parseFloat(clientRecovery.amount) },
+        });
         toast({ title: "Success", description: "Client recovery added" });
         setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "" });
       } else {
@@ -575,6 +582,12 @@ const RecoveryPage = () => {
           }
         }
 
+        await log({
+          action: "create",
+          entityType: "recovery",
+          entityId: recoveryData.id,
+          details: { type: "city", city: cityRecoveryCity, amount: totalAmount, clients: clientAmounts.length },
+        });
         toast({ title: "Success", description: "City recovery added" });
         setCityRecoveryCity("");
         setCityRecoveryNotes("");
