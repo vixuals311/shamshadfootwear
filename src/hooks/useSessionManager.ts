@@ -67,6 +67,42 @@ export function useSessionManager(userId: string | undefined) {
     }
   };
 
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+  }, []);
+
+  // Heartbeat: update last_active_at AND check if session was terminated remotely
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+
+    const checkAndUpdate = async () => {
+      if (!sessionIdRef.current) return;
+
+      const { data } = await supabase
+        .from("user_sessions")
+        .select("is_active")
+        .eq("id", sessionIdRef.current)
+        .maybeSingle();
+
+      if (data && !data.is_active) {
+        stopHeartbeat();
+        setWasTerminatedRemotely(true);
+        return;
+      }
+
+      await supabase
+        .from("user_sessions")
+        .update({ last_active_at: new Date().toISOString() })
+        .eq("id", sessionIdRef.current);
+    };
+
+    checkAndUpdate();
+    heartbeatRef.current = setInterval(checkAndUpdate, 30 * 1000);
+  }, [stopHeartbeat]);
+
   const terminateSessionAndContinue = useCallback(async (sessionId: string) => {
     if (!userId) return;
     await supabase
@@ -84,44 +120,6 @@ export function useSessionManager(userId: string | undefined) {
     setDeviceLimitReached(false);
     setActiveSessions([]);
     await supabase.auth.signOut();
-  }, []);
-
-  // Heartbeat: update last_active_at AND check if session was terminated remotely
-  const startHeartbeat = useCallback(() => {
-    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-
-    const checkAndUpdate = async () => {
-      if (!sessionIdRef.current) return;
-
-      const { data } = await supabase
-        .from("user_sessions")
-        .select("is_active")
-        .eq("id", sessionIdRef.current)
-        .maybeSingle();
-
-      if (data && !data.is_active) {
-        // Session was terminated remotely
-        stopHeartbeat();
-        setWasTerminatedRemotely(true);
-        return;
-      }
-
-      // Session still active — update heartbeat
-      await supabase
-        .from("user_sessions")
-        .update({ last_active_at: new Date().toISOString() })
-        .eq("id", sessionIdRef.current);
-    };
-
-    checkAndUpdate();
-    heartbeatRef.current = setInterval(checkAndUpdate, 30 * 1000);
-  }, []);
-
-  const stopHeartbeat = useCallback(() => {
-    if (heartbeatRef.current) {
-      clearInterval(heartbeatRef.current);
-      heartbeatRef.current = null;
-    }
   }, []);
 
   useEffect(() => {
