@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Settings, Check, CheckCheck, FileText, Wallet, Info } from "lucide-react";
+import { Bell, User, LogOut, Settings, Check, CheckCheck, FileText, Wallet, Info, Download, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,9 +15,12 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
 export function UserMenu() {
   const {
@@ -30,9 +33,39 @@ export function UserMenu() {
     markAllNotificationsAsRead,
   } = useSupabaseAuthContext();
 
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
   const roleLabel = role
     ? role.charAt(0).toUpperCase() + role.slice(1)
     : "User";
+
+  const extractBackupFileName = (message: string): string | null => {
+    const match = message.match(/\[file:(.*?)\]/);
+    return match ? match[1] : null;
+  };
+
+  const handleDownloadBackup = async (notificationId: string, fileName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDownloadingId(notificationId);
+    try {
+      const { data, error } = await supabase.storage
+        .from("backups")
+        .download(fileName);
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      markNotificationAsRead(notificationId);
+    } catch (error: any) {
+      toast({ title: "Download Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -70,51 +103,75 @@ export function UserMenu() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={cn(
-                      "p-4 hover:bg-muted/50 cursor-pointer transition-colors",
-                      !notification.is_read && "bg-primary/5"
-                    )}
-                    onClick={() => markNotificationAsRead(notification.id)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={cn(
-                          "w-7 h-7 rounded-full flex items-center justify-center shrink-0",
-                          notification.type === "invoice" ? "bg-primary/10" :
-                          notification.type === "recovery" ? "bg-chart-2/10" :
-                          "bg-muted"
-                        )}
-                      >
-                        {notification.type === "invoice" ? (
-                          <FileText className="w-3.5 h-3.5 text-primary" />
-                        ) : notification.type === "recovery" ? (
-                          <Wallet className="w-3.5 h-3.5 text-chart-2" />
-                        ) : (
-                          <Info className="w-3.5 h-3.5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {notification.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {notification.message}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(notification.created_at), {
-                            addSuffix: true,
-                          })}
-                        </p>
-                      </div>
-                      {!notification.is_read && (
-                        <Check className="w-4 h-4 text-muted-foreground shrink-0" />
+                {notifications.map((notification) => {
+                  const backupFile = notification.type === "backup" 
+                    ? extractBackupFileName(notification.message) 
+                    : null;
+                  const displayMessage = backupFile 
+                    ? notification.message.replace(/\s*\[file:.*?\]/, '')
+                    : notification.message;
+
+                  return (
+                    <div
+                      key={notification.id}
+                      className={cn(
+                        "p-4 hover:bg-muted/50 cursor-pointer transition-colors",
+                        !notification.is_read && "bg-primary/5"
                       )}
+                      onClick={() => markNotificationAsRead(notification.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={cn(
+                            "w-7 h-7 rounded-full flex items-center justify-center shrink-0",
+                            notification.type === "invoice" ? "bg-primary/10" :
+                            notification.type === "recovery" ? "bg-chart-2/10" :
+                            notification.type === "backup" ? "bg-chart-4/10" :
+                            "bg-muted"
+                          )}
+                        >
+                          {notification.type === "invoice" ? (
+                            <FileText className="w-3.5 h-3.5 text-primary" />
+                          ) : notification.type === "recovery" ? (
+                            <Wallet className="w-3.5 h-3.5 text-chart-2" />
+                          ) : notification.type === "backup" ? (
+                            <Database className="w-3.5 h-3.5 text-chart-4" />
+                          ) : (
+                            <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {notification.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {displayMessage}
+                          </p>
+                          {backupFile && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2 h-7 text-xs gap-1.5"
+                              disabled={downloadingId === notification.id}
+                              onClick={(e) => handleDownloadBackup(notification.id, backupFile, e)}
+                            >
+                              <Download className="w-3 h-3" />
+                              {downloadingId === notification.id ? "Downloading..." : "Download Backup"}
+                            </Button>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {formatDistanceToNow(new Date(notification.created_at), {
+                              addSuffix: true,
+                            })}
+                          </p>
+                        </div>
+                        {!notification.is_read && (
+                          <Check className="w-4 h-4 text-muted-foreground shrink-0" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
