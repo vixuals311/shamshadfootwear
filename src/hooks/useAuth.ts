@@ -241,5 +241,10 @@ export function useSupabaseAuth() {
     refetchProfile: () => user && fetchProfile(user.id),
     refetchNotifications: () => user && fetchNotifications(user.id),
     refetchPageAccess: () => user && fetchPageAccess(user.id),
+    deviceLimitReached: sessionManager.deviceLimitReached,
+    activeSessions: sessionManager.activeSessions,
+    maxDevices: sessionManager.maxDevices,
+    terminateSessionAndContinue: sessionManager.terminateSessionAndContinue,
+    cancelDeviceLimit: sessionManager.cancelLogin,
   };
 }
