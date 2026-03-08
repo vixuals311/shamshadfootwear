@@ -43,6 +43,7 @@ export function useSupabaseAuth() {
   const [pageAccess, setPageAccess] = useState<Record<PageKey, boolean>>({} as Record<PageKey, boolean>);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const { toast } = useToast();
 
   const sessionManager = useSessionManager(user?.id);
