@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { ActiveSession } from "@/components/auth/DeviceLimitDialog";
 
+const SESSION_STORAGE_KEY = "app_session_id";
+
 export function useSessionManager(userId: string | undefined) {
   const [deviceLimitReached, setDeviceLimitReached] = useState(false);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
@@ -23,6 +25,37 @@ export function useSessionManager(userId: string | undefined) {
       const limit = roleData?.max_devices ?? 3;
       setMaxDevices(limit);
 
+      // Check if we already have a session from this browser tab
+      const existingSessionId = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      if (existingSessionId) {
+        // Verify it's still active in the database
+        const { data: existingSession } = await supabase
+          .from("user_sessions")
+          .select("id, is_active")
+          .eq("id", existingSessionId)
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        if (existingSession?.is_active) {
+          // Reuse existing session — just update heartbeat
+          sessionIdRef.current = existingSessionId;
+          return true;
+        }
+        // Session was terminated or doesn't exist — remove stale reference
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+
+      // Clean up any stale sessions from this exact device/browser that are no longer alive
+      // (sessions older than 2 minutes without heartbeat are considered dead)
+      const staleThreshold = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      await supabase
+        .from("user_sessions")
+        .update({ is_active: false })
+        .eq("user_id", uid)
+        .eq("is_active", true)
+        .lt("last_active_at", staleThreshold);
+
+      // Now check active sessions count
       const { data: sessions } = await supabase
         .from("user_sessions")
         .select("id, device_info, ip_address, last_active_at, created_at")
@@ -64,6 +97,7 @@ export function useSessionManager(userId: string | undefined) {
 
     if (data) {
       sessionIdRef.current = data.id;
+      sessionStorage.setItem(SESSION_STORAGE_KEY, data.id);
     }
   };
 
@@ -74,7 +108,6 @@ export function useSessionManager(userId: string | undefined) {
     }
   }, []);
 
-  // Heartbeat: update last_active_at AND check if session was terminated remotely
   const startHeartbeat = useCallback(() => {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
 
@@ -89,6 +122,7 @@ export function useSessionManager(userId: string | undefined) {
 
       if (data && !data.is_active) {
         stopHeartbeat();
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
         setWasTerminatedRemotely(true);
         return;
       }
@@ -119,6 +153,7 @@ export function useSessionManager(userId: string | undefined) {
   const cancelLogin = useCallback(async () => {
     setDeviceLimitReached(false);
     setActiveSessions([]);
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
     await supabase.auth.signOut();
   }, []);
 
