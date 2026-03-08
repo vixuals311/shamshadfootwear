@@ -386,6 +386,15 @@ const UserManagement = () => {
     setSessionsUser(targetUser);
     setSessionsLoading(true);
     try {
+      // First, clean up stale sessions (no heartbeat for 2+ minutes)
+      const staleThreshold = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      await supabase
+        .from("user_sessions")
+        .update({ is_active: false })
+        .eq("user_id", targetUser.user_id)
+        .eq("is_active", true)
+        .lt("last_active_at", staleThreshold);
+
       const { data, error } = await supabase
         .from("user_sessions")
         .select("*")

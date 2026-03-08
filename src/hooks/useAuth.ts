@@ -163,11 +163,16 @@ export function useSupabaseAuth() {
       const userId = user?.id || null;
       
       if (user) {
-        await supabase
-          .from("user_sessions")
-          .update({ is_active: false })
-          .eq("user_id", user.id);
+        const currentSessionId = sessionStorage.getItem("app_session_id");
+        if (currentSessionId) {
+          // Only deactivate the current tab's session, not all sessions
+          await supabase
+            .from("user_sessions")
+            .update({ is_active: false })
+            .eq("id", currentSessionId);
+        }
         sessionStorage.removeItem("app_session_id");
+        sessionManager.stopHeartbeat();
       }
       
       // Log logout before signing out (while we still have auth)
