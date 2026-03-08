@@ -914,6 +914,113 @@ const UserManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Max Devices Dialog */}
+      <Dialog open={!!maxDevicesUser} onOpenChange={() => setMaxDevicesUser(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Max Devices</DialogTitle>
+            <DialogDescription>
+              Set the maximum number of simultaneous logins for {maxDevicesUser?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">{maxDevicesUser?.name}</p>
+                <p className="text-sm text-muted-foreground">{maxDevicesUser?.email}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Maximum Devices</Label>
+              <Select value={String(maxDevicesValue)} onValueChange={(v) => setMaxDevicesValue(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 device</SelectItem>
+                  <SelectItem value="2">2 devices</SelectItem>
+                  <SelectItem value="3">3 devices</SelectItem>
+                  <SelectItem value="5">5 devices</SelectItem>
+                  <SelectItem value="0">Unlimited</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {maxDevicesValue === 0
+                  ? "User can log in from unlimited devices."
+                  : `User can be logged in on up to ${maxDevicesValue} device(s) simultaneously.`}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMaxDevicesUser(null)}>Cancel</Button>
+            <Button onClick={handleSaveMaxDevices} disabled={maxDevicesSaving}>
+              {maxDevicesSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Active Sessions Dialog */}
+      <Dialog open={!!sessionsUser} onOpenChange={() => setSessionsUser(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Active Sessions — {sessionsUser?.name}</DialogTitle>
+            <DialogDescription>
+              View and manage active device sessions for this user.
+            </DialogDescription>
+          </DialogHeader>
+          {sessionsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : sessionsData.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">No active sessions</div>
+          ) : (
+            <div className="space-y-2 max-h-[350px] overflow-y-auto py-2">
+              {sessionsData.map((s) => {
+                const { label, isMobile } = parseDeviceInfo(s.device_info);
+                return (
+                  <div key={s.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      {isMobile
+                        ? <Smartphone className="w-5 h-5 text-muted-foreground" />
+                        : <Monitor className="w-5 h-5 text-muted-foreground" />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Last active: {format(new Date(s.last_active_at), "dd MMM, h:mm a")}
+                      </p>
+                      {s.ip_address && (
+                        <p className="text-xs text-muted-foreground">IP: {s.ip_address}</p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => handleTerminateSession(s.id)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSessionsUser(null)}>Close</Button>
+            {sessionsData.length > 0 && (
+              <Button variant="destructive" onClick={handleTerminateAllSessions}>
+                Terminate All
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
