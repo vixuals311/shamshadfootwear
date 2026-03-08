@@ -44,6 +44,7 @@ export function useSupabaseAuth() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const sessionManager = useSessionManager(user?.id);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
