@@ -39,14 +39,28 @@ export function useOfflineSync() {
   const syncRef = useRef<() => Promise<void>>();
 
   useEffect(() => {
-    const handleOnline = () => {
+    const handleOnline = async () => {
       setIsOnline(true);
-      console.log("[OfflineSync] Back online — waiting for auth refresh before syncing...");
-      // Delay sync to allow auth token refresh
+      console.log("[OfflineSync] Back online — refreshing auth session before syncing...");
+      
+      try {
+        // Force refresh the auth token first
+        const { error } = await supabase.auth.refreshSession();
+        if (error) {
+          console.warn("[OfflineSync] Auth refresh failed:", error.message);
+          // Still try to sync — the token might still be valid
+        } else {
+          console.log("[OfflineSync] Auth session refreshed successfully");
+        }
+      } catch (e) {
+        console.warn("[OfflineSync] Auth refresh error:", e);
+      }
+
+      // Small delay to let everything settle, then sync
       setTimeout(() => {
         console.log("[OfflineSync] Starting sync of pending changes...");
         syncRef.current?.();
-      }, 3000);
+      }, 1000);
     };
     const handleOffline = () => {
       console.log("[OfflineSync] Went offline");
