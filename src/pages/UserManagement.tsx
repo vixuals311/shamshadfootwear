@@ -344,6 +344,109 @@ const UserManagement = () => {
     }
   };
 
+  const openMaxDevices = async (targetUser: UserWithRole) => {
+    setMaxDevicesUser(targetUser);
+    try {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("max_devices")
+        .eq("user_id", targetUser.user_id)
+        .maybeSingle();
+      setMaxDevicesValue(data?.max_devices ?? 3);
+    } catch {
+      setMaxDevicesValue(3);
+    }
+  };
+
+  const handleSaveMaxDevices = async () => {
+    if (!maxDevicesUser) return;
+    setMaxDevicesSaving(true);
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ max_devices: maxDevicesValue })
+        .eq("user_id", maxDevicesUser.user_id);
+      if (error) throw error;
+      await auditLog({
+        action: "update",
+        entityType: "user",
+        entityId: maxDevicesUser.user_id,
+        details: { name: maxDevicesUser.name, action: "updated_max_devices", max_devices: maxDevicesValue },
+      });
+      toast({ title: "Max devices updated", description: `${maxDevicesUser.name} can now use ${maxDevicesValue === 0 ? 'unlimited' : maxDevicesValue} device(s)` });
+      setMaxDevicesUser(null);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to update", variant: "destructive" });
+    } finally {
+      setMaxDevicesSaving(false);
+    }
+  };
+
+  const openActiveSessions = async (targetUser: UserWithRole) => {
+    setSessionsUser(targetUser);
+    setSessionsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("user_sessions")
+        .select("*")
+        .eq("user_id", targetUser.user_id)
+        .eq("is_active", true)
+        .order("last_active_at", { ascending: false });
+      if (error) throw error;
+      setSessionsData(data || []);
+    } catch {
+      setSessionsData([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const handleTerminateSession = async (sessionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_sessions")
+        .update({ is_active: false })
+        .eq("id", sessionId);
+      if (error) throw error;
+      setSessionsData((prev) => prev.filter((s) => s.id !== sessionId));
+      toast({ title: "Session terminated" });
+    } catch {
+      toast({ title: "Error", description: "Failed to terminate session", variant: "destructive" });
+    }
+  };
+
+  const handleTerminateAllSessions = async () => {
+    if (!sessionsUser) return;
+    try {
+      const { error } = await supabase
+        .from("user_sessions")
+        .update({ is_active: false })
+        .eq("user_id", sessionsUser.user_id)
+        .eq("is_active", true);
+      if (error) throw error;
+      setSessionsData([]);
+      await auditLog({
+        action: "update",
+        entityType: "user",
+        entityId: sessionsUser.user_id,
+        details: { name: sessionsUser.name, action: "terminated_all_sessions" },
+      });
+      toast({ title: "All sessions terminated" });
+    } catch {
+      toast({ title: "Error", description: "Failed to terminate sessions", variant: "destructive" });
+    }
+  };
+
+  const parseDeviceInfo = (ua: string | null): { label: string; isMobile: boolean } => {
+    if (!ua) return { label: "Unknown Device", isMobile: false };
+    const isMobile = /mobile|android|iphone|ipad/i.test(ua);
+    const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)\/[\d.]+/i);
+    const browser = browserMatch ? browserMatch[1] : "Browser";
+    const osMatch = ua.match(/(Windows|Mac OS|Linux|Android|iOS|iPhone OS)[\s/]?[\d._]*/i);
+    const os = osMatch ? osMatch[0].replace(/_/g, ".") : "";
+    return { label: `${browser} on ${os || (isMobile ? "Mobile" : "Desktop")}`, isMobile };
+  };
+
   if (!hasPermission("canManageUsers")) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
