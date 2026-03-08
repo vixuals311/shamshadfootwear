@@ -521,6 +521,8 @@ const RecoveryPage = () => {
   };
 
   const handleAddRecovery = async () => {
+    if (isSavingRecovery) return;
+    setIsSavingRecovery(true);
     try {
       if (recoveryCategory === "client") {
         if (!clientRecovery.clientId || !clientRecovery.amount) return;
