@@ -343,6 +343,16 @@ const Settings = () => {
           setOnlineBillingEnabled(enabled);
           setInitialOnlineBillingEnabled(enabled);
         }
+
+        // Fetch client portal session timeout
+        const portalTimeoutSetting = appSettings.find(s => s.setting_key === "client_portal_session_timeout");
+        if (portalTimeoutSetting?.setting_value !== undefined) {
+          const val = Number(portalTimeoutSetting.setting_value);
+          if (val > 0) {
+            setPortalTimeout(val);
+            setInitialPortalTimeout(val);
+          }
+        }
       }
 
       // Fetch admin security settings if admin
