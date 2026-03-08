@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { motion } from "framer-motion";
 import logoImg from "@/assets/logo.png";
 import {
@@ -118,6 +119,36 @@ const ClientPortal = () => {
   const [manualBills, setManualBills] = useState<ManualBill[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
+  const [portalTimeoutMinutes, setPortalTimeoutMinutes] = useState(10);
+
+  // Fetch client portal session timeout from settings
+  useEffect(() => {
+    supabase
+      .from("application_settings")
+      .select("setting_value")
+      .eq("setting_key", "client_portal_session_timeout")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.setting_value) {
+          const val = Number(data.setting_value);
+          if (val > 0) setPortalTimeoutMinutes(val);
+        }
+      });
+  }, []);
+
+  // Inactivity timeout for client portal
+  useInactivityTimeout({
+    timeoutMinutes: portalTimeoutMinutes,
+    enabled: isLoggedIn,
+    onTimeout: () => {
+      handleLogout();
+      toast({
+        title: "Session expired",
+        description: "You have been logged out due to inactivity.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleLogin = async () => {
     if (!loginPhone) {

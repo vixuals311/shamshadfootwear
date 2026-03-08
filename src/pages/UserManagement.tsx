@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Search, Plus, User, Shield, MoreHorizontal, Trash2,
-  UserCheck, UserX, Loader2, Edit2, Settings2,
+  UserCheck, UserX, Loader2, Edit2, Settings2, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +78,11 @@ const UserManagement = () => {
   const [permLoading, setPermLoading] = useState(false);
   const [permPages, setPermPages] = useState<Record<string, boolean>>({});
   const [permSaving, setPermSaving] = useState(false);
+
+  // Session timeout state
+  const [timeoutUser, setTimeoutUser] = useState<UserWithRole | null>(null);
+  const [timeoutValue, setTimeoutValue] = useState(480);
+  const [timeoutSaving, setTimeoutSaving] = useState(false);
 
   const [newUser, setNewUser] = useState({
     name: "",
@@ -290,6 +295,44 @@ const UserManagement = () => {
     }
   };
 
+  const openSessionTimeout = async (targetUser: UserWithRole) => {
+    setTimeoutUser(targetUser);
+    try {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("session_timeout_minutes")
+        .eq("user_id", targetUser.user_id)
+        .maybeSingle();
+      setTimeoutValue(data?.session_timeout_minutes ?? 480);
+    } catch {
+      setTimeoutValue(480);
+    }
+  };
+
+  const handleSaveSessionTimeout = async () => {
+    if (!timeoutUser) return;
+    setTimeoutSaving(true);
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ session_timeout_minutes: timeoutValue })
+        .eq("user_id", timeoutUser.user_id);
+      if (error) throw error;
+      await auditLog({
+        action: "update",
+        entityType: "user",
+        entityId: timeoutUser.user_id,
+        details: { name: timeoutUser.name, action: "updated_session_timeout", timeout_minutes: timeoutValue },
+      });
+      toast({ title: "Session timeout updated", description: `${timeoutUser.name}'s session timeout set to ${timeoutValue} minutes` });
+      setTimeoutUser(null);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to update timeout", variant: "destructive" });
+    } finally {
+      setTimeoutSaving(false);
+    }
+  };
+
   if (!hasPermission("canManageUsers")) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -409,6 +452,9 @@ const UserManagement = () => {
                           <Settings2 className="w-4 h-4" /> Page Access
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem className="gap-2" onClick={() => openSessionTimeout(u)}>
+                        <Clock className="w-4 h-4" /> Session Timeout
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteUserId(u.user_id)}>
                         <Trash2 className="w-4 h-4" /> Delete
                       </DropdownMenuItem>
@@ -456,6 +502,9 @@ const UserManagement = () => {
                       <Settings2 className="w-4 h-4" /> Page Access
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem className="gap-2" onClick={() => openSessionTimeout(u)}>
+                    <Clock className="w-4 h-4" /> Session Timeout
+                  </DropdownMenuItem>
                   <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteUserId(u.user_id)}>
                     <Trash2 className="w-4 h-4" /> Delete
                   </DropdownMenuItem>
@@ -689,6 +738,52 @@ const UserManagement = () => {
             <Button variant="outline" onClick={() => setPermUser(null)}>Cancel</Button>
             <Button onClick={handleSavePagePermissions} disabled={permSaving}>
               {permSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save Permissions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Session Timeout Dialog */}
+      <Dialog open={!!timeoutUser} onOpenChange={() => setTimeoutUser(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Session Timeout</DialogTitle>
+            <DialogDescription>
+              Set the inactivity timeout for {timeoutUser?.name}. They will be auto-logged out after this period of inactivity.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">{timeoutUser?.name}</p>
+                <p className="text-sm text-muted-foreground">{timeoutUser?.email}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Inactivity Timeout</Label>
+              <Select value={String(timeoutValue)} onValueChange={(v) => setTimeoutValue(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 minutes</SelectItem>
+                  <SelectItem value="30">30 minutes</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                  <SelectItem value="120">2 hours</SelectItem>
+                  <SelectItem value="240">4 hours</SelectItem>
+                  <SelectItem value="480">8 hours</SelectItem>
+                  <SelectItem value="720">12 hours</SelectItem>
+                  <SelectItem value="1440">24 hours</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">User will be automatically logged out after this period of inactivity.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTimeoutUser(null)}>Cancel</Button>
+            <Button onClick={handleSaveSessionTimeout} disabled={timeoutSaving}>
+              {timeoutSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save
             </Button>
           </DialogFooter>
         </DialogContent>

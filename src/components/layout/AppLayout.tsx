@@ -1,14 +1,32 @@
 import { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MobileSidebar } from "./MobileSidebar";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
+import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
+import { useToast } from "@/hooks/use-toast";
 
 export function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const location = useLocation();
+  const { signOut, sessionTimeoutMinutes, user } = useSupabaseAuthContext();
+  const { toast } = useToast();
+
+  useInactivityTimeout({
+    timeoutMinutes: sessionTimeoutMinutes,
+    enabled: !!user && sessionTimeoutMinutes > 0,
+    onTimeout: () => {
+      toast({
+        title: "Session expired",
+        description: "You have been logged out due to inactivity.",
+        variant: "destructive",
+      });
+      signOut();
+    },
+  });
 
   return (
     <div className="flex min-h-screen bg-background">

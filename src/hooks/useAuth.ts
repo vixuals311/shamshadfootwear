@@ -38,6 +38,7 @@ export function useSupabaseAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState<number>(480);
   const [pageAccess, setPageAccess] = useState<Record<PageKey, boolean>>({} as Record<PageKey, boolean>);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,11 +62,12 @@ export function useSupabaseAuth() {
     try {
       const { data, error } = await supabase
         .from("user_roles")
-        .select("role")
+        .select("role, session_timeout_minutes")
         .eq("user_id", userId)
         .maybeSingle();
       if (error) throw error;
       setRole(data?.role as AppRole || null);
+      setSessionTimeoutMinutes(data?.session_timeout_minutes ?? 480);
     } catch (error) {
       console.error("Error fetching role:", error);
     }
@@ -159,6 +161,7 @@ export function useSupabaseAuth() {
       setSession(null);
       setProfile(null);
       setRole(null);
+      setSessionTimeoutMinutes(480);
       setPageAccess({} as Record<PageKey, boolean>);
       setNotifications([]);
       toast({ title: "Signed out", description: "You have been signed out successfully." });
@@ -221,6 +224,7 @@ export function useSupabaseAuth() {
     session,
     profile,
     role,
+    sessionTimeoutMinutes,
     pageAccess,
     notifications,
     unreadCount,

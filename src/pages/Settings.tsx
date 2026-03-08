@@ -224,6 +224,10 @@ const Settings = () => {
   const [onlineBillingEnabled, setOnlineBillingEnabled] = useState(true);
   const [initialOnlineBillingEnabled, setInitialOnlineBillingEnabled] = useState(true);
 
+  // Client portal session timeout (admin only)
+  const [portalTimeout, setPortalTimeout] = useState(10);
+  const [initialPortalTimeout, setInitialPortalTimeout] = useState(10);
+
   // Check for unsaved changes
   useEffect(() => {
     const profileChanged = isAdmin && JSON.stringify(profileSettings) !== JSON.stringify(initialProfileSettings);
@@ -232,9 +236,10 @@ const Settings = () => {
     const securityChanged = isAdmin && JSON.stringify(securitySettings) !== JSON.stringify(initialSecuritySettings);
     const landingChanged = isAdmin && JSON.stringify(landingPages) !== JSON.stringify(initialLandingPages);
     const billingChanged = isAdmin && onlineBillingEnabled !== initialOnlineBillingEnabled;
+    const portalTimeoutChanged = isAdmin && portalTimeout !== initialPortalTimeout;
     
-    setHasUnsavedChanges(profileChanged || businessChanged || notificationChanged || securityChanged || landingChanged || billingChanged);
-  }, [profileSettings, businessSettings, notificationSettings, securitySettings, landingPages, onlineBillingEnabled, initialProfileSettings, initialBusinessSettings, initialNotificationSettings, initialSecuritySettings, initialLandingPages, initialOnlineBillingEnabled, isAdmin]);
+    setHasUnsavedChanges(profileChanged || businessChanged || notificationChanged || securityChanged || landingChanged || billingChanged || portalTimeoutChanged);
+  }, [profileSettings, businessSettings, notificationSettings, securitySettings, landingPages, onlineBillingEnabled, portalTimeout, initialProfileSettings, initialBusinessSettings, initialNotificationSettings, initialSecuritySettings, initialLandingPages, initialOnlineBillingEnabled, initialPortalTimeout, isAdmin]);
 
   // Fetch data
   const fetchData = async () => {
@@ -337,6 +342,16 @@ const Settings = () => {
           const enabled = (billingSetting.setting_value as any) === true || billingSetting.setting_value === "true";
           setOnlineBillingEnabled(enabled);
           setInitialOnlineBillingEnabled(enabled);
+        }
+
+        // Fetch client portal session timeout
+        const portalTimeoutSetting = appSettings.find(s => s.setting_key === "client_portal_session_timeout");
+        if (portalTimeoutSetting?.setting_value !== undefined) {
+          const val = Number(portalTimeoutSetting.setting_value);
+          if (val > 0) {
+            setPortalTimeout(val);
+            setInitialPortalTimeout(val);
+          }
         }
       }
 
@@ -563,6 +578,35 @@ const Settings = () => {
         window.dispatchEvent(new Event("online-billing-changed"));
       }
 
+      // Save client portal timeout (admin only)
+      if (isAdmin && portalTimeout !== initialPortalTimeout) {
+        const { data: existingPortal } = await supabase
+          .from("application_settings")
+          .select("id")
+          .eq("setting_key", "client_portal_session_timeout")
+          .maybeSingle();
+        
+        if (existingPortal) {
+          const { error } = await supabase
+            .from("application_settings")
+            .update({
+              setting_value: JSON.parse(JSON.stringify(portalTimeout)),
+              updated_by: user?.id,
+            })
+            .eq("setting_key", "client_portal_session_timeout");
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("application_settings")
+            .insert([{
+              setting_key: "client_portal_session_timeout",
+              setting_value: JSON.parse(JSON.stringify(portalTimeout)),
+              updated_by: user?.id,
+            }]);
+          if (error) throw error;
+        }
+      }
+
       // Update initial values to reflect saved state
       setInitialProfileSettings({ ...profileSettings });
       setInitialBusinessSettings({ ...businessSettings });
@@ -571,6 +615,7 @@ const Settings = () => {
       setSecuritySettings(prev => ({ ...prev, adminPin: "" }));
       setInitialLandingPages({ ...landingPages });
       setInitialOnlineBillingEnabled(onlineBillingEnabled);
+      setInitialPortalTimeout(portalTimeout);
 
       await log({
         action: "update",
@@ -583,6 +628,7 @@ const Settings = () => {
             ...(JSON.stringify(securitySettings) !== JSON.stringify(initialSecuritySettings) ? ["security"] : []),
             ...(JSON.stringify(landingPages) !== JSON.stringify(initialLandingPages) ? ["landing_pages"] : []),
             ...(onlineBillingEnabled !== initialOnlineBillingEnabled ? ["online_billing"] : []),
+            ...(portalTimeout !== initialPortalTimeout ? ["portal_timeout"] : []),
           ],
         },
       });
@@ -1360,7 +1406,35 @@ const Settings = () => {
 
             <Separator />
 
-            {/* Single Device Login for Non-Admins */}
+            {/* Client Portal Session Timeout */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Client Portal Timeout</p>
+                  <p className="text-sm text-muted-foreground">
+                    Auto logout clients after inactivity
+                  </p>
+                </div>
+              </div>
+              <Select
+                value={String(portalTimeout)}
+                onValueChange={(value) => setPortalTimeout(Number(value))}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 min</SelectItem>
+                  <SelectItem value="10">10 min</SelectItem>
+                  <SelectItem value="15">15 min</SelectItem>
+                  <SelectItem value="30">30 min</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Smartphone className="w-4 h-4 text-muted-foreground" />
