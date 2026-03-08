@@ -625,6 +625,12 @@ const UserManagement = () => {
                   <DropdownMenuItem className="gap-2" onClick={() => openSessionTimeout(u)}>
                     <Clock className="w-4 h-4" /> Session Timeout
                   </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" onClick={() => openMaxDevices(u)}>
+                    <Monitor className="w-4 h-4" /> Max Devices
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" onClick={() => openActiveSessions(u)}>
+                    <Smartphone className="w-4 h-4" /> Active Sessions
+                  </DropdownMenuItem>
                   <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteUserId(u.user_id)}>
                     <Trash2 className="w-4 h-4" /> Delete
                   </DropdownMenuItem>
