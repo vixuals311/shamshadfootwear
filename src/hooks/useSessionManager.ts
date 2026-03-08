@@ -2,10 +2,11 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { ActiveSession } from "@/components/auth/DeviceLimitDialog";
 
-export function useSessionManager(userId: string | undefined, onRemoteTerminate?: () => void) {
+export function useSessionManager(userId: string | undefined) {
   const [deviceLimitReached, setDeviceLimitReached] = useState(false);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [maxDevices, setMaxDevices] = useState(3);
+  const [wasTerminatedRemotely, setWasTerminatedRemotely] = useState(false);
   const sessionIdRef = useRef<string | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -91,7 +92,6 @@ export function useSessionManager(userId: string | undefined, onRemoteTerminate?
     const checkAndUpdate = async () => {
       if (!sessionIdRef.current) return;
 
-      // Check if our session is still active
       const { data } = await supabase
         .from("user_sessions")
         .select("is_active")
@@ -99,9 +99,9 @@ export function useSessionManager(userId: string | undefined, onRemoteTerminate?
         .maybeSingle();
 
       if (data && !data.is_active) {
-        // Session was terminated remotely — sign out
+        // Session was terminated remotely
         stopHeartbeat();
-        onRemoteTerminate?.();
+        setWasTerminatedRemotely(true);
         return;
       }
 
@@ -112,10 +112,9 @@ export function useSessionManager(userId: string | undefined, onRemoteTerminate?
         .eq("id", sessionIdRef.current);
     };
 
-    // Check immediately on start, then every 30 seconds
     checkAndUpdate();
     heartbeatRef.current = setInterval(checkAndUpdate, 30 * 1000);
-  }, [onRemoteTerminate]);
+  }, []);
 
   const stopHeartbeat = useCallback(() => {
     if (heartbeatRef.current) {
@@ -132,6 +131,7 @@ export function useSessionManager(userId: string | undefined, onRemoteTerminate?
     deviceLimitReached,
     activeSessions,
     maxDevices,
+    wasTerminatedRemotely,
     registerSession,
     terminateSessionAndContinue,
     cancelLogin,

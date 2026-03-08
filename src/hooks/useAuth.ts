@@ -45,25 +45,26 @@ export function useSupabaseAuth() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const handleRemoteTerminate = useCallback(async () => {
-    toast({
-      title: "Session terminated",
-      description: "Your session was ended by an administrator.",
-      variant: "destructive",
-    });
-    try {
-      await supabase.auth.signOut();
-    } catch {}
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    setRole(null);
-    setSessionTimeoutMinutes(480);
-    setPageAccess({} as Record<PageKey, boolean>);
-    setNotifications([]);
-  }, [toast]);
+  const sessionManager = useSessionManager(user?.id);
 
-  const sessionManager = useSessionManager(user?.id, handleRemoteTerminate);
+  // Handle remote session termination
+  useEffect(() => {
+    if (sessionManager.wasTerminatedRemotely) {
+      toast({
+        title: "Session terminated",
+        description: "Your session was ended by an administrator.",
+        variant: "destructive",
+      });
+      supabase.auth.signOut().catch(() => {});
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setRole(null);
+      setSessionTimeoutMinutes(480);
+      setPageAccess({} as Record<PageKey, boolean>);
+      setNotifications([]);
+    }
+  }, [sessionManager.wasTerminatedRemotely, toast]);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
