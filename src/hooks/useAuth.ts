@@ -62,11 +62,12 @@ export function useSupabaseAuth() {
     try {
       const { data, error } = await supabase
         .from("user_roles")
-        .select("role")
+        .select("role, session_timeout_minutes")
         .eq("user_id", userId)
         .maybeSingle();
       if (error) throw error;
       setRole(data?.role as AppRole || null);
+      setSessionTimeoutMinutes(data?.session_timeout_minutes ?? 480);
     } catch (error) {
       console.error("Error fetching role:", error);
     }
