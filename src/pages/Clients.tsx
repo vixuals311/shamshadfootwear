@@ -405,7 +405,7 @@ const Clients = () => {
         case "name": return a.name.localeCompare(b.name);
         case "balance_high": return b.currentBalance - a.currentBalance;
         case "balance_low": return a.currentBalance - b.currentBalance;
-        case "recent": return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        case "recent": return b.name.localeCompare(a.name); // reverse alphabetical as proxy
         case "invoices": return b.invoiceCount - a.invoiceCount;
         default: return 0;
       }
