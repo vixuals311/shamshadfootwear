@@ -224,6 +224,7 @@ export function useSupabaseAuth() {
     session,
     profile,
     role,
+    sessionTimeoutMinutes,
     pageAccess,
     notifications,
     unreadCount,
