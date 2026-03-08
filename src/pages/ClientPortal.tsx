@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { motion } from "framer-motion";
 import logoImg from "@/assets/logo.png";
 import {
