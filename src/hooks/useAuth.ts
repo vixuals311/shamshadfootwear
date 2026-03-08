@@ -38,6 +38,7 @@ export function useSupabaseAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState<number>(480);
   const [pageAccess, setPageAccess] = useState<Record<PageKey, boolean>>({} as Record<PageKey, boolean>);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
