@@ -178,7 +178,7 @@ export function useSupabaseAuth() {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         if (currentSession?.user) {
-          // Log login event
+          // Log login event and register session
           if (event === "SIGNED_IN") {
             supabase.from("audit_logs").insert({
               action: "login",
@@ -187,6 +187,10 @@ export function useSupabaseAuth() {
               user_name: currentSession.user.email || "Unknown",
               details: { method: "password", event },
             }).then(() => {});
+            // Register device session & check limits
+            sessionManager.registerSession(currentSession.user.id).then((ok) => {
+              if (ok) sessionManager.startHeartbeat();
+            });
           }
           setTimeout(() => {
             fetchProfile(currentSession.user.id);
