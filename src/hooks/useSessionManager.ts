@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { ActiveSession } from "@/components/auth/DeviceLimitDialog";
 
-export function useSessionManager(userId: string | undefined) {
+export function useSessionManager(userId: string | undefined, onRemoteTerminate?: () => void) {
   const [deviceLimitReached, setDeviceLimitReached] = useState(false);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [maxDevices, setMaxDevices] = useState(3);
@@ -13,7 +13,6 @@ export function useSessionManager(userId: string | undefined) {
 
   const registerSession = useCallback(async (uid: string) => {
     try {
-      // Get max_devices for user
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("max_devices")
@@ -23,7 +22,6 @@ export function useSessionManager(userId: string | undefined) {
       const limit = roleData?.max_devices ?? 3;
       setMaxDevices(limit);
 
-      // Count active sessions
       const { data: sessions } = await supabase
         .from("user_sessions")
         .select("id, device_info, ip_address, last_active_at, created_at")
@@ -34,18 +32,16 @@ export function useSessionManager(userId: string | undefined) {
       const activeCount = sessions?.length ?? 0;
 
       if (limit > 0 && activeCount >= limit) {
-        // Device limit reached — show dialog
         setActiveSessions(sessions as ActiveSession[]);
         setDeviceLimitReached(true);
-        return false; // Signal: don't proceed yet
+        return false;
       }
 
-      // Create new session
       await createSession(uid);
       return true;
     } catch (error) {
       console.error("Error registering session:", error);
-      return true; // Don't block login on error
+      return true;
     }
   }, []);
 
@@ -88,18 +84,38 @@ export function useSessionManager(userId: string | undefined) {
     await supabase.auth.signOut();
   }, []);
 
-  // Heartbeat: update last_active_at every 5 minutes
+  // Heartbeat: update last_active_at AND check if session was terminated remotely
   const startHeartbeat = useCallback(() => {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-    heartbeatRef.current = setInterval(async () => {
-      if (sessionIdRef.current) {
-        await supabase
-          .from("user_sessions")
-          .update({ last_active_at: new Date().toISOString() })
-          .eq("id", sessionIdRef.current);
+
+    const checkAndUpdate = async () => {
+      if (!sessionIdRef.current) return;
+
+      // Check if our session is still active
+      const { data } = await supabase
+        .from("user_sessions")
+        .select("is_active")
+        .eq("id", sessionIdRef.current)
+        .maybeSingle();
+
+      if (data && !data.is_active) {
+        // Session was terminated remotely — sign out
+        stopHeartbeat();
+        onRemoteTerminate?.();
+        return;
       }
-    }, 5 * 60 * 1000);
-  }, []);
+
+      // Session still active — update heartbeat
+      await supabase
+        .from("user_sessions")
+        .update({ last_active_at: new Date().toISOString() })
+        .eq("id", sessionIdRef.current);
+    };
+
+    // Check immediately on start, then every 30 seconds
+    checkAndUpdate();
+    heartbeatRef.current = setInterval(checkAndUpdate, 30 * 1000);
+  }, [onRemoteTerminate]);
 
   const stopHeartbeat = useCallback(() => {
     if (heartbeatRef.current) {
@@ -108,7 +124,6 @@ export function useSessionManager(userId: string | undefined) {
     }
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => stopHeartbeat();
   }, [stopHeartbeat]);
