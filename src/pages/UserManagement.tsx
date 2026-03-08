@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import {
   Search, Plus, User, Shield, MoreHorizontal, Trash2,
   UserCheck, UserX, Loader2, Edit2, Settings2, Clock,
+  Monitor, Smartphone, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
