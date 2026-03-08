@@ -370,17 +370,49 @@ const Clients = () => {
   };
 
   const existingCities = useMemo(() => {
-    return clients.map((c) => c.city).filter((city) => city && city !== "N/A");
+    const cities = clients.map((c) => c.city).filter((city) => city && city !== "N/A");
+    return [...new Set(cities)].sort();
   }, [clients]);
 
-  // Filter clients including phone number search
-  const filteredClients = clients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.phone.includes(searchQuery)
-  );
+  const uniqueCities = existingCities;
+
+  const activeFilterCount = [filterCity !== "all", filterBalance !== "all", sortBy !== "name"].filter(Boolean).length;
+
+  // Filter clients including phone number search + filters
+  const filteredClients = useMemo(() => {
+    let result = clients.filter(
+      (client) =>
+        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.phone.includes(searchQuery)
+    );
+
+    if (filterCity !== "all") {
+      result = result.filter((c) => c.city === filterCity);
+    }
+
+    if (filterBalance === "positive") {
+      result = result.filter((c) => c.currentBalance > 0);
+    } else if (filterBalance === "zero") {
+      result = result.filter((c) => c.currentBalance === 0);
+    } else if (filterBalance === "negative") {
+      result = result.filter((c) => c.currentBalance < 0);
+    }
+
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "name": return a.name.localeCompare(b.name);
+        case "balance_high": return b.currentBalance - a.currentBalance;
+        case "balance_low": return a.currentBalance - b.currentBalance;
+        case "recent": return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        case "invoices": return b.invoiceCount - a.invoiceCount;
+        default: return 0;
+      }
+    });
+
+    return result;
+  }, [clients, searchQuery, filterCity, filterBalance, sortBy]);
 
   const checkDuplicateClient = () => {
     // Only check for duplicate phone numbers, not names
