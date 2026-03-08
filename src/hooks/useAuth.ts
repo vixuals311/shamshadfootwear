@@ -161,6 +161,7 @@ export function useSupabaseAuth() {
       setSession(null);
       setProfile(null);
       setRole(null);
+      setSessionTimeoutMinutes(480);
       setPageAccess({} as Record<PageKey, boolean>);
       setNotifications([]);
       toast({ title: "Signed out", description: "You have been signed out successfully." });
