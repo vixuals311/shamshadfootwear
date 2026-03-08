@@ -272,8 +272,12 @@ const Login = () => {
           maxDevices={maxDevices}
           onTerminateAndContinue={async (sessionId) => {
             await terminateSessionAndContinue(sessionId);
-            const landingPage = await getLandingPage(email);
-            navigate(landingPage);
+            if (authUser) {
+              const landingPage = await getLandingPage(authUser.id);
+              navigate(landingPage);
+            } else {
+              navigate("/");
+            }
           }}
           onCancel={cancelDeviceLimit}
         />
