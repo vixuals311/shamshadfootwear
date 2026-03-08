@@ -45,8 +45,7 @@ export function useSessionManager(userId: string | undefined) {
         sessionStorage.removeItem(SESSION_STORAGE_KEY);
       }
 
-      // Clean up any stale sessions from this exact device/browser that are no longer alive
-      // (sessions older than 2 minutes without heartbeat are considered dead)
+      // Clean up stale sessions (no heartbeat for 2+ minutes = dead)
       const staleThreshold = new Date(Date.now() - 2 * 60 * 1000).toISOString();
       await supabase
         .from("user_sessions")
@@ -54,6 +53,14 @@ export function useSessionManager(userId: string | undefined) {
         .eq("user_id", uid)
         .eq("is_active", true)
         .lt("last_active_at", staleThreshold);
+
+      // Also clean up expired sessions
+      await supabase
+        .from("user_sessions")
+        .update({ is_active: false })
+        .eq("user_id", uid)
+        .eq("is_active", true)
+        .lt("expires_at", new Date().toISOString());
 
       // Now check active sessions count
       const { data: sessions } = await supabase
