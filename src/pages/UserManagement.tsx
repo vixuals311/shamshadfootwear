@@ -79,6 +79,11 @@ const UserManagement = () => {
   const [permPages, setPermPages] = useState<Record<string, boolean>>({});
   const [permSaving, setPermSaving] = useState(false);
 
+  // Session timeout state
+  const [timeoutUser, setTimeoutUser] = useState<UserWithRole | null>(null);
+  const [timeoutValue, setTimeoutValue] = useState(480);
+  const [timeoutSaving, setTimeoutSaving] = useState(false);
+
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
