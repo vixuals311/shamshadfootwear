@@ -236,9 +236,10 @@ const Settings = () => {
     const securityChanged = isAdmin && JSON.stringify(securitySettings) !== JSON.stringify(initialSecuritySettings);
     const landingChanged = isAdmin && JSON.stringify(landingPages) !== JSON.stringify(initialLandingPages);
     const billingChanged = isAdmin && onlineBillingEnabled !== initialOnlineBillingEnabled;
+    const portalTimeoutChanged = isAdmin && portalTimeout !== initialPortalTimeout;
     
-    setHasUnsavedChanges(profileChanged || businessChanged || notificationChanged || securityChanged || landingChanged || billingChanged);
-  }, [profileSettings, businessSettings, notificationSettings, securitySettings, landingPages, onlineBillingEnabled, initialProfileSettings, initialBusinessSettings, initialNotificationSettings, initialSecuritySettings, initialLandingPages, initialOnlineBillingEnabled, isAdmin]);
+    setHasUnsavedChanges(profileChanged || businessChanged || notificationChanged || securityChanged || landingChanged || billingChanged || portalTimeoutChanged);
+  }, [profileSettings, businessSettings, notificationSettings, securitySettings, landingPages, onlineBillingEnabled, portalTimeout, initialProfileSettings, initialBusinessSettings, initialNotificationSettings, initialSecuritySettings, initialLandingPages, initialOnlineBillingEnabled, initialPortalTimeout, isAdmin]);
 
   // Fetch data
   const fetchData = async () => {
