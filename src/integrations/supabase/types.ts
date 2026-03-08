@@ -815,6 +815,7 @@ export type Database = {
           enforce_single_session: boolean
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          session_timeout_minutes: number
           user_id: string
         }
         Insert: {
@@ -822,6 +823,7 @@ export type Database = {
           enforce_single_session?: boolean
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          session_timeout_minutes?: number
           user_id: string
         }
         Update: {
@@ -829,6 +831,7 @@ export type Database = {
           enforce_single_session?: boolean
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          session_timeout_minutes?: number
           user_id?: string
         }
         Relationships: []
