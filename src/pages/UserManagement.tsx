@@ -509,7 +509,7 @@ const UserManagement = () => {
 
       {/* Desktop Table */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-        className="bg-card rounded-xl shadow-card overflow-hidden hidden lg:block">
+        className="bg-card rounded-xl shadow-card hidden lg:block">
         <table className="data-table">
           <thead>
             <tr>
