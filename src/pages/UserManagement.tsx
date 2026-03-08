@@ -452,6 +452,9 @@ const UserManagement = () => {
                           <Settings2 className="w-4 h-4" /> Page Access
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem className="gap-2" onClick={() => openSessionTimeout(u)}>
+                        <Clock className="w-4 h-4" /> Session Timeout
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteUserId(u.user_id)}>
                         <Trash2 className="w-4 h-4" /> Delete
                       </DropdownMenuItem>
