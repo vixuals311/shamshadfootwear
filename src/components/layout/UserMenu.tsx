@@ -33,9 +33,39 @@ export function UserMenu() {
     markAllNotificationsAsRead,
   } = useSupabaseAuthContext();
 
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
   const roleLabel = role
     ? role.charAt(0).toUpperCase() + role.slice(1)
     : "User";
+
+  const extractBackupFileName = (message: string): string | null => {
+    const match = message.match(/\[file:(.*?)\]/);
+    return match ? match[1] : null;
+  };
+
+  const handleDownloadBackup = async (notificationId: string, fileName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDownloadingId(notificationId);
+    try {
+      const { data, error } = await supabase.storage
+        .from("backups")
+        .download(fileName);
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      markNotificationAsRead(notificationId);
+    } catch (error: any) {
+      toast({ title: "Download Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="flex items-center gap-2">
