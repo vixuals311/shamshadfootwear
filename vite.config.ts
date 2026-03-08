@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/~oauth/],
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/puixtquwfrnjumbcsiqy\.supabase\.co\/rest\/v1\/.*/i,
@@ -36,6 +38,11 @@ export default defineConfig(({ mode }) => ({
               },
               networkTimeoutSeconds: 5,
             },
+          },
+          {
+            // Don't cache auth endpoints
+            urlPattern: /^https:\/\/puixtquwfrnjumbcsiqy\.supabase\.co\/auth\/.*/i,
+            handler: "NetworkOnly",
           },
         ],
       },
