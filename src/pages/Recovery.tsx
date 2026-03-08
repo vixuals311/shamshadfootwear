@@ -713,6 +713,8 @@ const RecoveryPage = () => {
         description: error.message || "Failed to add recovery",
         variant: "destructive",
       });
+    } finally {
+      setIsSavingRecovery(false);
     }
   };
 
