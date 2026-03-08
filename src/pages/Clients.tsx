@@ -1682,10 +1682,93 @@ const Clients = () => {
           />
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Filter className="w-4 h-4" />
-            Filters
-          </Button>
+          <Popover open={showFilters} onOpenChange={setShowFilters}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2 relative">
+                <Filter className="w-4 h-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-[10px] font-bold text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" align="end">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-sm text-foreground">Filters</h4>
+                {activeFilterCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1 text-muted-foreground"
+                    onClick={() => {
+                      setFilterCity("all");
+                      setFilterBalance("all");
+                      setSortBy("name");
+                    }}
+                  >
+                    <X className="w-3 h-3" />
+                    Clear all
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3" /> City
+                  </Label>
+                  <Select value={filterCity} onValueChange={setFilterCity}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="All Cities" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Cities</SelectItem>
+                      {uniqueCities.map((city) => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <CreditCard className="w-3 h-3" /> Balance
+                  </Label>
+                  <Select value={filterBalance} onValueChange={setFilterBalance}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="All Balances" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Balances</SelectItem>
+                      <SelectItem value="positive">Has Balance (Owes)</SelectItem>
+                      <SelectItem value="zero">Zero Balance</SelectItem>
+                      <SelectItem value="negative">Credit (Overpaid)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <SortAsc className="w-3 h-3" /> Sort By
+                  </Label>
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">Name (A-Z)</SelectItem>
+                      <SelectItem value="balance_high">Balance (High → Low)</SelectItem>
+                      <SelectItem value="balance_low">Balance (Low → High)</SelectItem>
+                      <SelectItem value="invoices">Most Invoices</SelectItem>
+                      <SelectItem value="recent">Name (Z-A)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-3 pt-3 border-t border-border">
+                Showing {filteredClients.length} of {clients.length} clients
+              </p>
+            </PopoverContent>
+          </Popover>
           <div className="flex border border-border rounded-lg overflow-hidden">
             <Button
               variant="ghost"
