@@ -132,6 +132,7 @@ const RecoveryPage = () => {
 
   // Confirmation dialogs
   const [showAddRecoveryConfirm, setShowAddRecoveryConfirm] = useState(false);
+  const [isSavingRecovery, setIsSavingRecovery] = useState(false);
 
   const [clientRecovery, setClientRecovery] = useState({
     clientId: "",
