@@ -14,6 +14,7 @@ interface SupabaseAuthContextType {
   notifications: Notification[];
   unreadCount: number;
   loading: boolean;
+  sessionChecked: boolean;
   signOut: () => Promise<void>;
   markNotificationAsRead: (id: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
