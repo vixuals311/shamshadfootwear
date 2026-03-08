@@ -119,9 +119,8 @@ serve(async (req) => {
       const notifications = roleUsers.map((ru) => ({
         user_id: ru.user_id,
         title: "Daily Backup Ready",
-        message: `Automated backup completed — ${totalRows} records across ${BACKUP_TABLES.length} tables (${sizeKB} KB).`,
+        message: `Automated backup completed — ${totalRows} records across ${BACKUP_TABLES.length} tables (${sizeKB} KB). [file:${fileName}]`,
         type: "backup",
-        details: { fileName, sizeKB, totalRows },
       }));
 
       await supabase.from("notifications").insert(notifications);
