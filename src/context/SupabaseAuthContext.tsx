@@ -8,6 +8,7 @@ interface SupabaseAuthContextType {
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
+  sessionTimeoutMinutes: number;
   pageAccess: Record<PageKey, boolean>;
   notifications: Notification[];
   unreadCount: number;
