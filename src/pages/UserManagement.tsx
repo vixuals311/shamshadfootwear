@@ -85,6 +85,16 @@ const UserManagement = () => {
   const [timeoutValue, setTimeoutValue] = useState(480);
   const [timeoutSaving, setTimeoutSaving] = useState(false);
 
+  // Max devices state
+  const [maxDevicesUser, setMaxDevicesUser] = useState<UserWithRole | null>(null);
+  const [maxDevicesValue, setMaxDevicesValue] = useState(3);
+  const [maxDevicesSaving, setMaxDevicesSaving] = useState(false);
+
+  // Active sessions state
+  const [sessionsUser, setSessionsUser] = useState<UserWithRole | null>(null);
+  const [sessionsData, setSessionsData] = useState<any[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
