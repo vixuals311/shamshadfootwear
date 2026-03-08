@@ -265,6 +265,18 @@ const Login = () => {
         <p className="text-center text-xs text-muted-foreground mt-4">
           Wholesale Footwear Billing & Inventory Management
         </p>
+
+        <DeviceLimitDialog
+          open={deviceLimitReached}
+          sessions={activeSessions}
+          maxDevices={maxDevices}
+          onTerminateAndContinue={async (sessionId) => {
+            await terminateSessionAndContinue(sessionId);
+            const landingPage = await getLandingPage(email);
+            navigate(landingPage);
+          }}
+          onCancel={cancelDeviceLimit}
+        />
       </motion.div>
     </div>
   );
