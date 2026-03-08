@@ -65,6 +65,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { offlineMutation } from "@/hooks/useOfflineSync";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { exportToCSV } from "@/utils/exportUtils";
@@ -810,29 +811,27 @@ const Clients = () => {
     setQuickRecoveryLoading(true);
     try {
       const amount = parseFloat(quickRecoveryAmount);
+      const newBalance = selectedClient.currentBalance - amount;
       
-      // Insert recovery
-      const { error: recoveryError } = await supabase.from("recoveries").insert({
+      // Insert recovery — try online, queue if offline
+      const recoveryResult = await offlineMutation("recoveries", "insert", {
         client_id: selectedClient.id,
         amount: amount,
         notes: quickRecoveryNotes || null,
         type: "client",
       });
 
-      if (recoveryError) throw recoveryError;
+      if (recoveryResult.error) throw new Error(recoveryResult.error);
 
       // Update client balance
-      const { error: clientError } = await supabase
-        .from("clients")
-        .update({
-          current_balance: selectedClient.currentBalance - amount,
-        })
-        .eq("id", selectedClient.id);
+      const balanceResult = await offlineMutation("clients", "update", {
+        current_balance: newBalance,
+      }, selectedClient.id);
 
-      if (clientError) throw clientError;
+      if (balanceResult.error) throw new Error(balanceResult.error);
 
-      // Log audit event
-      await log({
+      // Log audit event (best-effort)
+      log({
         action: "create",
         entityType: "recovery",
         entityId: selectedClient.id,
@@ -840,21 +839,24 @@ const Clients = () => {
           clientName: selectedClient.name,
           amount: amount,
           notes: quickRecoveryNotes,
+          queued: recoveryResult.queued,
         },
-      });
+      }).catch(() => {});
 
       toast({
-        title: "Success",
-        description: `Recovery of Rs ${amount.toLocaleString()} added for ${selectedClient.name}`,
+        title: recoveryResult.queued ? "Queued" : "Success",
+        description: recoveryResult.queued
+          ? `Recovery of Rs ${amount.toLocaleString()} queued — will sync when online`
+          : `Recovery of Rs ${amount.toLocaleString()} added for ${selectedClient.name}`,
       });
 
       // Update local state
       setSelectedClient({
         ...selectedClient,
-        currentBalance: selectedClient.currentBalance - amount,
+        currentBalance: newBalance,
       });
       
-      // Refresh client details
+      // Refresh client details (will use cache if offline)
       fetchClientDetails(selectedClient.id);
       fetchClients();
       
