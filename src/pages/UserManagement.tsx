@@ -295,7 +295,44 @@ const UserManagement = () => {
     }
   };
 
-  if (!hasPermission("canManageUsers")) {
+  const openSessionTimeout = async (targetUser: UserWithRole) => {
+    setTimeoutUser(targetUser);
+    try {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("session_timeout_minutes")
+        .eq("user_id", targetUser.user_id)
+        .maybeSingle();
+      setTimeoutValue(data?.session_timeout_minutes ?? 480);
+    } catch {
+      setTimeoutValue(480);
+    }
+  };
+
+  const handleSaveSessionTimeout = async () => {
+    if (!timeoutUser) return;
+    setTimeoutSaving(true);
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ session_timeout_minutes: timeoutValue })
+        .eq("user_id", timeoutUser.user_id);
+      if (error) throw error;
+      await auditLog({
+        action: "update",
+        entityType: "user",
+        entityId: timeoutUser.user_id,
+        details: { name: timeoutUser.name, action: "updated_session_timeout", timeout_minutes: timeoutValue },
+      });
+      toast({ title: "Session timeout updated", description: `${timeoutUser.name}'s session timeout set to ${timeoutValue} minutes` });
+      setTimeoutUser(null);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to update timeout", variant: "destructive" });
+    } finally {
+      setTimeoutSaving(false);
+    }
+  };
+
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
