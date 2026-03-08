@@ -132,6 +132,7 @@ const RecoveryPage = () => {
 
   // Confirmation dialogs
   const [showAddRecoveryConfirm, setShowAddRecoveryConfirm] = useState(false);
+  const [isSavingRecovery, setIsSavingRecovery] = useState(false);
 
   const [clientRecovery, setClientRecovery] = useState({
     clientId: "",
@@ -520,6 +521,8 @@ const RecoveryPage = () => {
   };
 
   const handleAddRecovery = async () => {
+    if (isSavingRecovery) return;
+    setIsSavingRecovery(true);
     try {
       if (recoveryCategory === "client") {
         if (!clientRecovery.clientId || !clientRecovery.amount) return;
@@ -710,6 +713,8 @@ const RecoveryPage = () => {
         description: error.message || "Failed to add recovery",
         variant: "destructive",
       });
+    } finally {
+      setIsSavingRecovery(false);
     }
   };
 
@@ -1815,8 +1820,8 @@ const RecoveryPage = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAddRecovery}>
-              Add Recovery
+            <AlertDialogAction onClick={handleAddRecovery} disabled={isSavingRecovery}>
+              {isSavingRecovery ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : "Add Recovery"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
