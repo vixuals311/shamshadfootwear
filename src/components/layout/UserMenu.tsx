@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Settings, Check, CheckCheck, FileText, Wallet, Info } from "lucide-react";
+import { Bell, User, LogOut, Settings, Check, CheckCheck, FileText, Wallet, Info, Download, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,9 +15,12 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
 export function UserMenu() {
   const {
