@@ -167,6 +167,7 @@ export function useSupabaseAuth() {
           .from("user_sessions")
           .update({ is_active: false })
           .eq("user_id", user.id);
+        sessionStorage.removeItem("app_session_id");
       }
       
       // Log logout before signing out (while we still have auth)
