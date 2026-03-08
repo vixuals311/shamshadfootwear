@@ -115,6 +115,10 @@ const Clients = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [filterCity, setFilterCity] = useState<string>("all");
+  const [filterBalance, setFilterBalance] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [showFilters, setShowFilters] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
