@@ -25,6 +25,8 @@ import {
   AlertTriangle,
   Key,
   ClipboardList,
+  X,
+  SortAsc,
 } from "lucide-react";
 import { CityCombobox } from "@/components/clients/CityCombobox";
 import { Button } from "@/components/ui/button";
@@ -57,6 +59,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -115,6 +119,10 @@ const Clients = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [filterCity, setFilterCity] = useState<string>("all");
+  const [filterBalance, setFilterBalance] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [showFilters, setShowFilters] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
@@ -366,17 +374,49 @@ const Clients = () => {
   };
 
   const existingCities = useMemo(() => {
-    return clients.map((c) => c.city).filter((city) => city && city !== "N/A");
+    const cities = clients.map((c) => c.city).filter((city) => city && city !== "N/A");
+    return [...new Set(cities)].sort();
   }, [clients]);
 
-  // Filter clients including phone number search
-  const filteredClients = clients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.phone.includes(searchQuery)
-  );
+  const uniqueCities = existingCities;
+
+  const activeFilterCount = [filterCity !== "all", filterBalance !== "all", sortBy !== "name"].filter(Boolean).length;
+
+  // Filter clients including phone number search + filters
+  const filteredClients = useMemo(() => {
+    let result = clients.filter(
+      (client) =>
+        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.phone.includes(searchQuery)
+    );
+
+    if (filterCity !== "all") {
+      result = result.filter((c) => c.city === filterCity);
+    }
+
+    if (filterBalance === "positive") {
+      result = result.filter((c) => c.currentBalance > 0);
+    } else if (filterBalance === "zero") {
+      result = result.filter((c) => c.currentBalance === 0);
+    } else if (filterBalance === "negative") {
+      result = result.filter((c) => c.currentBalance < 0);
+    }
+
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "name": return a.name.localeCompare(b.name);
+        case "balance_high": return b.currentBalance - a.currentBalance;
+        case "balance_low": return a.currentBalance - b.currentBalance;
+        case "recent": return b.name.localeCompare(a.name); // reverse alphabetical as proxy
+        case "invoices": return b.invoiceCount - a.invoiceCount;
+        default: return 0;
+      }
+    });
+
+    return result;
+  }, [clients, searchQuery, filterCity, filterBalance, sortBy]);
 
   const checkDuplicateClient = () => {
     // Only check for duplicate phone numbers, not names
@@ -1642,10 +1682,93 @@ const Clients = () => {
           />
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Filter className="w-4 h-4" />
-            Filters
-          </Button>
+          <Popover open={showFilters} onOpenChange={setShowFilters}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2 relative">
+                <Filter className="w-4 h-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-[10px] font-bold text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" align="end">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-sm text-foreground">Filters</h4>
+                {activeFilterCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1 text-muted-foreground"
+                    onClick={() => {
+                      setFilterCity("all");
+                      setFilterBalance("all");
+                      setSortBy("name");
+                    }}
+                  >
+                    <X className="w-3 h-3" />
+                    Clear all
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3" /> City
+                  </Label>
+                  <Select value={filterCity} onValueChange={setFilterCity}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="All Cities" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Cities</SelectItem>
+                      {uniqueCities.map((city) => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <CreditCard className="w-3 h-3" /> Balance
+                  </Label>
+                  <Select value={filterBalance} onValueChange={setFilterBalance}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="All Balances" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Balances</SelectItem>
+                      <SelectItem value="positive">Has Balance (Owes)</SelectItem>
+                      <SelectItem value="zero">Zero Balance</SelectItem>
+                      <SelectItem value="negative">Credit (Overpaid)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <SortAsc className="w-3 h-3" /> Sort By
+                  </Label>
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">Name (A-Z)</SelectItem>
+                      <SelectItem value="balance_high">Balance (High → Low)</SelectItem>
+                      <SelectItem value="balance_low">Balance (Low → High)</SelectItem>
+                      <SelectItem value="invoices">Most Invoices</SelectItem>
+                      <SelectItem value="recent">Name (Z-A)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-3 pt-3 border-t border-border">
+                Showing {filteredClients.length} of {clients.length} clients
+              </p>
+            </PopoverContent>
+          </Popover>
           <div className="flex border border-border rounded-lg overflow-hidden">
             <Button
               variant="ghost"
