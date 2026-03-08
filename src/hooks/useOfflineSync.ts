@@ -41,9 +41,17 @@ export function useOfflineSync() {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      syncRef.current?.();
+      console.log("[OfflineSync] Back online — waiting for auth refresh before syncing...");
+      // Delay sync to allow auth token refresh
+      setTimeout(() => {
+        console.log("[OfflineSync] Starting sync of pending changes...");
+        syncRef.current?.();
+      }, 3000);
     };
-    const handleOffline = () => setIsOnline(false);
+    const handleOffline = () => {
+      console.log("[OfflineSync] Went offline");
+      setIsOnline(false);
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
