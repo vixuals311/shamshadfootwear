@@ -14,6 +14,7 @@ import { DeviceLimitDialog } from "@/components/auth/DeviceLimitDialog";
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { deviceLimitReached, activeSessions, maxDevices, terminateSessionAndContinue, cancelDeviceLimit } = useSupabaseAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
