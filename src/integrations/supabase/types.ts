@@ -814,6 +814,7 @@ export type Database = {
           created_at: string
           enforce_single_session: boolean
           id: string
+          max_devices: number
           role: Database["public"]["Enums"]["app_role"]
           session_timeout_minutes: number
           user_id: string
@@ -822,6 +823,7 @@ export type Database = {
           created_at?: string
           enforce_single_session?: boolean
           id?: string
+          max_devices?: number
           role?: Database["public"]["Enums"]["app_role"]
           session_timeout_minutes?: number
           user_id: string
@@ -830,6 +832,7 @@ export type Database = {
           created_at?: string
           enforce_single_session?: boolean
           id?: string
+          max_devices?: number
           role?: Database["public"]["Enums"]["app_role"]
           session_timeout_minutes?: number
           user_id?: string
@@ -842,6 +845,7 @@ export type Database = {
           device_info: string | null
           expires_at: string
           id: string
+          ip_address: string | null
           is_active: boolean
           last_active_at: string
           session_token: string
@@ -852,6 +856,7 @@ export type Database = {
           device_info?: string | null
           expires_at: string
           id?: string
+          ip_address?: string | null
           is_active?: boolean
           last_active_at?: string
           session_token: string
@@ -862,6 +867,7 @@ export type Database = {
           device_info?: string | null
           expires_at?: string
           id?: string
+          ip_address?: string | null
           is_active?: boolean
           last_active_at?: string
           session_token?: string
