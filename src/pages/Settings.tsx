@@ -1406,7 +1406,35 @@ const Settings = () => {
 
             <Separator />
 
-            {/* Single Device Login for Non-Admins */}
+            {/* Client Portal Session Timeout */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Client Portal Timeout</p>
+                  <p className="text-sm text-muted-foreground">
+                    Auto logout clients after inactivity
+                  </p>
+                </div>
+              </div>
+              <Select
+                value={String(portalTimeout)}
+                onValueChange={(value) => setPortalTimeout(Number(value))}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 min</SelectItem>
+                  <SelectItem value="10">10 min</SelectItem>
+                  <SelectItem value="15">15 min</SelectItem>
+                  <SelectItem value="30">30 min</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Smartphone className="w-4 h-4 text-muted-foreground" />
