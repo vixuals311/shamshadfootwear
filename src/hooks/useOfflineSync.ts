@@ -260,7 +260,8 @@ export async function offlineMutation(
       }
 
       return { queued: false };
-    } catch {
+    } catch (err) {
+      console.warn("[OfflineSync] Online mutation failed, queuing for later:", err);
       // Fall through to queue
     }
   }
