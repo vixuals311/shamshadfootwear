@@ -224,6 +224,10 @@ const Settings = () => {
   const [onlineBillingEnabled, setOnlineBillingEnabled] = useState(true);
   const [initialOnlineBillingEnabled, setInitialOnlineBillingEnabled] = useState(true);
 
+  // Client portal session timeout (admin only)
+  const [portalTimeout, setPortalTimeout] = useState(10);
+  const [initialPortalTimeout, setInitialPortalTimeout] = useState(10);
+
   // Check for unsaved changes
   useEffect(() => {
     const profileChanged = isAdmin && JSON.stringify(profileSettings) !== JSON.stringify(initialProfileSettings);
