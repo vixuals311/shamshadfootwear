@@ -26,13 +26,18 @@ import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
+import { DeviceLimitDialog } from "@/components/auth/DeviceLimitDialog";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useSupabaseAuthContext();
+  const { 
+    user, loading, sessionChecked, 
+    deviceLimitReached, activeSessions, maxDevices,
+    terminateSessionAndContinue, cancelDeviceLimit 
+  } = useSupabaseAuthContext();
 
-  if (loading) {
+  if (loading || (user && !sessionChecked)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -45,6 +50,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (deviceLimitReached) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <DeviceLimitDialog
+          open={true}
+          sessions={activeSessions}
+          maxDevices={maxDevices}
+          onTerminateAndContinue={terminateSessionAndContinue}
+          onCancel={cancelDeviceLimit}
+        />
+      </div>
+    );
   }
 
   return <>{children}</>;

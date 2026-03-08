@@ -43,6 +43,7 @@ export function useSupabaseAuth() {
   const [pageAccess, setPageAccess] = useState<Record<PageKey, boolean>>({} as Record<PageKey, boolean>);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const { toast } = useToast();
 
   const sessionManager = useSessionManager(user?.id);
@@ -193,13 +194,15 @@ export function useSupabaseAuth() {
   };
 
   useEffect(() => {
+    let initialSessionHandled = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         if (currentSession?.user) {
-          // Log login event and register session
-          if (event === "SIGNED_IN") {
+          if (event === "SIGNED_IN" && !initialSessionHandled) {
+            // Log login event
             supabase.from("audit_logs").insert({
               action: "login",
               entity_type: "user",
@@ -207,10 +210,12 @@ export function useSupabaseAuth() {
               user_name: currentSession.user.email || "Unknown",
               details: { method: "password", event },
             }).then(() => {});
-            // Register device session & check limits
-            sessionManager.registerSession(currentSession.user.id).then((ok) => {
-              if (ok) sessionManager.startHeartbeat();
-            });
+            // Register device session & check limits — WAIT for result
+            const ok = await sessionManager.registerSession(currentSession.user.id);
+            if (ok) {
+              sessionManager.startHeartbeat();
+            }
+            setSessionChecked(true);
           }
           setTimeout(() => {
             fetchProfile(currentSession.user.id);
@@ -223,19 +228,27 @@ export function useSupabaseAuth() {
           setRole(null);
           setPageAccess({} as Record<PageKey, boolean>);
           setNotifications([]);
+          setSessionChecked(false);
         }
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       if (existingSession?.user) {
+        initialSessionHandled = true;
         fetchProfile(existingSession.user.id);
         fetchRole(existingSession.user.id);
         fetchPageAccess(existingSession.user.id);
         fetchNotifications(existingSession.user.id);
+        // On page reload: register session & enforce device limits
+        const ok = await sessionManager.registerSession(existingSession.user.id);
+        if (ok) {
+          sessionManager.startHeartbeat();
+        }
+        setSessionChecked(true);
       }
       setLoading(false);
     });
@@ -255,6 +268,7 @@ export function useSupabaseAuth() {
     notifications,
     unreadCount,
     loading,
+    sessionChecked,
     signOut,
     markNotificationAsRead,
     markAllNotificationsAsRead,

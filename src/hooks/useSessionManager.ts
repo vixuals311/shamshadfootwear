@@ -67,22 +67,11 @@ export function useSessionManager(userId: string | undefined) {
     }
   };
 
-  const terminateSessionAndContinue = useCallback(async (sessionId: string) => {
-    if (!userId) return;
-    await supabase
-      .from("user_sessions")
-      .update({ is_active: false })
-      .eq("id", sessionId);
-
-    await createSession(userId);
-    setDeviceLimitReached(false);
-    setActiveSessions([]);
-  }, [userId]);
-
-  const cancelLogin = useCallback(async () => {
-    setDeviceLimitReached(false);
-    setActiveSessions([]);
-    await supabase.auth.signOut();
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
   }, []);
 
   // Heartbeat: update last_active_at AND check if session was terminated remotely
@@ -99,13 +88,11 @@ export function useSessionManager(userId: string | undefined) {
         .maybeSingle();
 
       if (data && !data.is_active) {
-        // Session was terminated remotely
         stopHeartbeat();
         setWasTerminatedRemotely(true);
         return;
       }
 
-      // Session still active — update heartbeat
       await supabase
         .from("user_sessions")
         .update({ last_active_at: new Date().toISOString() })
@@ -114,13 +101,25 @@ export function useSessionManager(userId: string | undefined) {
 
     checkAndUpdate();
     heartbeatRef.current = setInterval(checkAndUpdate, 30 * 1000);
-  }, []);
+  }, [stopHeartbeat]);
 
-  const stopHeartbeat = useCallback(() => {
-    if (heartbeatRef.current) {
-      clearInterval(heartbeatRef.current);
-      heartbeatRef.current = null;
-    }
+  const terminateSessionAndContinue = useCallback(async (sessionId: string) => {
+    if (!userId) return;
+    await supabase
+      .from("user_sessions")
+      .update({ is_active: false })
+      .eq("id", sessionId);
+
+    await createSession(userId);
+    setDeviceLimitReached(false);
+    setActiveSessions([]);
+    startHeartbeat();
+  }, [userId, startHeartbeat]);
+
+  const cancelLogin = useCallback(async () => {
+    setDeviceLimitReached(false);
+    setActiveSessions([]);
+    await supabase.auth.signOut();
   }, []);
 
   useEffect(() => {
