@@ -218,7 +218,8 @@ export function useSupabaseAuth() {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      (event, currentSession) => {
+        // CRITICAL: Never await inside onAuthStateChange — it deadlocks getSession
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         if (currentSession?.user) {
@@ -232,14 +233,13 @@ export function useSupabaseAuth() {
               details: { method: "password", event },
             }).then(() => {});
           }
-          // Register session for any auth event (login or reload)
-          await handleSessionCheck(currentSession.user.id);
-          setTimeout(() => {
-            fetchProfile(currentSession.user.id);
-            fetchRole(currentSession.user.id);
-            fetchPageAccess(currentSession.user.id);
-            fetchNotifications(currentSession.user.id);
-          }, 0);
+          // Fire-and-forget session check — do NOT await
+          handleSessionCheck(currentSession.user.id);
+          // Fetch user data (fire-and-forget)
+          fetchProfile(currentSession.user.id);
+          fetchRole(currentSession.user.id);
+          fetchPageAccess(currentSession.user.id);
+          fetchNotifications(currentSession.user.id);
         } else {
           setProfile(null);
           setRole(null);
@@ -252,7 +252,7 @@ export function useSupabaseAuth() {
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       if (existingSession?.user) {
         initialSessionHandled = true;
         setSession(existingSession);
@@ -261,7 +261,7 @@ export function useSupabaseAuth() {
         fetchRole(existingSession.user.id);
         fetchPageAccess(existingSession.user.id);
         fetchNotifications(existingSession.user.id);
-        await handleSessionCheck(existingSession.user.id);
+        handleSessionCheck(existingSession.user.id);
       }
       setLoading(false);
     });
