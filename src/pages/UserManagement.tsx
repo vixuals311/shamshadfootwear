@@ -742,6 +742,52 @@ const UserManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Session Timeout Dialog */}
+      <Dialog open={!!timeoutUser} onOpenChange={() => setTimeoutUser(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Session Timeout</DialogTitle>
+            <DialogDescription>
+              Set the inactivity timeout for {timeoutUser?.name}. They will be auto-logged out after this period of inactivity.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">{timeoutUser?.name}</p>
+                <p className="text-sm text-muted-foreground">{timeoutUser?.email}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Inactivity Timeout</Label>
+              <Select value={String(timeoutValue)} onValueChange={(v) => setTimeoutValue(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 minutes</SelectItem>
+                  <SelectItem value="30">30 minutes</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                  <SelectItem value="120">2 hours</SelectItem>
+                  <SelectItem value="240">4 hours</SelectItem>
+                  <SelectItem value="480">8 hours</SelectItem>
+                  <SelectItem value="720">12 hours</SelectItem>
+                  <SelectItem value="1440">24 hours</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">User will be automatically logged out after this period of inactivity.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTimeoutUser(null)}>Cancel</Button>
+            <Button onClick={handleSaveSessionTimeout} disabled={timeoutSaving}>
+              {timeoutSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
