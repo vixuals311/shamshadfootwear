@@ -77,7 +77,8 @@ export function useSessionManager(userId: string | undefined) {
     await createSession(userId);
     setDeviceLimitReached(false);
     setActiveSessions([]);
-  }, [userId]);
+    startHeartbeat();
+  }, [userId, startHeartbeat]);
 
   const cancelLogin = useCallback(async () => {
     setDeviceLimitReached(false);
