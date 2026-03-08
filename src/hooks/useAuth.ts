@@ -3,6 +3,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PageKey } from "@/types";
+import { useSessionManager } from "@/hooks/useSessionManager";
 
 export type AppRole = "admin" | "manager" | "biller" | "cashier";
 
@@ -43,6 +44,7 @@ export function useSupabaseAuth() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const sessionManager = useSessionManager(user?.id);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -176,7 +178,7 @@ export function useSupabaseAuth() {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         if (currentSession?.user) {
-          // Log login event
+          // Log login event and register session
           if (event === "SIGNED_IN") {
             supabase.from("audit_logs").insert({
               action: "login",
@@ -185,6 +187,10 @@ export function useSupabaseAuth() {
               user_name: currentSession.user.email || "Unknown",
               details: { method: "password", event },
             }).then(() => {});
+            // Register device session & check limits
+            sessionManager.registerSession(currentSession.user.id).then((ok) => {
+              if (ok) sessionManager.startHeartbeat();
+            });
           }
           setTimeout(() => {
             fetchProfile(currentSession.user.id);
@@ -235,5 +241,10 @@ export function useSupabaseAuth() {
     refetchProfile: () => user && fetchProfile(user.id),
     refetchNotifications: () => user && fetchNotifications(user.id),
     refetchPageAccess: () => user && fetchPageAccess(user.id),
+    deviceLimitReached: sessionManager.deviceLimitReached,
+    activeSessions: sessionManager.activeSessions,
+    maxDevices: sessionManager.maxDevices,
+    terminateSessionAndContinue: sessionManager.terminateSessionAndContinue,
+    cancelDeviceLimit: sessionManager.cancelLogin,
   };
 }

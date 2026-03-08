@@ -8,10 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
+import { DeviceLimitDialog } from "@/components/auth/DeviceLimitDialog";
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user: authUser, deviceLimitReached, activeSessions, maxDevices, terminateSessionAndContinue, cancelDeviceLimit } = useSupabaseAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -262,6 +265,22 @@ const Login = () => {
         <p className="text-center text-xs text-muted-foreground mt-4">
           Wholesale Footwear Billing & Inventory Management
         </p>
+
+        <DeviceLimitDialog
+          open={deviceLimitReached}
+          sessions={activeSessions}
+          maxDevices={maxDevices}
+          onTerminateAndContinue={async (sessionId) => {
+            await terminateSessionAndContinue(sessionId);
+            if (authUser) {
+              const landingPage = await getLandingPage(authUser.id);
+              navigate(landingPage);
+            } else {
+              navigate("/");
+            }
+          }}
+          onCancel={cancelDeviceLimit}
+        />
       </motion.div>
     </div>
   );

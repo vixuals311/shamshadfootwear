@@ -2,6 +2,7 @@ import { createContext, useContext, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { useSupabaseAuth, Profile, Notification, AppRole } from "@/hooks/useAuth";
 import { RolePermissions, ROLE_PERMISSIONS, PageKey } from "@/types";
+import type { ActiveSession } from "@/components/auth/DeviceLimitDialog";
 
 interface SupabaseAuthContextType {
   user: User | null;
@@ -22,6 +23,11 @@ interface SupabaseAuthContextType {
   refetchProfile: () => void;
   refetchNotifications: () => void;
   refetchPageAccess: () => void;
+  deviceLimitReached: boolean;
+  activeSessions: ActiveSession[];
+  maxDevices: number;
+  terminateSessionAndContinue: (sessionId: string) => Promise<void>;
+  cancelDeviceLimit: () => Promise<void>;
 }
 
 const SupabaseAuthContext = createContext<SupabaseAuthContextType | null>(null);
@@ -37,7 +43,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const hasPageAccess = (pageKey: PageKey): boolean => {
     if (!auth.role) return false;
     if (auth.role === "admin") return true;
-    // Users tab is admin-only, never accessible to others
     if (pageKey === "users") return false;
     return auth.pageAccess[pageKey] ?? false;
   };

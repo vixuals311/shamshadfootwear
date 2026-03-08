@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import {
   Search, Plus, User, Shield, MoreHorizontal, Trash2,
   UserCheck, UserX, Loader2, Edit2, Settings2, Clock,
+  Monitor, Smartphone, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,16 @@ const UserManagement = () => {
   const [timeoutUser, setTimeoutUser] = useState<UserWithRole | null>(null);
   const [timeoutValue, setTimeoutValue] = useState(480);
   const [timeoutSaving, setTimeoutSaving] = useState(false);
+
+  // Max devices state
+  const [maxDevicesUser, setMaxDevicesUser] = useState<UserWithRole | null>(null);
+  const [maxDevicesValue, setMaxDevicesValue] = useState(3);
+  const [maxDevicesSaving, setMaxDevicesSaving] = useState(false);
+
+  // Active sessions state
+  const [sessionsUser, setSessionsUser] = useState<UserWithRole | null>(null);
+  const [sessionsData, setSessionsData] = useState<any[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
   const [newUser, setNewUser] = useState({
     name: "",
@@ -333,6 +344,109 @@ const UserManagement = () => {
     }
   };
 
+  const openMaxDevices = async (targetUser: UserWithRole) => {
+    setMaxDevicesUser(targetUser);
+    try {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("max_devices")
+        .eq("user_id", targetUser.user_id)
+        .maybeSingle();
+      setMaxDevicesValue(data?.max_devices ?? 3);
+    } catch {
+      setMaxDevicesValue(3);
+    }
+  };
+
+  const handleSaveMaxDevices = async () => {
+    if (!maxDevicesUser) return;
+    setMaxDevicesSaving(true);
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ max_devices: maxDevicesValue })
+        .eq("user_id", maxDevicesUser.user_id);
+      if (error) throw error;
+      await auditLog({
+        action: "update",
+        entityType: "user",
+        entityId: maxDevicesUser.user_id,
+        details: { name: maxDevicesUser.name, action: "updated_max_devices", max_devices: maxDevicesValue },
+      });
+      toast({ title: "Max devices updated", description: `${maxDevicesUser.name} can now use ${maxDevicesValue === 0 ? 'unlimited' : maxDevicesValue} device(s)` });
+      setMaxDevicesUser(null);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to update", variant: "destructive" });
+    } finally {
+      setMaxDevicesSaving(false);
+    }
+  };
+
+  const openActiveSessions = async (targetUser: UserWithRole) => {
+    setSessionsUser(targetUser);
+    setSessionsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("user_sessions")
+        .select("*")
+        .eq("user_id", targetUser.user_id)
+        .eq("is_active", true)
+        .order("last_active_at", { ascending: false });
+      if (error) throw error;
+      setSessionsData(data || []);
+    } catch {
+      setSessionsData([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const handleTerminateSession = async (sessionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_sessions")
+        .update({ is_active: false })
+        .eq("id", sessionId);
+      if (error) throw error;
+      setSessionsData((prev) => prev.filter((s) => s.id !== sessionId));
+      toast({ title: "Session terminated" });
+    } catch {
+      toast({ title: "Error", description: "Failed to terminate session", variant: "destructive" });
+    }
+  };
+
+  const handleTerminateAllSessions = async () => {
+    if (!sessionsUser) return;
+    try {
+      const { error } = await supabase
+        .from("user_sessions")
+        .update({ is_active: false })
+        .eq("user_id", sessionsUser.user_id)
+        .eq("is_active", true);
+      if (error) throw error;
+      setSessionsData([]);
+      await auditLog({
+        action: "update",
+        entityType: "user",
+        entityId: sessionsUser.user_id,
+        details: { name: sessionsUser.name, action: "terminated_all_sessions" },
+      });
+      toast({ title: "All sessions terminated" });
+    } catch {
+      toast({ title: "Error", description: "Failed to terminate sessions", variant: "destructive" });
+    }
+  };
+
+  const parseDeviceInfo = (ua: string | null): { label: string; isMobile: boolean } => {
+    if (!ua) return { label: "Unknown Device", isMobile: false };
+    const isMobile = /mobile|android|iphone|ipad/i.test(ua);
+    const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)\/[\d.]+/i);
+    const browser = browserMatch ? browserMatch[1] : "Browser";
+    const osMatch = ua.match(/(Windows|Mac OS|Linux|Android|iOS|iPhone OS)[\s/]?[\d._]*/i);
+    const os = osMatch ? osMatch[0].replace(/_/g, ".") : "";
+    return { label: `${browser} on ${os || (isMobile ? "Mobile" : "Desktop")}`, isMobile };
+  };
+
   if (!hasPermission("canManageUsers")) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -455,6 +569,12 @@ const UserManagement = () => {
                       <DropdownMenuItem className="gap-2" onClick={() => openSessionTimeout(u)}>
                         <Clock className="w-4 h-4" /> Session Timeout
                       </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2" onClick={() => openMaxDevices(u)}>
+                        <Monitor className="w-4 h-4" /> Max Devices
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2" onClick={() => openActiveSessions(u)}>
+                        <Smartphone className="w-4 h-4" /> Active Sessions
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteUserId(u.user_id)}>
                         <Trash2 className="w-4 h-4" /> Delete
                       </DropdownMenuItem>
@@ -504,6 +624,12 @@ const UserManagement = () => {
                   )}
                   <DropdownMenuItem className="gap-2" onClick={() => openSessionTimeout(u)}>
                     <Clock className="w-4 h-4" /> Session Timeout
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" onClick={() => openMaxDevices(u)}>
+                    <Monitor className="w-4 h-4" /> Max Devices
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" onClick={() => openActiveSessions(u)}>
+                    <Smartphone className="w-4 h-4" /> Active Sessions
                   </DropdownMenuItem>
                   <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteUserId(u.user_id)}>
                     <Trash2 className="w-4 h-4" /> Delete
@@ -785,6 +911,113 @@ const UserManagement = () => {
             <Button onClick={handleSaveSessionTimeout} disabled={timeoutSaving}>
               {timeoutSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Max Devices Dialog */}
+      <Dialog open={!!maxDevicesUser} onOpenChange={() => setMaxDevicesUser(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Max Devices</DialogTitle>
+            <DialogDescription>
+              Set the maximum number of simultaneous logins for {maxDevicesUser?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">{maxDevicesUser?.name}</p>
+                <p className="text-sm text-muted-foreground">{maxDevicesUser?.email}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Maximum Devices</Label>
+              <Select value={String(maxDevicesValue)} onValueChange={(v) => setMaxDevicesValue(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 device</SelectItem>
+                  <SelectItem value="2">2 devices</SelectItem>
+                  <SelectItem value="3">3 devices</SelectItem>
+                  <SelectItem value="5">5 devices</SelectItem>
+                  <SelectItem value="0">Unlimited</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {maxDevicesValue === 0
+                  ? "User can log in from unlimited devices."
+                  : `User can be logged in on up to ${maxDevicesValue} device(s) simultaneously.`}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMaxDevicesUser(null)}>Cancel</Button>
+            <Button onClick={handleSaveMaxDevices} disabled={maxDevicesSaving}>
+              {maxDevicesSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Active Sessions Dialog */}
+      <Dialog open={!!sessionsUser} onOpenChange={() => setSessionsUser(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Active Sessions — {sessionsUser?.name}</DialogTitle>
+            <DialogDescription>
+              View and manage active device sessions for this user.
+            </DialogDescription>
+          </DialogHeader>
+          {sessionsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : sessionsData.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">No active sessions</div>
+          ) : (
+            <div className="space-y-2 max-h-[350px] overflow-y-auto py-2">
+              {sessionsData.map((s) => {
+                const { label, isMobile } = parseDeviceInfo(s.device_info);
+                return (
+                  <div key={s.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      {isMobile
+                        ? <Smartphone className="w-5 h-5 text-muted-foreground" />
+                        : <Monitor className="w-5 h-5 text-muted-foreground" />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Last active: {format(new Date(s.last_active_at), "dd MMM, h:mm a")}
+                      </p>
+                      {s.ip_address && (
+                        <p className="text-xs text-muted-foreground">IP: {s.ip_address}</p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => handleTerminateSession(s.id)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSessionsUser(null)}>Close</Button>
+            {sessionsData.length > 0 && (
+              <Button variant="destructive" onClick={handleTerminateAllSessions}>
+                Terminate All
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
