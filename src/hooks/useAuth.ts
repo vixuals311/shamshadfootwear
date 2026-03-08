@@ -3,6 +3,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PageKey } from "@/types";
+import { useSessionManager } from "@/hooks/useSessionManager";
 
 export type AppRole = "admin" | "manager" | "biller" | "cashier";
 
