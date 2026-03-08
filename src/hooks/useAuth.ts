@@ -268,6 +268,7 @@ export function useSupabaseAuth() {
     notifications,
     unreadCount,
     loading,
+    sessionChecked,
     signOut,
     markNotificationAsRead,
     markAllNotificationsAsRead,
