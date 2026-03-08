@@ -41,9 +41,17 @@ export function useOfflineSync() {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      syncRef.current?.();
+      console.log("[OfflineSync] Back online — waiting for auth refresh before syncing...");
+      // Delay sync to allow auth token refresh
+      setTimeout(() => {
+        console.log("[OfflineSync] Starting sync of pending changes...");
+        syncRef.current?.();
+      }, 3000);
     };
-    const handleOffline = () => setIsOnline(false);
+    const handleOffline = () => {
+      console.log("[OfflineSync] Went offline");
+      setIsOnline(false);
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -98,23 +106,29 @@ export function useOfflineSync() {
 
   // Process sync queue
   const syncPendingChanges = useCallback(async () => {
-    if (syncInProgress.current || !navigator.onLine) return;
+    if (syncInProgress.current || !navigator.onLine) {
+      console.log("[OfflineSync] Sync skipped:", { inProgress: syncInProgress.current, online: navigator.onLine });
+      return;
+    }
     syncInProgress.current = true;
     setIsSyncing(true);
 
     try {
       const entries = await getPendingSyncEntries();
+      console.log(`[OfflineSync] Processing ${entries.length} pending entries`);
 
       for (const entry of entries) {
         try {
+          console.log(`[OfflineSync] Syncing: ${entry.operation} on ${entry.table}`, entry.data);
           await processSyncEntry(entry);
           await removeSyncEntry(entry.id);
+          console.log(`[OfflineSync] ✓ Synced entry ${entry.id}`);
         } catch (error: any) {
-          console.error(`Sync failed for entry ${entry.id}:`, error);
+          console.error(`[OfflineSync] ✗ Sync failed for entry ${entry.id}:`, error);
           await markSyncEntryFailed(entry.id, error.message || "Unknown error");
 
           if ((entry.retryCount || 0) >= 5) {
-            console.warn(`Removing sync entry ${entry.id} after 5 failures`);
+            console.warn(`[OfflineSync] Removing entry ${entry.id} after 5 failures`);
             await removeSyncEntry(entry.id);
           }
         }
@@ -123,8 +137,9 @@ export function useOfflineSync() {
       await cacheAllData();
       const count = await getPendingSyncCount();
       setPendingCount(count);
+      console.log(`[OfflineSync] Sync complete. Remaining: ${count}`);
     } catch (error) {
-      console.error("Sync process error:", error);
+      console.error("[OfflineSync] Sync process error:", error);
     } finally {
       syncInProgress.current = false;
       setIsSyncing(false);
@@ -245,7 +260,8 @@ export async function offlineMutation(
       }
 
       return { queued: false };
-    } catch {
+    } catch (err) {
+      console.warn("[OfflineSync] Online mutation failed, queuing for later:", err);
       // Fall through to queue
     }
   }
