@@ -1820,8 +1820,8 @@ const RecoveryPage = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAddRecovery}>
-              Add Recovery
+            <AlertDialogAction onClick={handleAddRecovery} disabled={isSavingRecovery}>
+              {isSavingRecovery ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : "Add Recovery"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
