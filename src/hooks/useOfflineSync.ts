@@ -39,14 +39,28 @@ export function useOfflineSync() {
   const syncRef = useRef<() => Promise<void>>();
 
   useEffect(() => {
-    const handleOnline = () => {
+    const handleOnline = async () => {
       setIsOnline(true);
-      console.log("[OfflineSync] Back online — waiting for auth refresh before syncing...");
-      // Delay sync to allow auth token refresh
+      console.log("[OfflineSync] Back online — refreshing auth session before syncing...");
+      
+      try {
+        // Force refresh the auth token first
+        const { error } = await supabase.auth.refreshSession();
+        if (error) {
+          console.warn("[OfflineSync] Auth refresh failed:", error.message);
+          // Still try to sync — the token might still be valid
+        } else {
+          console.log("[OfflineSync] Auth session refreshed successfully");
+        }
+      } catch (e) {
+        console.warn("[OfflineSync] Auth refresh error:", e);
+      }
+
+      // Small delay to let everything settle, then sync
       setTimeout(() => {
         console.log("[OfflineSync] Starting sync of pending changes...");
         syncRef.current?.();
-      }, 3000);
+      }, 1000);
     };
     const handleOffline = () => {
       console.log("[OfflineSync] Went offline");
@@ -114,6 +128,13 @@ export function useOfflineSync() {
     setIsSyncing(true);
 
     try {
+      // Ensure we have a valid auth session before syncing
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn("[OfflineSync] No active auth session — skipping sync");
+        return;
+      }
+
       const entries = await getPendingSyncEntries();
       console.log(`[OfflineSync] Processing ${entries.length} pending entries`);
 
@@ -125,7 +146,25 @@ export function useOfflineSync() {
           console.log(`[OfflineSync] ✓ Synced entry ${entry.id}`);
         } catch (error: any) {
           console.error(`[OfflineSync] ✗ Sync failed for entry ${entry.id}:`, error);
-          await markSyncEntryFailed(entry.id, error.message || "Unknown error");
+          
+          // If auth error, try refreshing session once and retry
+          if (error?.message?.includes("JWT") || error?.code === "PGRST301" || error?.message?.includes("401")) {
+            console.log("[OfflineSync] Auth error detected, refreshing session...");
+            const { error: refreshError } = await supabase.auth.refreshSession();
+            if (!refreshError) {
+              try {
+                await processSyncEntry(entry);
+                await removeSyncEntry(entry.id);
+                console.log(`[OfflineSync] ✓ Synced entry ${entry.id} after auth refresh`);
+                continue;
+              } catch (retryError: any) {
+                console.error(`[OfflineSync] ✗ Retry also failed:`, retryError);
+                await markSyncEntryFailed(entry.id, retryError.message || "Unknown error");
+              }
+            }
+          } else {
+            await markSyncEntryFailed(entry.id, error.message || "Unknown error");
+          }
 
           if ((entry.retryCount || 0) >= 5) {
             console.warn(`[OfflineSync] Removing entry ${entry.id} after 5 failures`);
