@@ -902,13 +902,13 @@ const Inventory = () => {
             Manage your products, brands, and stock levels
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {/* Size Range Management */}
           <Dialog open={isSizeRangeDialogOpen} onOpenChange={setIsSizeRangeDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Settings2 className="w-4 h-4" />
-                Size Ranges
+                <span className="hidden sm:inline">Size Ranges</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px]">
@@ -990,7 +990,7 @@ const Inventory = () => {
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Tag className="w-4 h-4" />
-                Brands
+                <span className="hidden sm:inline">Brands</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
@@ -1046,11 +1046,11 @@ const Inventory = () => {
             className="hidden"
             onChange={handleImportFile}
           />
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleImportClick}>
+          <Button variant="outline" size="sm" className="gap-2 hidden sm:flex" onClick={handleImportClick}>
             <Upload className="w-4 h-4" />
             Import
           </Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportInventory}>
+          <Button variant="outline" size="sm" className="gap-2 hidden sm:flex" onClick={handleExportInventory}>
             <Download className="w-4 h-4" />
             Export
           </Button>
@@ -1074,7 +1074,7 @@ const Inventory = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Product Name</Label>
                     <Input
@@ -1102,7 +1102,7 @@ const Inventory = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="brand">Brand</Label>
                     <Select
@@ -1156,7 +1156,7 @@ const Inventory = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="pairsPerBundle">Default Pairs per Bundle</Label>
                     <Input
@@ -1205,7 +1205,7 @@ const Inventory = () => {
                         key={index}
                         className="p-3 rounded-lg bg-muted/30 border border-border/50"
                       >
-                        <div className="flex items-end gap-3">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
                           <div className="flex-1 space-y-2">
                             <Label className="text-xs text-muted-foreground">
                               Size Range
@@ -1231,7 +1231,7 @@ const Inventory = () => {
                               placeholder="0"
                             />
                           </div>
-                          <div className="w-20 space-y-2">
+                          <div className="w-full sm:w-20 space-y-2">
                             <Label className="text-xs text-muted-foreground">
                               Pairs/Bundle
                             </Label>
@@ -1244,7 +1244,7 @@ const Inventory = () => {
                               placeholder="6"
                             />
                           </div>
-                          <div className="w-24 space-y-2">
+                          <div className="w-full sm:w-24 space-y-2">
                             <Label className="text-xs text-muted-foreground">
                               Qty (Bundles)
                             </Label>
@@ -1724,7 +1724,7 @@ const Inventory = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Product Name *</Label>
                 <Input
@@ -1744,7 +1744,7 @@ const Inventory = () => {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-brand">Brand *</Label>
                 <Select
@@ -1773,7 +1773,7 @@ const Inventory = () => {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-gender">Type *</Label>
                 <Select
@@ -1807,7 +1807,7 @@ const Inventory = () => {
             <div className="space-y-3">
               <Label>Size Bundles, Pricing & Quantity</Label>
               {newProduct.sizeBundles.map((sb, idx) => (
-                <div key={idx} className="flex gap-2 items-end">
+                <div key={idx} className="flex flex-col sm:flex-row gap-2 sm:items-end">
                   <div className="flex-1">
                     <Label className="text-xs">Size Range</Label>
                     <Input

@@ -903,7 +903,7 @@ const Settings = () => {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
       >
         <div>
           <h2 className="text-2xl font-bold text-foreground">Settings</h2>
@@ -982,12 +982,12 @@ const Settings = () => {
           transition={{ delay: 0.15 }}
           className="bg-card rounded-xl p-6 shadow-card"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-3">
-              <CreditCard className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-semibold text-foreground">Bank Details / Payment Accounts</h3>
+              <CreditCard className="w-5 h-5 text-primary shrink-0" />
+              <h3 className="text-base sm:text-lg font-semibold text-foreground">Bank Details / Payment Accounts</h3>
             </div>
-            <Button size="sm" className="gap-2" onClick={() => setIsAddAccountOpen(true)}>
+            <Button size="sm" className="gap-2 w-full sm:w-auto" onClick={() => setIsAddAccountOpen(true)}>
               <Plus className="w-4 h-4" />
               Add Account
             </Button>
@@ -1032,12 +1032,12 @@ const Settings = () => {
           transition={{ delay: 0.18 }}
           className="bg-card rounded-xl p-6 shadow-card"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-3">
-              <Tag className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-semibold text-foreground">Product Categories</h3>
+              <Tag className="w-5 h-5 text-primary shrink-0" />
+              <h3 className="text-base sm:text-lg font-semibold text-foreground">Product Categories</h3>
             </div>
-            <Button size="sm" className="gap-2" onClick={() => setIsAddCategoryOpen(true)}>
+            <Button size="sm" className="gap-2 w-full sm:w-auto" onClick={() => setIsAddCategoryOpen(true)}>
               <Plus className="w-4 h-4" />
               Add Category
             </Button>
@@ -1080,12 +1080,12 @@ const Settings = () => {
           transition={{ delay: 0.2 }}
           className="bg-card rounded-xl p-6 shadow-card"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-3">
-              <Ruler className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-semibold text-foreground">Default Size Ranges</h3>
+              <Ruler className="w-5 h-5 text-primary shrink-0" />
+              <h3 className="text-base sm:text-lg font-semibold text-foreground">Default Size Ranges</h3>
             </div>
-            <Button size="sm" className="gap-2" onClick={() => {
+            <Button size="sm" className="gap-2 w-full sm:w-auto" onClick={() => {
               setNewSizeRange({ ...newSizeRange, category: categories[0]?.name || "" });
               setIsAddSizeRangeOpen(true);
             }}>

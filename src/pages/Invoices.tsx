@@ -549,23 +549,23 @@ const Invoices = () => {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 sm:grid-cols-4 gap-4"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
       >
-        <div className="bg-card rounded-xl p-4 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">Total Invoiced</p>
-          <p className="text-2xl font-bold text-foreground">Rs {stats.total.toLocaleString()}</p>
+        <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total Invoiced</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">Rs {stats.total.toLocaleString()}</p>
         </div>
-        <div className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-success">
-          <p className="text-sm text-muted-foreground mb-1">Paid</p>
-          <p className="text-2xl font-bold text-success">Rs {stats.paid.toLocaleString()}</p>
+        <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card border-l-4 border-l-success">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Paid</p>
+          <p className="text-lg sm:text-2xl font-bold text-success">Rs {stats.paid.toLocaleString()}</p>
         </div>
-        <div className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-warning">
-          <p className="text-sm text-muted-foreground mb-1">Pending</p>
-          <p className="text-2xl font-bold text-warning">Rs {stats.pending.toLocaleString()}</p>
+        <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card border-l-4 border-l-warning">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Pending</p>
+          <p className="text-lg sm:text-2xl font-bold text-warning">Rs {stats.pending.toLocaleString()}</p>
         </div>
-        <div className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-destructive">
-          <p className="text-sm text-muted-foreground mb-1">Overdue</p>
-          <p className="text-2xl font-bold text-destructive">Rs {stats.overdue.toLocaleString()}</p>
+        <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card border-l-4 border-l-destructive">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Overdue</p>
+          <p className="text-lg sm:text-2xl font-bold text-destructive">Rs {stats.overdue.toLocaleString()}</p>
         </div>
       </motion.div>
 
@@ -630,12 +630,84 @@ const Invoices = () => {
         </div>
       </motion.div>
 
-      {/* Invoices Table */}
+      {/* Invoices - Mobile Card View */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-card rounded-xl shadow-card overflow-hidden"
+        className="sm:hidden space-y-3"
+      >
+        {filteredInvoices.length === 0 ? (
+          <div className="bg-card rounded-xl shadow-card p-12 text-center">
+            <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-1">No invoices found</h3>
+            <p className="text-muted-foreground">Try adjusting your search or create a new invoice.</p>
+          </div>
+        ) : (
+          filteredInvoices.map((invoice) => (
+            <div key={invoice.id} className="bg-card rounded-xl p-4 shadow-card border border-border/50">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground truncate">{invoice.number}</p>
+                    <p className="text-sm text-muted-foreground truncate">{invoice.client}</p>
+                  </div>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {invoice.status === "draft" && (
+                      <DropdownMenuItem className="gap-2" onClick={() => handleEditDraft(invoice.id)}>
+                        <Edit className="w-4 h-4" /> Edit Draft
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem className="gap-2" onClick={() => handleViewInvoice(invoice.id)}>
+                      <Eye className="w-4 h-4" /> View
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="gap-2" onClick={() => handlePrintInvoice(invoice.id)}>
+                      <Printer className="w-4 h-4" /> Print
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="gap-2" onClick={() => handleSendToClient(invoice)}>
+                      <Send className="w-4 h-4" /> Send
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="gap-2 text-destructive" onClick={() => { setDeleteInvoiceId(invoice.id); setDeleteInvoiceNumber(invoice.number); }}>
+                      <Trash2 className="w-4 h-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-muted-foreground">Amount</span>
+                <span className="text-sm font-semibold text-foreground">Rs {invoice.amount.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-muted-foreground">Date</span>
+                <span className="text-sm text-foreground">{format(new Date(invoice.date), "dd MMM yyyy")}</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <span className={cn("status-badge capitalize text-xs", statusStyles[invoice.status])}>
+                  {invoice.status}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </motion.div>
+
+      {/* Invoices - Desktop Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="hidden sm:block bg-card rounded-xl shadow-card overflow-hidden"
       >
         <div className="overflow-x-auto">
           <table className="data-table">
@@ -664,12 +736,8 @@ const Invoices = () => {
                         <FileText className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">
-                          {invoice.number}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {invoice.items} items
-                        </p>
+                        <p className="font-medium text-foreground">{invoice.number}</p>
+                        <p className="text-xs text-muted-foreground">{invoice.items} items</p>
                       </div>
                     </div>
                   </td>
@@ -679,68 +747,37 @@ const Invoices = () => {
                       <p className="text-xs text-muted-foreground">{invoice.clientEmail}</p>
                     </div>
                   </td>
-                  <td className="font-semibold text-foreground">
-                    Rs {invoice.amount.toLocaleString()}
-                  </td>
+                  <td className="font-semibold text-foreground">Rs {invoice.amount.toLocaleString()}</td>
                   <td>
                     <span className={cn("status-badge capitalize", statusStyles[invoice.status])}>
                       {invoice.status}
                     </span>
                   </td>
-                  <td className="text-muted-foreground">
-                    {format(new Date(invoice.date), "dd MMM yyyy")}
-                  </td>
+                  <td className="text-muted-foreground">{format(new Date(invoice.date), "dd MMM yyyy")}</td>
                   <td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
+                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {invoice.status === "draft" && (
-                          <DropdownMenuItem 
-                            className="gap-2"
-                            onClick={() => handleEditDraft(invoice.id)}
-                          >
-                            <Edit className="w-4 h-4" />
-                            Edit Draft
+                          <DropdownMenuItem className="gap-2" onClick={() => handleEditDraft(invoice.id)}>
+                            <Edit className="w-4 h-4" /> Edit Draft
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem 
-                          className="gap-2"
-                          onClick={() => handleViewInvoice(invoice.id)}
-                        >
-                          <Eye className="w-4 h-4" />
-                          View
+                        <DropdownMenuItem className="gap-2" onClick={() => handleViewInvoice(invoice.id)}>
+                          <Eye className="w-4 h-4" /> View
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="gap-2"
-                          onClick={() => handlePrintInvoice(invoice.id)}
-                        >
-                          <Printer className="w-4 h-4" />
-                          Print
+                        <DropdownMenuItem className="gap-2" onClick={() => handlePrintInvoice(invoice.id)}>
+                          <Printer className="w-4 h-4" /> Print
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="gap-2"
-                          onClick={() => handleSendToClient(invoice)}
-                        >
-                          <Send className="w-4 h-4" />
-                          Send to Client
+                        <DropdownMenuItem className="gap-2" onClick={() => handleSendToClient(invoice)}>
+                          <Send className="w-4 h-4" /> Send to Client
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="gap-2 text-destructive"
-                          onClick={() => {
-                            setDeleteInvoiceId(invoice.id);
-                            setDeleteInvoiceNumber(invoice.number);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
+                        <DropdownMenuItem className="gap-2 text-destructive" onClick={() => { setDeleteInvoiceId(invoice.id); setDeleteInvoiceNumber(invoice.number); }}>
+                          <Trash2 className="w-4 h-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -753,12 +790,8 @@ const Invoices = () => {
         {filteredInvoices.length === 0 && (
           <div className="p-12 text-center">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-1">
-              No invoices found
-            </h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search or create a new invoice.
-            </p>
+            <h3 className="text-lg font-medium text-foreground mb-1">No invoices found</h3>
+            <p className="text-muted-foreground">Try adjusting your search or create a new invoice.</p>
           </div>
         )}
       </motion.div>
