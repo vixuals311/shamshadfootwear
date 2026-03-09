@@ -20,6 +20,7 @@ interface OfflineSyncContextType {
   entries: SyncEntryWithStatus[];
   refreshEntries: () => Promise<void>;
   syncSingleEntry: (entryId: string) => Promise<void>;
+  deleteSyncEntry: (entryId: string) => Promise<void>;
 }
 
 const OfflineSyncContext = createContext<OfflineSyncContextType | null>(null);
