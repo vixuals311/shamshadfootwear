@@ -990,7 +990,7 @@ const Inventory = () => {
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Tag className="w-4 h-4" />
-                Brands
+                <span className="hidden sm:inline">Brands</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
