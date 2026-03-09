@@ -211,37 +211,64 @@ const Reports = () => {
         </motion.div>
       </div>
 
-      {/* Top Products Table */}
+      {/* Top Products - Desktop Table */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="bg-card rounded-xl p-6 shadow-card"
+        className="bg-card rounded-xl p-4 sm:p-6 shadow-card"
       >
         <h3 className="text-lg font-semibold text-foreground mb-4">
           Top Selling Products
         </h3>
         {topProducts.length > 0 ? (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Units Sold</th>
-                <th>Revenue</th>
-                <th>Growth</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Desktop table */}
+            <div className="hidden sm:block">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Units Sold</th>
+                    <th>Revenue</th>
+                    <th>Growth</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topProducts.map((product) => (
+                    <tr key={product.name}>
+                      <td className="font-medium">{product.name}</td>
+                      <td>{product.unitsSold.toLocaleString()}</td>
+                      <td className="font-semibold">Rs {product.revenue.toLocaleString()}</td>
+                      <td className="text-success">{product.growth}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Mobile cards */}
+            <div className="sm:hidden space-y-3">
               {topProducts.map((product) => (
-                <tr key={product.name}>
-                  <td className="font-medium">{product.name}</td>
-                  <td>{product.unitsSold.toLocaleString()}</td>
-                  <td className="font-semibold">Rs {product.revenue.toLocaleString()}</td>
-                  <td className="text-success">{product.growth}</td>
-                </tr>
+                <div key={product.name} className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                  <p className="font-medium text-foreground mb-2">{product.name}</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Units</p>
+                      <p className="font-medium">{product.unitsSold.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Revenue</p>
+                      <p className="font-semibold">Rs {product.revenue.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Growth</p>
+                      <p className="text-success font-medium">{product.growth}</p>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             No sales data available

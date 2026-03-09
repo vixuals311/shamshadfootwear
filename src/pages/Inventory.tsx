@@ -1807,7 +1807,7 @@ const Inventory = () => {
             <div className="space-y-3">
               <Label>Size Bundles, Pricing & Quantity</Label>
               {newProduct.sizeBundles.map((sb, idx) => (
-                <div key={idx} className="flex gap-2 items-end">
+                <div key={idx} className="flex flex-col sm:flex-row gap-2 sm:items-end">
                   <div className="flex-1">
                     <Label className="text-xs">Size Range</Label>
                     <Input

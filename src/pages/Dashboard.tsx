@@ -109,35 +109,35 @@ const Dashboard = () => {
                 Quick Stats
               </h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg bg-success/5 border border-success/10">
-                  <div className="flex items-center gap-3">
-                    <TrendingUp className="w-5 h-5 text-success" />
-                    <div>
+                <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-lg bg-success/5 border border-success/10">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <TrendingUp className="w-5 h-5 text-success shrink-0" />
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">Paid This Month</p>
-                      <p className="text-xs text-muted-foreground">Collected revenue</p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">Collected revenue</p>
                     </div>
                   </div>
-                  <span className="text-xl font-bold text-success">Rs {stats.paidThisMonth.toLocaleString()}</span>
+                  <span className="text-base sm:text-xl font-bold text-success whitespace-nowrap">Rs {stats.paidThisMonth.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-warning/5 border border-warning/10">
-                  <div className="flex items-center gap-3">
-                    <TrendingDown className="w-5 h-5 text-warning" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Pending Payments</p>
-                      <p className="text-xs text-muted-foreground">Outstanding</p>
+                <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-lg bg-warning/5 border border-warning/10">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <TrendingDown className="w-5 h-5 text-warning shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">Pending</p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">Outstanding</p>
                     </div>
                   </div>
-                  <span className="text-xl font-bold text-warning">Rs {stats.pendingPayments.toLocaleString()}</span>
+                  <span className="text-base sm:text-xl font-bold text-warning whitespace-nowrap">Rs {stats.pendingPayments.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-destructive/5 border border-destructive/10">
-                  <div className="flex items-center gap-3">
-                    <TrendingDown className="w-5 h-5 text-destructive" />
-                    <div>
+                <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-lg bg-destructive/5 border border-destructive/10">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <TrendingDown className="w-5 h-5 text-destructive shrink-0" />
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">Overdue</p>
-                      <p className="text-xs text-muted-foreground">Needs follow-up</p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">Needs follow-up</p>
                     </div>
                   </div>
-                  <span className="text-xl font-bold text-destructive">Rs {stats.overdueAmount.toLocaleString()}</span>
+                  <span className="text-base sm:text-xl font-bold text-destructive whitespace-nowrap">Rs {stats.overdueAmount.toLocaleString()}</span>
                 </div>
               </div>
             </motion.div>

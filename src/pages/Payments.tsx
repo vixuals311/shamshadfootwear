@@ -184,7 +184,7 @@ const Payments = () => {
             Track payments and manage accounts
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" className="gap-2" onClick={() => {
             exportToCSV(
               filteredPayments,
@@ -201,14 +201,15 @@ const Payments = () => {
             log({ action: "export", entityType: "payment", details: { format: "csv", count: filteredPayments.length } });
           }}>
             <Download className="w-4 h-4" />
-            Export
+            <span className="hidden sm:inline">Export</span>
           </Button>
           {/* Date Filter */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("gap-2", selectedDate && "text-primary")}>
+              <Button variant="outline" size="sm" className={cn("gap-2", selectedDate && "text-primary")}>
                 <Calendar className="w-4 h-4" />
-                {selectedDate ? format(selectedDate, "dd MMM yyyy") : "Filter by date"}
+                <span className="hidden sm:inline">{selectedDate ? format(selectedDate, "dd MMM yyyy") : "Filter by date"}</span>
+                <span className="sm:hidden">{selectedDate ? format(selectedDate, "dd/MM") : "Date"}</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
