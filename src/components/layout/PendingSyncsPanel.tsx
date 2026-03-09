@@ -91,8 +91,12 @@ function DataFieldRow({ label, value }: { label: string; value: any }) {
   );
 }
 
-function getRecordSummary(data: Record<string, any>): string {
-  // Try to find a meaningful identifier
+function getRecordSummary(table: string, data: Record<string, any>): string {
+  if (table === "city_recovery") {
+    const recovery = data.recovery || {};
+    const count = data.clientAmounts?.length || 0;
+    return `${recovery.city || "City"} Recovery — Rs. ${(recovery.amount || 0).toLocaleString()} (${count} clients)`;
+  }
   if (data.invoice_number) return `Invoice: ${data.invoice_number}`;
   if (data.name) return data.name;
   if (data.client_name) return data.client_name;
@@ -113,12 +117,17 @@ function SyncEntryCard({
 }) {
   const [open, setOpen] = useState(false);
   const isSyncable = entry.status === "pending" || entry.status === "failed";
+  const isCityRecovery = entry.table === "city_recovery";
 
-  const dataKeys = Object.keys(entry.data || {}).filter(k => !["id", "created_at", "updated_at"].includes(k));
+  // For city_recovery, flatten for display
+  const displayData = isCityRecovery ? (entry.data as any)?.recovery || {} : entry.data || {};
+  const dataKeys = Object.keys(displayData).filter(k => !["id", "created_at", "updated_at"].includes(k));
   const importantKeys = dataKeys.filter(k => 
-    ["name", "invoice_number", "amount", "client_id", "phone", "article_number", "total"].includes(k)
+    ["name", "invoice_number", "amount", "client_id", "phone", "article_number", "total", "city", "type"].includes(k)
   );
   const previewKeys = importantKeys.length > 0 ? importantKeys.slice(0, 3) : dataKeys.slice(0, 3);
+
+  const clientAmounts = isCityRecovery ? (entry.data as any)?.clientAmounts || [] : [];
 
   return (
     <div className="border border-border rounded-lg p-3 bg-card space-y-2">
@@ -127,7 +136,7 @@ function SyncEntryCard({
         <div className="flex items-center gap-2 min-w-0">
           <Database className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
-            {entry.table.replace(/_/g, " ")}
+            {isCityRecovery ? "City Recovery" : entry.table.replace(/_/g, " ")}
           </span>
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
             {entry.operation}
@@ -138,15 +147,29 @@ function SyncEntryCard({
 
       {/* Record Summary */}
       <p className="text-sm font-medium text-foreground truncate">
-        {getRecordSummary(entry.data || {})}
+        {getRecordSummary(entry.table, entry.data || {})}
       </p>
 
       {/* Preview fields */}
       <div className="bg-muted/30 rounded-md p-2 space-y-0.5">
         {previewKeys.map(key => (
-          <DataFieldRow key={key} label={key} value={(entry.data as Record<string, any>)[key]} />
+          <DataFieldRow key={key} label={key} value={displayData[key]} />
         ))}
-        {dataKeys.length > previewKeys.length && (
+        {isCityRecovery && clientAmounts.length > 0 && (
+          <div className="pt-1 border-t border-border/50 mt-1">
+            <p className="text-[10px] font-medium text-muted-foreground mb-1">Clients ({clientAmounts.length}):</p>
+            {clientAmounts.slice(0, 3).map((ca: any, i: number) => (
+              <div key={i} className="flex items-center gap-2 py-0.5">
+                <User className="w-3 h-3 text-muted-foreground" />
+                <span className="text-xs text-foreground">Rs. {ca.amount.toLocaleString()}</span>
+              </div>
+            ))}
+            {clientAmounts.length > 3 && (
+              <p className="text-[10px] text-muted-foreground">+{clientAmounts.length - 3} more clients</p>
+            )}
+          </div>
+        )}
+        {!isCityRecovery && dataKeys.length > previewKeys.length && (
           <p className="text-[10px] text-muted-foreground pt-1">
             +{dataKeys.length - previewKeys.length} more fields
           </p>
@@ -164,8 +187,20 @@ function SyncEntryCard({
         <CollapsibleContent>
           <div className="mt-1 bg-muted/50 rounded-md p-2 space-y-0.5 max-h-60 overflow-auto">
             {dataKeys.map(key => (
-              <DataFieldRow key={key} label={key} value={(entry.data as Record<string, any>)[key]} />
+              <DataFieldRow key={key} label={key} value={displayData[key]} />
             ))}
+            {isCityRecovery && clientAmounts.length > 0 && (
+              <div className="pt-2 border-t border-border/50 mt-1 space-y-1">
+                <p className="text-[10px] font-semibold text-muted-foreground">All Client Amounts:</p>
+                {clientAmounts.map((ca: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2 py-0.5">
+                    <User className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">{ca.client_id?.slice(0, 8)}...</span>
+                    <span className="text-xs font-medium text-foreground">Rs. {ca.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {entry.lastError && (
             <div className="mt-2 p-2 bg-destructive/10 rounded-md">

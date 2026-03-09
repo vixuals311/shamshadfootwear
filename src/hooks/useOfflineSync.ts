@@ -240,6 +240,51 @@ export function useOfflineSync() {
 // - Different users, same time → dedupe (avoid exact duplicates)
 async function processSyncEntry(entry: SyncQueueEntry) {
   const { table, operation, data, recordId } = entry;
+
+  // Handle consolidated city_recovery
+  if (table === "city_recovery") {
+    const { recovery, clientAmounts, clientBalanceUpdates } = data as any;
+    const { id: _, ...recoveryWithoutId } = recovery;
+    
+    const { data: recoveryResult, error: recoveryError } = await supabase
+      .from("recoveries")
+      .insert(recoveryWithoutId)
+      .select()
+      .single();
+    
+    if (recoveryError) throw recoveryError;
+
+    const amountInserts = clientAmounts.map((ca: any) => ({
+      recovery_id: recoveryResult.id,
+      client_id: ca.client_id,
+      amount: ca.amount,
+    }));
+    
+    const { error: amountsError } = await supabase
+      .from("recovery_client_amounts")
+      .insert(amountInserts);
+    if (amountsError) throw amountsError;
+
+    for (const update of clientBalanceUpdates) {
+      await supabase
+        .from("clients")
+        .update({ current_balance: update.new_balance })
+        .eq("id", update.client_id);
+    }
+
+    // Log audit
+    try {
+      await supabase.from("audit_logs").insert({
+        action: "create",
+        entity_type: "recovery",
+        entity_id: recoveryResult.id,
+        details: { type: "city", city: recovery.city, amount: recovery.amount, clients: clientAmounts.length, synced_from_offline: true },
+      });
+    } catch { /* ignore */ }
+    
+    return;
+  }
+
   const offlineUserId = (data as any)?.created_by || (data as any)?.recorded_by || null;
 
   switch (operation) {

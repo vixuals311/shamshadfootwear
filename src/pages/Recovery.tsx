@@ -642,33 +642,45 @@ const RecoveryPage = () => {
           onlineSaved = true;
         } catch (netErr: any) {
           if (!isNetworkError(netErr)) throw netErr;
-          // Network error — queue offline
+          // Network error — queue offline as a SINGLE consolidated entry
           const offlineRecoveryId = `offline_${Date.now()}`;
-          const recoveryData = {
-            id: offlineRecoveryId,
-            city: cityRecoveryCity,
-            amount: totalAmount,
-            notes: cityRecoveryNotes || null,
-            type: "city",
-            date: format(cityRecoveryDate, "yyyy-MM-dd"),
+          
+          // Build consolidated recovery data with embedded client amounts
+          const consolidatedData = {
+            recovery: {
+              id: offlineRecoveryId,
+              city: cityRecoveryCity,
+              amount: totalAmount,
+              notes: cityRecoveryNotes || null,
+              type: "city",
+              date: format(cityRecoveryDate, "yyyy-MM-dd"),
+            },
+            clientAmounts: clientAmounts.map(ca => ({
+              client_id: ca.clientId,
+              amount: parseFloat(ca.recoveryAmount),
+            })),
+            clientBalanceUpdates: clientAmounts.map(ca => {
+              const client = clients.find(c => c.id === ca.clientId);
+              return {
+                client_id: ca.clientId,
+                new_balance: client ? client.currentBalance - parseFloat(ca.recoveryAmount) : 0,
+              };
+            }),
           };
 
-          await addToSyncQueue({ table: "recoveries", operation: "insert", data: recoveryData });
-          await updateCachedRecord("recoveries", offlineRecoveryId, recoveryData);
-
-          for (const ca of clientAmounts) {
-            const amountId = `offline_${Date.now()}_${ca.clientId}`;
-            await addToSyncQueue({
-              table: "recovery_client_amounts",
-              operation: "insert",
-              data: { id: amountId, recovery_id: offlineRecoveryId, client_id: ca.clientId, amount: parseFloat(ca.recoveryAmount) },
-            });
-
-            const client = clients.find((c) => c.id === ca.clientId);
+          // Queue as a single "city_recovery" operation
+          await addToSyncQueue({ 
+            table: "city_recovery", 
+            operation: "insert", 
+            data: consolidatedData 
+          });
+          
+          // Update local cache
+          await updateCachedRecord("recoveries", offlineRecoveryId, consolidatedData.recovery);
+          for (const update of consolidatedData.clientBalanceUpdates) {
+            const client = clients.find(c => c.id === update.client_id);
             if (client) {
-              const newBalance = client.currentBalance - parseFloat(ca.recoveryAmount);
-              await addToSyncQueue({ table: "clients", operation: "update", data: { current_balance: newBalance }, recordId: client.id });
-              await updateCachedRecord("clients", client.id, { ...client, current_balance: newBalance });
+              await updateCachedRecord("clients", update.client_id, { ...client, current_balance: update.new_balance });
             }
           }
         }
