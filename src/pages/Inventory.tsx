@@ -1046,11 +1046,11 @@ const Inventory = () => {
             className="hidden"
             onChange={handleImportFile}
           />
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleImportClick}>
+          <Button variant="outline" size="sm" className="gap-2 hidden sm:flex" onClick={handleImportClick}>
             <Upload className="w-4 h-4" />
             Import
           </Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportInventory}>
+          <Button variant="outline" size="sm" className="gap-2 hidden sm:flex" onClick={handleExportInventory}>
             <Download className="w-4 h-4" />
             Export
           </Button>
