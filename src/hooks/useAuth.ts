@@ -200,7 +200,8 @@ export function useSupabaseAuth() {
   };
 
   useEffect(() => {
-    let initialSessionHandled = false;
+    // Track whether the user was already authenticated (session restored from storage)
+    let isRestoredSession = false;
     let sessionCheckDone = false;
 
     const handleSessionCheck = async (uid: string) => {
@@ -217,14 +218,30 @@ export function useSupabaseAuth() {
       setSessionChecked(true);
     };
 
+    // IMPORTANT: Call getSession FIRST to determine if this is a restored session
+    // before setting up the auth state change listener
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      if (existingSession?.user) {
+        isRestoredSession = true;
+        setSession(existingSession);
+        setUser(existingSession.user);
+        fetchProfile(existingSession.user.id);
+        fetchRole(existingSession.user.id);
+        fetchPageAccess(existingSession.user.id);
+        fetchNotifications(existingSession.user.id);
+        handleSessionCheck(existingSession.user.id);
+      }
+      setLoading(false);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         // CRITICAL: Never await inside onAuthStateChange — it deadlocks getSession
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         if (currentSession?.user) {
-          if (event === "SIGNED_IN" && !initialSessionHandled) {
-            // Log login event (fire-and-forget)
+          // Only log login for genuine new sign-ins, NOT token refreshes or session restores
+          if (event === "SIGNED_IN" && !isRestoredSession) {
             supabase.from("audit_logs").insert({
               action: "login",
               entity_type: "user",
@@ -233,9 +250,12 @@ export function useSupabaseAuth() {
               details: { method: "password", event },
             }).then(() => {});
           }
-          // Fire-and-forget session check — do NOT await
+          // After initial restore, mark as handled so subsequent SIGNED_IN from
+          // token refresh won't log again
+          if (event === "SIGNED_IN") {
+            isRestoredSession = true;
+          }
           handleSessionCheck(currentSession.user.id);
-          // Fetch user data (fire-and-forget)
           fetchProfile(currentSession.user.id);
           fetchRole(currentSession.user.id);
           fetchPageAccess(currentSession.user.id);
@@ -247,24 +267,11 @@ export function useSupabaseAuth() {
           setNotifications([]);
           setSessionChecked(false);
           sessionCheckDone = false;
+          isRestoredSession = false;
         }
         setLoading(false);
       }
     );
-
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      if (existingSession?.user) {
-        initialSessionHandled = true;
-        setSession(existingSession);
-        setUser(existingSession.user);
-        fetchProfile(existingSession.user.id);
-        fetchRole(existingSession.user.id);
-        fetchPageAccess(existingSession.user.id);
-        fetchNotifications(existingSession.user.id);
-        handleSessionCheck(existingSession.user.id);
-      }
-      setLoading(false);
-    });
 
     return () => subscription.unsubscribe();
   }, [fetchProfile, fetchRole, fetchPageAccess, fetchNotifications]);
