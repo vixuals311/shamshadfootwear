@@ -240,29 +240,29 @@ const Payments = () => {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4"
       >
-        <div className="bg-card rounded-xl p-5 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">Total Received</p>
-          <div className="flex items-end justify-between">
-            <p className="text-2xl font-bold text-foreground">Rs {stats.totalReceived.toLocaleString()}</p>
-            <span className="text-sm font-medium text-success">
-              {payments.filter((p) => p.type === "incoming").length} transactions
+        <div className="bg-card rounded-xl p-4 sm:p-5 shadow-card">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total Received</p>
+          <div className="flex items-end justify-between gap-2">
+            <p className="text-lg sm:text-2xl font-bold text-foreground truncate">Rs {stats.totalReceived.toLocaleString()}</p>
+            <span className="text-xs sm:text-sm font-medium text-success whitespace-nowrap">
+              {payments.filter((p) => p.type === "incoming").length} txns
             </span>
           </div>
         </div>
-        <div className="bg-card rounded-xl p-5 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">Pending</p>
-          <div className="flex items-end justify-between">
-            <p className="text-2xl font-bold text-foreground">Rs {stats.pending.toLocaleString()}</p>
-            <span className="text-sm font-medium text-muted-foreground">0 invoices</span>
+        <div className="bg-card rounded-xl p-4 sm:p-5 shadow-card">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Pending</p>
+          <div className="flex items-end justify-between gap-2">
+            <p className="text-lg sm:text-2xl font-bold text-foreground">Rs {stats.pending.toLocaleString()}</p>
+            <span className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">0 invoices</span>
           </div>
         </div>
-        <div className="bg-card rounded-xl p-5 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">Overdue</p>
-          <div className="flex items-end justify-between">
-            <p className="text-2xl font-bold text-foreground">Rs {stats.overdue.toLocaleString()}</p>
-            <span className="text-sm font-medium text-destructive">0 invoices</span>
+        <div className="bg-card rounded-xl p-4 sm:p-5 shadow-card">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Overdue</p>
+          <div className="flex items-end justify-between gap-2">
+            <p className="text-lg sm:text-2xl font-bold text-foreground">Rs {stats.overdue.toLocaleString()}</p>
+            <span className="text-xs sm:text-sm font-medium text-destructive whitespace-nowrap">0 invoices</span>
           </div>
         </div>
       </motion.div>
