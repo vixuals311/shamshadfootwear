@@ -107,6 +107,17 @@ export function OfflineSyncProvider({ children }: { children: React.ReactNode })
     }
   }, [entries]);
 
+  const deleteSyncEntry = useCallback(async (entryId: string) => {
+    try {
+      await removeSyncEntry(entryId);
+      setEntries(prev => prev.filter(e => e.id !== entryId));
+      toast.success("Entry removed from sync queue.");
+    } catch (err: any) {
+      console.error(`[OfflineSync] Failed to delete entry ${entryId}:`, err);
+      toast.error("Failed to remove entry.");
+    }
+  }, []);
+
   const value = useMemo(() => ({
     isOnline: sync.isOnline,
     pendingCount: sync.pendingCount,
@@ -117,7 +128,8 @@ export function OfflineSyncProvider({ children }: { children: React.ReactNode })
     entries,
     refreshEntries,
     syncSingleEntry,
-  }), [sync.isOnline, sync.pendingCount, sync.isSyncing, sync.lastSyncTime, sync.cacheAllData, sync.syncPendingChanges, entries, refreshEntries, syncSingleEntry]);
+    deleteSyncEntry,
+  }), [sync.isOnline, sync.pendingCount, sync.isSyncing, sync.lastSyncTime, sync.cacheAllData, sync.syncPendingChanges, entries, refreshEntries, syncSingleEntry, deleteSyncEntry]);
 
   return (
     <OfflineSyncContext.Provider value={value}>
