@@ -1205,7 +1205,7 @@ const Inventory = () => {
                         key={index}
                         className="p-3 rounded-lg bg-muted/30 border border-border/50"
                       >
-                        <div className="flex items-end gap-3">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
                           <div className="flex-1 space-y-2">
                             <Label className="text-xs text-muted-foreground">
                               Size Range
