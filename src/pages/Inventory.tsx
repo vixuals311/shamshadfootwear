@@ -902,7 +902,7 @@ const Inventory = () => {
             Manage your products, brands, and stock levels
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {/* Size Range Management */}
           <Dialog open={isSizeRangeDialogOpen} onOpenChange={setIsSizeRangeDialogOpen}>
             <DialogTrigger asChild>
