@@ -187,8 +187,20 @@ function SyncEntryCard({
         <CollapsibleContent>
           <div className="mt-1 bg-muted/50 rounded-md p-2 space-y-0.5 max-h-60 overflow-auto">
             {dataKeys.map(key => (
-              <DataFieldRow key={key} label={key} value={(entry.data as Record<string, any>)[key]} />
+              <DataFieldRow key={key} label={key} value={displayData[key]} />
             ))}
+            {isCityRecovery && clientAmounts.length > 0 && (
+              <div className="pt-2 border-t border-border/50 mt-1 space-y-1">
+                <p className="text-[10px] font-semibold text-muted-foreground">All Client Amounts:</p>
+                {clientAmounts.map((ca: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2 py-0.5">
+                    <User className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">{ca.client_id?.slice(0, 8)}...</span>
+                    <span className="text-xs font-medium text-foreground">Rs. {ca.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {entry.lastError && (
             <div className="mt-2 p-2 bg-destructive/10 rounded-md">
