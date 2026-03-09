@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   addToSyncQueue,
   getPendingSyncCount,
@@ -44,11 +45,9 @@ export function useOfflineSync() {
       console.log("[OfflineSync] Back online — refreshing auth session before syncing...");
       
       try {
-        // Force refresh the auth token first
         const { error } = await supabase.auth.refreshSession();
         if (error) {
           console.warn("[OfflineSync] Auth refresh failed:", error.message);
-          // Still try to sync — the token might still be valid
         } else {
           console.log("[OfflineSync] Auth session refreshed successfully");
         }
@@ -56,7 +55,6 @@ export function useOfflineSync() {
         console.warn("[OfflineSync] Auth refresh error:", e);
       }
 
-      // Small delay to let everything settle, then sync
       setTimeout(() => {
         console.log("[OfflineSync] Starting sync of pending changes...");
         syncRef.current?.();
@@ -120,10 +118,16 @@ export function useOfflineSync() {
 
   // Process sync queue
   const syncPendingChanges = useCallback(async () => {
-    if (syncInProgress.current || !navigator.onLine) {
-      console.log("[OfflineSync] Sync skipped:", { inProgress: syncInProgress.current, online: navigator.onLine });
+    if (syncInProgress.current) {
+      console.log("[OfflineSync] Sync already in progress, skipping");
       return;
     }
+    if (!navigator.onLine) {
+      console.log("[OfflineSync] Offline, cannot sync");
+      toast.error("You are offline. Please connect to the internet to sync.");
+      return;
+    }
+
     syncInProgress.current = true;
     setIsSyncing(true);
 
@@ -131,18 +135,33 @@ export function useOfflineSync() {
       // Ensure we have a valid auth session before syncing
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        console.warn("[OfflineSync] No active auth session — skipping sync");
-        return;
+        console.warn("[OfflineSync] No active auth session — attempting refresh...");
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session) {
+          console.error("[OfflineSync] Auth refresh failed — user must log in");
+          toast.error("Please log in first to sync your pending changes.");
+          return;
+        }
+        console.log("[OfflineSync] Auth session refreshed successfully");
       }
 
       const entries = await getPendingSyncEntries();
       console.log(`[OfflineSync] Processing ${entries.length} pending entries`);
+
+      if (entries.length === 0) {
+        toast.info("No pending changes to sync.");
+        return;
+      }
+
+      let synced = 0;
+      let failed = 0;
 
       for (const entry of entries) {
         try {
           console.log(`[OfflineSync] Syncing: ${entry.operation} on ${entry.table}`, entry.data);
           await processSyncEntry(entry);
           await removeSyncEntry(entry.id);
+          synced++;
           console.log(`[OfflineSync] ✓ Synced entry ${entry.id}`);
         } catch (error: any) {
           console.error(`[OfflineSync] ✗ Sync failed for entry ${entry.id}:`, error);
@@ -155,15 +174,21 @@ export function useOfflineSync() {
               try {
                 await processSyncEntry(entry);
                 await removeSyncEntry(entry.id);
+                synced++;
                 console.log(`[OfflineSync] ✓ Synced entry ${entry.id} after auth refresh`);
                 continue;
               } catch (retryError: any) {
                 console.error(`[OfflineSync] ✗ Retry also failed:`, retryError);
                 await markSyncEntryFailed(entry.id, retryError.message || "Unknown error");
+                failed++;
               }
+            } else {
+              await markSyncEntryFailed(entry.id, error.message || "Auth refresh failed");
+              failed++;
             }
           } else {
             await markSyncEntryFailed(entry.id, error.message || "Unknown error");
+            failed++;
           }
 
           if ((entry.retryCount || 0) >= 5) {
@@ -176,9 +201,20 @@ export function useOfflineSync() {
       await cacheAllData();
       const count = await getPendingSyncCount();
       setPendingCount(count);
-      console.log(`[OfflineSync] Sync complete. Remaining: ${count}`);
+
+      // Show result toast
+      if (failed === 0 && synced > 0) {
+        toast.success(`Successfully synced ${synced} change${synced !== 1 ? "s" : ""}.`);
+      } else if (synced > 0 && failed > 0) {
+        toast.warning(`Synced ${synced} change${synced !== 1 ? "s" : ""}, ${failed} failed. Will retry later.`);
+      } else if (failed > 0 && synced === 0) {
+        toast.error(`Sync failed for ${failed} change${failed !== 1 ? "s" : ""}. Will retry later.`);
+      }
+
+      console.log(`[OfflineSync] Sync complete. Synced: ${synced}, Failed: ${failed}, Remaining: ${count}`);
     } catch (error) {
       console.error("[OfflineSync] Sync process error:", error);
+      toast.error("Sync failed. Please try again.");
     } finally {
       syncInProgress.current = false;
       setIsSyncing(false);
@@ -198,23 +234,71 @@ export function useOfflineSync() {
   };
 }
 
-// Process a single sync queue entry
+// Process a single sync queue entry — uses "keep both" conflict strategy
 async function processSyncEntry(entry: SyncQueueEntry) {
   const { table, operation, data, recordId } = entry;
 
   switch (operation) {
     case "insert": {
       const { error } = await supabase.from(table as any).insert(data as any);
-      if (error) throw error;
+      if (error) {
+        // If duplicate key conflict, generate new ID and insert as new record (keep both)
+        if (error.code === "23505") {
+          console.log(`[OfflineSync] Conflict on insert — keeping both by creating new record`);
+          const newData = { ...data, id: crypto.randomUUID() };
+          const { error: retryError } = await supabase.from(table as any).insert(newData as any);
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
       break;
     }
     case "update": {
       if (!recordId) throw new Error("recordId required for update");
-      const { error } = await supabase
+      // For updates: check if record was modified by another user since our offline change
+      const { data: existing, error: fetchError } = await supabase
         .from(table as any)
-        .update(data as any)
-        .eq("id", recordId);
-      if (error) throw error;
+        .select("*")
+        .eq("id", recordId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      if (!existing) {
+        // Record was deleted — insert our version as new (keep both)
+        console.log(`[OfflineSync] Record ${recordId} deleted remotely — inserting as new record`);
+        const newData = { ...data, id: crypto.randomUUID() } as any;
+        const { error: insertError } = await supabase.from(table as any).insert(newData);
+        if (insertError) throw insertError;
+      } else {
+        const existingRecord = existing as Record<string, any>;
+        const serverUpdatedAt = existingRecord.updated_at;
+        const offlineCreatedAt = entry.createdAt;
+        
+        if (serverUpdatedAt && offlineCreatedAt && new Date(serverUpdatedAt) > new Date(offlineCreatedAt)) {
+          // Server was modified AFTER our offline change — keep both
+          console.log(`[OfflineSync] Conflict detected on ${table}/${recordId} — keeping both versions`);
+          const newData: Record<string, any> = { ...data, id: crypto.randomUUID() };
+          delete newData.updated_at;
+          delete newData.created_at;
+          const { error: insertError } = await supabase.from(table as any).insert(newData as any);
+          if (insertError) {
+            console.warn(`[OfflineSync] Could not keep both — applying update instead:`, insertError.message);
+            const { error: updateError } = await supabase
+              .from(table as any)
+              .update(data as any)
+              .eq("id", recordId);
+            if (updateError) throw updateError;
+          }
+        } else {
+          const { error: updateError } = await supabase
+            .from(table as any)
+            .update(data as any)
+            .eq("id", recordId);
+          if (updateError) throw updateError;
+        }
+      }
       break;
     }
     case "delete": {
@@ -228,7 +312,17 @@ async function processSyncEntry(entry: SyncQueueEntry) {
     }
     case "upsert": {
       const { error } = await supabase.from(table as any).upsert(data as any);
-      if (error) throw error;
+      if (error) {
+        // On conflict, insert as new record (keep both)
+        if (error.code === "23505") {
+          console.log(`[OfflineSync] Conflict on upsert — keeping both`);
+          const newData = { ...data, id: crypto.randomUUID() };
+          const { error: retryError } = await supabase.from(table as any).insert(newData as any);
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
       break;
     }
   }
