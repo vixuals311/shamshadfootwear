@@ -268,26 +268,23 @@ async function processSyncEntry(entry: SyncQueueEntry) {
       if (!existing) {
         // Record was deleted — insert our version as new (keep both)
         console.log(`[OfflineSync] Record ${recordId} deleted remotely — inserting as new record`);
-        const newData = { ...data, id: crypto.randomUUID() };
-        const { error: insertError } = await supabase.from(table as any).insert(newData as any);
+        const newData = { ...data, id: crypto.randomUUID() } as any;
+        const { error: insertError } = await supabase.from(table as any).insert(newData);
         if (insertError) throw insertError;
       } else {
-        // Check if the server version differs from what we expected
-        const serverUpdatedAt = existing.updated_at;
+        const existingRecord = existing as Record<string, any>;
+        const serverUpdatedAt = existingRecord.updated_at;
         const offlineCreatedAt = entry.createdAt;
         
         if (serverUpdatedAt && offlineCreatedAt && new Date(serverUpdatedAt) > new Date(offlineCreatedAt)) {
           // Server was modified AFTER our offline change — keep both
           console.log(`[OfflineSync] Conflict detected on ${table}/${recordId} — keeping both versions`);
-          // Insert our offline version as a new record
-          const newData = { ...data, id: crypto.randomUUID() };
-          // Remove fields that would cause FK issues for the duplicate
+          const newData: Record<string, any> = { ...data, id: crypto.randomUUID() };
           delete newData.updated_at;
           delete newData.created_at;
           const { error: insertError } = await supabase.from(table as any).insert(newData as any);
           if (insertError) {
             console.warn(`[OfflineSync] Could not keep both — applying update instead:`, insertError.message);
-            // Fallback: just apply the update
             const { error: updateError } = await supabase
               .from(table as any)
               .update(data as any)
@@ -295,7 +292,6 @@ async function processSyncEntry(entry: SyncQueueEntry) {
             if (updateError) throw updateError;
           }
         } else {
-          // No conflict — apply update normally
           const { error: updateError } = await supabase
             .from(table as any)
             .update(data as any)
