@@ -1032,12 +1032,12 @@ const Settings = () => {
           transition={{ delay: 0.18 }}
           className="bg-card rounded-xl p-6 shadow-card"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-3">
-              <Tag className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-semibold text-foreground">Product Categories</h3>
+              <Tag className="w-5 h-5 text-primary shrink-0" />
+              <h3 className="text-base sm:text-lg font-semibold text-foreground">Product Categories</h3>
             </div>
-            <Button size="sm" className="gap-2" onClick={() => setIsAddCategoryOpen(true)}>
+            <Button size="sm" className="gap-2 w-full sm:w-auto" onClick={() => setIsAddCategoryOpen(true)}>
               <Plus className="w-4 h-4" />
               Add Category
             </Button>
