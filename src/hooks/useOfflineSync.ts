@@ -519,7 +519,7 @@ export async function offlineMutation(
   if (operation === "delete" && recordId) {
     await removeCachedRecord(tableName, recordId);
   } else if (operation === "insert" || operation === "upsert") {
-    const id = data.id || `offline_${Date.now()}`;
+    const id = data.id || crypto.randomUUID();
     await updateCachedRecord(tableName, id, { ...data, id });
   } else if (operation === "update" && recordId) {
     await updateCachedRecord(tableName, recordId, data);

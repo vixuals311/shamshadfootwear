@@ -643,7 +643,7 @@ const RecoveryPage = () => {
         } catch (netErr: any) {
           if (!isNetworkError(netErr)) throw netErr;
           // Network error — queue offline as a SINGLE consolidated entry
-          const offlineRecoveryId = `offline_${Date.now()}`;
+          const offlineRecoveryId = crypto.randomUUID();
           
           // Build consolidated recovery data with embedded client amounts
           const consolidatedData = {
