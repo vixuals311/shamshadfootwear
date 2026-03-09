@@ -207,7 +207,8 @@ const NewInvoice = () => {
     };
 
     fetchData();
-  }, [toast, sortBySizeRangeOrder]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast]);
 
   // Fetch existing invoice data if in edit mode
   useEffect(() => {
