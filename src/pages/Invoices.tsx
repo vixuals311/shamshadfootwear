@@ -549,23 +549,23 @@ const Invoices = () => {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 sm:grid-cols-4 gap-4"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
       >
-        <div className="bg-card rounded-xl p-4 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">Total Invoiced</p>
-          <p className="text-2xl font-bold text-foreground">Rs {stats.total.toLocaleString()}</p>
+        <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total Invoiced</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">Rs {stats.total.toLocaleString()}</p>
         </div>
-        <div className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-success">
-          <p className="text-sm text-muted-foreground mb-1">Paid</p>
-          <p className="text-2xl font-bold text-success">Rs {stats.paid.toLocaleString()}</p>
+        <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card border-l-4 border-l-success">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Paid</p>
+          <p className="text-lg sm:text-2xl font-bold text-success">Rs {stats.paid.toLocaleString()}</p>
         </div>
-        <div className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-warning">
-          <p className="text-sm text-muted-foreground mb-1">Pending</p>
-          <p className="text-2xl font-bold text-warning">Rs {stats.pending.toLocaleString()}</p>
+        <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card border-l-4 border-l-warning">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Pending</p>
+          <p className="text-lg sm:text-2xl font-bold text-warning">Rs {stats.pending.toLocaleString()}</p>
         </div>
-        <div className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-destructive">
-          <p className="text-sm text-muted-foreground mb-1">Overdue</p>
-          <p className="text-2xl font-bold text-destructive">Rs {stats.overdue.toLocaleString()}</p>
+        <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card border-l-4 border-l-destructive">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Overdue</p>
+          <p className="text-lg sm:text-2xl font-bold text-destructive">Rs {stats.overdue.toLocaleString()}</p>
         </div>
       </motion.div>
 
