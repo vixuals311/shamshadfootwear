@@ -3,7 +3,7 @@ import { useOfflineSyncContext, type SyncEntryWithStatus } from "@/context/Offli
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RefreshCw, Check, AlertCircle, Clock, ChevronDown, ChevronUp, Database } from "lucide-react";
+import { RefreshCw, Check, AlertCircle, Clock, ChevronDown, ChevronUp, Database, Trash2, User, Calendar, Hash, FileText, DollarSign, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import {
@@ -11,6 +11,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 function StatusBadge({ status }: { status: SyncEntryWithStatus["status"] }) {
   const config = {
@@ -31,20 +42,92 @@ function StatusBadge({ status }: { status: SyncEntryWithStatus["status"] }) {
   );
 }
 
-function SyncEntryCard({ entry, onSync }: { entry: SyncEntryWithStatus; onSync: (id: string) => void }) {
+function getFieldIcon(key: string) {
+  const lk = key.toLowerCase();
+  if (lk.includes("user") || lk.includes("client") || lk.includes("name")) return User;
+  if (lk.includes("date") || lk.includes("created") || lk.includes("updated")) return Calendar;
+  if (lk.includes("id") || lk.includes("number")) return Hash;
+  if (lk.includes("amount") || lk.includes("price") || lk.includes("total") || lk.includes("balance")) return DollarSign;
+  if (lk.includes("product") || lk.includes("quantity") || lk.includes("stock")) return Package;
+  return FileText;
+}
+
+function formatLabel(key: string): string {
+  return key
+    .replace(/_/g, " ")
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
+}
+
+function formatValue(value: any): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return value.toLocaleString();
+  if (typeof value === "string") {
+    // Check if it's a date string
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+      try {
+        return new Date(value).toLocaleString();
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  }
+  if (Array.isArray(value)) return `[${value.length} items]`;
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function DataFieldRow({ label, value }: { label: string; value: any }) {
+  const Icon = getFieldIcon(label);
+  return (
+    <div className="flex items-start gap-2 py-1.5 border-b border-border/50 last:border-0">
+      <Icon className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+      <span className="text-xs font-medium text-muted-foreground min-w-[80px]">{formatLabel(label)}</span>
+      <span className="text-xs text-foreground break-all flex-1">{formatValue(value)}</span>
+    </div>
+  );
+}
+
+function getRecordSummary(data: Record<string, any>): string {
+  // Try to find a meaningful identifier
+  if (data.invoice_number) return `Invoice: ${data.invoice_number}`;
+  if (data.name) return data.name;
+  if (data.client_name) return data.client_name;
+  if (data.article_number) return `Article: ${data.article_number}`;
+  if (data.phone) return `Phone: ${data.phone}`;
+  if (data.amount) return `Amount: Rs. ${data.amount.toLocaleString()}`;
+  return "Record";
+}
+
+function SyncEntryCard({ 
+  entry, 
+  onSync, 
+  onDelete 
+}: { 
+  entry: SyncEntryWithStatus; 
+  onSync: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const isSyncable = entry.status === "pending" || entry.status === "failed";
 
   const dataKeys = Object.keys(entry.data || {}).filter(k => !["id", "created_at", "updated_at"].includes(k));
-  const previewFields = dataKeys.slice(0, 3);
+  const importantKeys = dataKeys.filter(k => 
+    ["name", "invoice_number", "amount", "client_id", "phone", "article_number", "total"].includes(k)
+  );
+  const previewKeys = importantKeys.length > 0 ? importantKeys.slice(0, 3) : dataKeys.slice(0, 3);
 
   return (
     <div className="border border-border rounded-lg p-3 bg-card space-y-2">
+      {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Database className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
-            {entry.table}
+            {entry.table.replace(/_/g, " ")}
           </span>
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
             {entry.operation}
@@ -53,19 +136,20 @@ function SyncEntryCard({ entry, onSync }: { entry: SyncEntryWithStatus; onSync: 
         <StatusBadge status={entry.status} />
       </div>
 
+      {/* Record Summary */}
+      <p className="text-sm font-medium text-foreground truncate">
+        {getRecordSummary(entry.data || {})}
+      </p>
+
       {/* Preview fields */}
-      <div className="flex flex-wrap gap-1">
-        {previewFields.map(key => {
-          const val = (entry.data as Record<string, any>)[key];
-          const display = typeof val === "object" ? JSON.stringify(val) : String(val ?? "");
-          return (
-            <span key={key} className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded truncate max-w-[140px]">
-              <span className="font-medium">{key}:</span> {display.slice(0, 30)}
-            </span>
-          );
-        })}
-        {dataKeys.length > 3 && (
-          <span className="text-[11px] text-muted-foreground">+{dataKeys.length - 3} more</span>
+      <div className="bg-muted/30 rounded-md p-2 space-y-0.5">
+        {previewKeys.map(key => (
+          <DataFieldRow key={key} label={key} value={(entry.data as Record<string, any>)[key]} />
+        ))}
+        {dataKeys.length > previewKeys.length && (
+          <p className="text-[10px] text-muted-foreground pt-1">
+            +{dataKeys.length - previewKeys.length} more fields
+          </p>
         )}
       </div>
 
@@ -74,26 +158,53 @@ function SyncEntryCard({ entry, onSync }: { entry: SyncEntryWithStatus; onSync: 
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground w-full justify-start gap-1">
             {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            {open ? "Hide details" : "View full data"}
+            {open ? "Hide all fields" : "View all fields"}
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="mt-1 bg-muted/50 rounded p-2 text-[11px] font-mono overflow-auto max-h-40">
-            <pre className="whitespace-pre-wrap break-all text-muted-foreground">
-              {JSON.stringify(entry.data, null, 2)}
-            </pre>
+          <div className="mt-1 bg-muted/50 rounded-md p-2 space-y-0.5 max-h-60 overflow-auto">
+            {dataKeys.map(key => (
+              <DataFieldRow key={key} label={key} value={(entry.data as Record<string, any>)[key]} />
+            ))}
           </div>
           {entry.lastError && (
-            <p className="text-[11px] text-destructive mt-1">Error: {entry.lastError}</p>
+            <div className="mt-2 p-2 bg-destructive/10 rounded-md">
+              <p className="text-[11px] text-destructive font-medium">Error: {entry.lastError}</p>
+            </div>
           )}
-          <p className="text-[10px] text-muted-foreground mt-1">
+          <p className="text-[10px] text-muted-foreground mt-2">
             Queued: {new Date(entry.createdAt).toLocaleString()} · Retries: {entry.retryCount}
           </p>
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Sync button */}
-      <div className="flex justify-end">
+      {/* Actions */}
+      <div className="flex justify-between items-center pt-1">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+              <Trash2 className="w-3 h-3 mr-1" /> Delete
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete sync entry?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove this entry from the sync queue. The data will not be synced to the server.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => onDelete(entry.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <Button
           size="sm"
           variant={isSyncable ? "default" : "secondary"}
@@ -115,7 +226,7 @@ function SyncEntryCard({ entry, onSync }: { entry: SyncEntryWithStatus; onSync: 
 }
 
 export function PendingSyncsPanel() {
-  const { entries, refreshEntries, syncSingleEntry, syncPendingChanges, isSyncing, isOnline } = useOfflineSyncContext();
+  const { entries, refreshEntries, syncSingleEntry, deleteSyncEntry, syncPendingChanges, isSyncing, isOnline } = useOfflineSyncContext();
 
   useEffect(() => {
     refreshEntries();
@@ -162,7 +273,12 @@ export function PendingSyncsPanel() {
             </div>
           ) : (
             entries.map(entry => (
-              <SyncEntryCard key={entry.id} entry={entry} onSync={syncSingleEntry} />
+              <SyncEntryCard 
+                key={entry.id} 
+                entry={entry} 
+                onSync={syncSingleEntry} 
+                onDelete={deleteSyncEntry}
+              />
             ))
           )}
         </div>
