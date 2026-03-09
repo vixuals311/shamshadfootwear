@@ -1244,7 +1244,7 @@ const Inventory = () => {
                               placeholder="6"
                             />
                           </div>
-                          <div className="w-24 space-y-2">
+                          <div className="w-full sm:w-24 space-y-2">
                             <Label className="text-xs text-muted-foreground">
                               Qty (Bundles)
                             </Label>
