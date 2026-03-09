@@ -200,8 +200,11 @@ export function useSupabaseAuth() {
   };
 
   useEffect(() => {
-    // Track whether the user was already authenticated (session restored from storage)
-    let isRestoredSession = false;
+    // Synchronously check localStorage to know if a session already exists
+    // BEFORE any async callback fires — this prevents refresh from logging a new login
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+    const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+    let isRestoredSession = !!localStorage.getItem(`sb-${projectRef}-auth-token`);
     let sessionCheckDone = false;
 
     const handleSessionCheck = async (uid: string) => {
@@ -218,8 +221,6 @@ export function useSupabaseAuth() {
       setSessionChecked(true);
     };
 
-    // IMPORTANT: Call getSession FIRST to determine if this is a restored session
-    // before setting up the auth state change listener
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       if (existingSession?.user) {
         isRestoredSession = true;
