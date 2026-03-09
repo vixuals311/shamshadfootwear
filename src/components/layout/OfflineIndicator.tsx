@@ -1,4 +1,4 @@
-import { Wifi, WifiOff, RefreshCw, Cloud, CloudOff } from "lucide-react";
+import { Wifi, WifiOff, RefreshCw, Cloud, CloudOff, List } from "lucide-react";
 import { useOfflineSyncContext } from "@/context/OfflineSyncContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,40 +7,77 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { PendingSyncsPanel } from "./PendingSyncsPanel";
+import { useState } from "react";
 
 export function OfflineIndicator() {
-  const { isOnline, pendingCount, isSyncing, syncPendingChanges } =
+  const { isOnline, pendingCount, isSyncing, syncPendingChanges, refreshEntries } =
     useOfflineSyncContext();
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const handleOpenSheet = () => {
+    refreshEntries();
+    setSheetOpen(true);
+  };
 
   return (
     <div className="flex items-center gap-1.5">
-      {/* Sync button - only show if there are pending changes */}
+      {/* Pending syncs sheet trigger */}
+      {pendingCount > 0 && (
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 relative"
+                  onClick={handleOpenSheet}
+                >
+                  <List className="w-4 h-4" />
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
+                  >
+                    {pendingCount}
+                  </Badge>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>View pending syncs</TooltipContent>
+            </Tooltip>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:w-[420px] p-0">
+            <PendingSyncsPanel />
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Sync button */}
       {pendingCount > 0 && isOnline && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 relative"
+              className="h-8 w-8"
               onClick={() => syncPendingChanges()}
               disabled={isSyncing}
             >
               <RefreshCw
                 className={cn("w-4 h-4", isSyncing && "animate-spin")}
               />
-              <Badge
-                variant="destructive"
-                className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
-              >
-                {pendingCount}
-              </Badge>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
             {isSyncing
               ? "Syncing..."
-              : `${pendingCount} pending change${pendingCount !== 1 ? "s" : ""} to sync`}
+              : `Sync ${pendingCount} pending change${pendingCount !== 1 ? "s" : ""}`}
           </TooltipContent>
         </Tooltip>
       )}
