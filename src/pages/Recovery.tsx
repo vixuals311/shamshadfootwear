@@ -553,7 +553,7 @@ const RecoveryPage = () => {
         } catch (netErr: any) {
           if (!isNetworkError(netErr)) throw netErr;
           // Network error — queue offline
-          const offlineId = `offline_${Date.now()}`;
+          const offlineId = crypto.randomUUID();
           await addToSyncQueue({ table: "recoveries", operation: "insert", data: { ...recoveryData, id: offlineId } });
           await updateCachedRecord("recoveries", offlineId, { ...recoveryData, id: offlineId, date: new Date().toISOString() });
 
