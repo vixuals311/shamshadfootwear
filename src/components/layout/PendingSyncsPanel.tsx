@@ -91,8 +91,12 @@ function DataFieldRow({ label, value }: { label: string; value: any }) {
   );
 }
 
-function getRecordSummary(data: Record<string, any>): string {
-  // Try to find a meaningful identifier
+function getRecordSummary(table: string, data: Record<string, any>): string {
+  if (table === "city_recovery") {
+    const recovery = data.recovery || {};
+    const count = data.clientAmounts?.length || 0;
+    return `${recovery.city || "City"} Recovery — Rs. ${(recovery.amount || 0).toLocaleString()} (${count} clients)`;
+  }
   if (data.invoice_number) return `Invoice: ${data.invoice_number}`;
   if (data.name) return data.name;
   if (data.client_name) return data.client_name;
