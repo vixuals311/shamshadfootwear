@@ -234,17 +234,50 @@ export function useOfflineSync() {
   };
 }
 
-// Process a single sync queue entry — uses "keep both" conflict strategy
+// Process a single sync queue entry — smart conflict resolution:
+// - Same user duplicate → skip/update existing
+// - Different users, same data → keep both
+// - Different users, same time → dedupe (avoid exact duplicates)
 async function processSyncEntry(entry: SyncQueueEntry) {
   const { table, operation, data, recordId } = entry;
+  const offlineUserId = (data as any)?.created_by || (data as any)?.recorded_by || null;
 
   switch (operation) {
     case "insert": {
       const { error } = await supabase.from(table as any).insert(data as any);
       if (error) {
-        // If duplicate key conflict, generate new ID and insert as new record (keep both)
+        // Duplicate key conflict
         if (error.code === "23505") {
-          console.log(`[OfflineSync] Conflict on insert — keeping both by creating new record`);
+          // Check if same user made this entry
+          const { data: existing } = await supabase
+            .from(table as any)
+            .select("*")
+            .eq("id", (data as any).id)
+            .maybeSingle();
+
+          if (existing) {
+            const existingRecord = existing as Record<string, any>;
+            const existingUserId = existingRecord.created_by || existingRecord.recorded_by;
+            
+            if (existingUserId === offlineUserId) {
+              // Same user → skip duplicate
+              console.log(`[OfflineSync] Same user duplicate on insert — skipping`);
+              return;
+            }
+            
+            // Check for exact duplicate (same data at same time from different users)
+            const existingCreatedAt = new Date(existingRecord.created_at).getTime();
+            const offlineCreatedAt = new Date(entry.createdAt).getTime();
+            const timeDiff = Math.abs(existingCreatedAt - offlineCreatedAt);
+            
+            if (timeDiff < 5000) { // Within 5 seconds = likely exact duplicate
+              console.log(`[OfflineSync] Exact duplicate from different users at same time — skipping`);
+              return;
+            }
+          }
+
+          // Different user, different time → keep both
+          console.log(`[OfflineSync] Different user conflict on insert — keeping both`);
           const newData = { ...data, id: crypto.randomUUID() };
           const { error: retryError } = await supabase.from(table as any).insert(newData as any);
           if (retryError) throw retryError;
@@ -256,7 +289,7 @@ async function processSyncEntry(entry: SyncQueueEntry) {
     }
     case "update": {
       if (!recordId) throw new Error("recordId required for update");
-      // For updates: check if record was modified by another user since our offline change
+      
       const { data: existing, error: fetchError } = await supabase
         .from(table as any)
         .select("*")
@@ -275,23 +308,37 @@ async function processSyncEntry(entry: SyncQueueEntry) {
         const existingRecord = existing as Record<string, any>;
         const serverUpdatedAt = existingRecord.updated_at;
         const offlineCreatedAt = entry.createdAt;
+        const serverUserId = existingRecord.created_by || existingRecord.recorded_by || existingRecord.updated_by;
         
         if (serverUpdatedAt && offlineCreatedAt && new Date(serverUpdatedAt) > new Date(offlineCreatedAt)) {
-          // Server was modified AFTER our offline change — keep both
-          console.log(`[OfflineSync] Conflict detected on ${table}/${recordId} — keeping both versions`);
-          const newData: Record<string, any> = { ...data, id: crypto.randomUUID() };
-          delete newData.updated_at;
-          delete newData.created_at;
-          const { error: insertError } = await supabase.from(table as any).insert(newData as any);
-          if (insertError) {
-            console.warn(`[OfflineSync] Could not keep both — applying update instead:`, insertError.message);
+          // Server was modified AFTER our offline change
+          
+          if (serverUserId === offlineUserId) {
+            // Same user made both changes → apply our update (latest wins for same user)
+            console.log(`[OfflineSync] Same user updated — applying latest`);
             const { error: updateError } = await supabase
               .from(table as any)
               .update(data as any)
               .eq("id", recordId);
             if (updateError) throw updateError;
+          } else {
+            // Different users → keep both versions
+            console.log(`[OfflineSync] Different user conflict on ${table}/${recordId} — keeping both`);
+            const newData: Record<string, any> = { ...data, id: crypto.randomUUID() };
+            delete newData.updated_at;
+            delete newData.created_at;
+            const { error: insertError } = await supabase.from(table as any).insert(newData as any);
+            if (insertError) {
+              console.warn(`[OfflineSync] Could not keep both — applying update instead:`, insertError.message);
+              const { error: updateError } = await supabase
+                .from(table as any)
+                .update(data as any)
+                .eq("id", recordId);
+              if (updateError) throw updateError;
+            }
           }
         } else {
+          // No conflict or our change is newer
           const { error: updateError } = await supabase
             .from(table as any)
             .update(data as any)
@@ -313,9 +360,30 @@ async function processSyncEntry(entry: SyncQueueEntry) {
     case "upsert": {
       const { error } = await supabase.from(table as any).upsert(data as any);
       if (error) {
-        // On conflict, insert as new record (keep both)
         if (error.code === "23505") {
-          console.log(`[OfflineSync] Conflict on upsert — keeping both`);
+          // Check existing record for user comparison
+          const { data: existing } = await supabase
+            .from(table as any)
+            .select("*")
+            .eq("id", (data as any).id)
+            .maybeSingle();
+
+          if (existing) {
+            const existingRecord = existing as Record<string, any>;
+            const existingUserId = existingRecord.created_by || existingRecord.recorded_by;
+            
+            if (existingUserId === offlineUserId) {
+              console.log(`[OfflineSync] Same user upsert conflict — updating existing`);
+              const { error: updateError } = await supabase
+                .from(table as any)
+                .update(data as any)
+                .eq("id", (data as any).id);
+              if (updateError) throw updateError;
+              return;
+            }
+          }
+
+          console.log(`[OfflineSync] Different user conflict on upsert — keeping both`);
           const newData = { ...data, id: crypto.randomUUID() };
           const { error: retryError } = await supabase.from(table as any).insert(newData as any);
           if (retryError) throw retryError;
