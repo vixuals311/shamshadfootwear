@@ -88,7 +88,7 @@ const Reports = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 sm:grid-cols-4 gap-4"
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
         >
           <div className="bg-card rounded-xl p-5 shadow-card">
             <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
