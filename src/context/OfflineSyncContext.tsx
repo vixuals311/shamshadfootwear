@@ -60,28 +60,78 @@ export function OfflineSyncProvider({ children }: { children: React.ReactNode })
       const { table, operation, data, recordId } = entry;
       let error: any = null;
 
-      switch (operation) {
-        case "insert": {
-          const res = await supabase.from(table as any).insert(data as any);
-          error = res.error;
-          break;
+      // Handle consolidated city_recovery specially
+      if (table === "city_recovery") {
+        const { recovery, clientAmounts, clientBalanceUpdates } = data as any;
+        
+        // Insert recovery (without the offline ID)
+        const { id: _, ...recoveryWithoutId } = recovery;
+        const { data: recoveryResult, error: recoveryError } = await supabase
+          .from("recoveries")
+          .insert(recoveryWithoutId)
+          .select()
+          .single();
+        
+        if (recoveryError) {
+          error = recoveryError;
+        } else {
+          // Insert client amounts with the real recovery ID
+          const amountInserts = clientAmounts.map((ca: any) => ({
+            recovery_id: recoveryResult.id,
+            client_id: ca.client_id,
+            amount: ca.amount,
+          }));
+          
+          const { error: amountsError } = await supabase
+            .from("recovery_client_amounts")
+            .insert(amountInserts);
+          
+          if (amountsError) {
+            error = amountsError;
+          } else {
+            // Update client balances
+            for (const update of clientBalanceUpdates) {
+              await supabase
+                .from("clients")
+                .update({ current_balance: update.new_balance })
+                .eq("id", update.client_id);
+            }
+            
+            // Log audit
+            try {
+              await supabase.from("audit_logs").insert({
+                action: "create",
+                entity_type: "recovery",
+                entity_id: recoveryResult.id,
+                details: { type: "city", city: recovery.city, amount: recovery.amount, clients: clientAmounts.length, synced_from_offline: true },
+              });
+            } catch { /* ignore audit error */ }
+          }
         }
-        case "update": {
-          if (!recordId) throw new Error("recordId required");
-          const res = await supabase.from(table as any).update(data as any).eq("id", recordId);
-          error = res.error;
-          break;
-        }
-        case "delete": {
-          if (!recordId) throw new Error("recordId required");
-          const res = await supabase.from(table as any).delete().eq("id", recordId);
-          error = res.error;
-          break;
-        }
-        case "upsert": {
-          const res = await supabase.from(table as any).upsert(data as any);
-          error = res.error;
-          break;
+      } else {
+        switch (operation) {
+          case "insert": {
+            const res = await supabase.from(table as any).insert(data as any);
+            error = res.error;
+            break;
+          }
+          case "update": {
+            if (!recordId) throw new Error("recordId required");
+            const res = await supabase.from(table as any).update(data as any).eq("id", recordId);
+            error = res.error;
+            break;
+          }
+          case "delete": {
+            if (!recordId) throw new Error("recordId required");
+            const res = await supabase.from(table as any).delete().eq("id", recordId);
+            error = res.error;
+            break;
+          }
+          case "upsert": {
+            const res = await supabase.from(table as any).upsert(data as any);
+            error = res.error;
+            break;
+          }
         }
       }
 
