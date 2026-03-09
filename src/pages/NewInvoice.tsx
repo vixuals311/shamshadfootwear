@@ -182,7 +182,7 @@ const NewInvoice = () => {
           category: p.category,
           stock_dozens: p.stock_dozens,
           pairs_per_dozen: p.pairs_per_dozen,
-          size_bundles: sortBySizeRangeOrder((p.product_size_bundles || [])
+          size_bundles: sortBySizeRangeOrderRef.current((p.product_size_bundles || [])
             .map((sb: any) => ({ size_range: sb.size_range, price_per_pair: sb.price_per_pair, pairs_per_bundle: sb.pairs_per_bundle, available_quantity: sb.quantity || 0 }))) as any[],
         }));
 
