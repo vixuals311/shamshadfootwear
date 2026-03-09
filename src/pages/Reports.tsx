@@ -90,24 +90,24 @@ const Reports = () => {
           transition={{ delay: 0.1 }}
           className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
         >
-          <div className="bg-card rounded-xl p-5 shadow-card">
-            <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
-            <p className="text-2xl font-bold text-foreground">Rs {stats.totalRevenue.toLocaleString()}</p>
+          <div className="bg-card rounded-xl p-3 sm:p-5 shadow-card">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total Revenue</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">Rs {stats.totalRevenue.toLocaleString()}</p>
             <p className="text-xs text-success mt-1">{stats.revenueChange}</p>
           </div>
-          <div className="bg-card rounded-xl p-5 shadow-card">
-            <p className="text-sm text-muted-foreground mb-1">Invoices Sent</p>
-            <p className="text-2xl font-bold text-foreground">{stats.invoicesSent}</p>
+          <div className="bg-card rounded-xl p-3 sm:p-5 shadow-card">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-1">Invoices Sent</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.invoicesSent}</p>
             <p className="text-xs text-success mt-1">{stats.invoicesChange}</p>
           </div>
-          <div className="bg-card rounded-xl p-5 shadow-card">
-            <p className="text-sm text-muted-foreground mb-1">Products Sold</p>
-            <p className="text-2xl font-bold text-foreground">{stats.productsSold.toLocaleString()}</p>
+          <div className="bg-card rounded-xl p-3 sm:p-5 shadow-card">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-1">Products Sold</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.productsSold.toLocaleString()}</p>
             <p className="text-xs text-success mt-1">{stats.productsChange}</p>
           </div>
-          <div className="bg-card rounded-xl p-5 shadow-card">
-            <p className="text-sm text-muted-foreground mb-1">New Clients</p>
-            <p className="text-2xl font-bold text-foreground">{stats.newClients}</p>
+          <div className="bg-card rounded-xl p-3 sm:p-5 shadow-card">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-1">New Clients</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.newClients}</p>
             <p className="text-xs text-success mt-1">{stats.clientsChange}</p>
           </div>
         </motion.div>
