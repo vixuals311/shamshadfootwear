@@ -112,8 +112,10 @@ const NewInvoice = () => {
   const { toast } = useToast();
   const { log } = useAuditLog();
   const { sortBySizeRangeOrder } = useDefaultSizeRanges();
+  const sortBySizeRangeOrderRef = useRef(sortBySizeRangeOrder);
+  sortBySizeRangeOrderRef.current = sortBySizeRangeOrder;
   const searchInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
