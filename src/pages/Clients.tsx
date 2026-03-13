@@ -189,6 +189,7 @@ const Clients = () => {
         phone: c.phone || "N/A",
         address: c.address || "N/A",
         city: c.city || "N/A",
+        referenceNumber: c.reference_number || "N/A",
         openingBalance: c.opening_balance || 0,
         currentBalance: c.current_balance || 0,
         totalSpent: c.total_spent || 0,
