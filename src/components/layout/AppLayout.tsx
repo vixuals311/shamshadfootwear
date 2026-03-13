@@ -7,8 +7,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { useToast } from "@/hooks/use-toast";
+import { useFirebaseSync } from "@/hooks/useFirebaseSync";
 
 export function AppLayout() {
+  useFirebaseSync();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const location = useLocation();
