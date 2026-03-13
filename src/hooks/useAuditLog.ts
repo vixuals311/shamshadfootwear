@@ -22,7 +22,8 @@ export type AuditEntity =
   | "settings"
   | "report"
   | "system"
-  | "return";
+  | "return"
+  | "cheque";
 
 interface AuditLogParams {
   action: AuditAction;

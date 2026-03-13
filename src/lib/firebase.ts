@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, remove, onValue, off } from "firebase/database";
+import { getFirestore, doc, setDoc, deleteDoc, collection, writeBatch } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCyFdzaTM2hPbUypss-WXbCqOo-NA4Y_HY",
@@ -12,19 +12,23 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const firebaseDb = getDatabase(app);
+export const firebaseDb = getFirestore(app);
 
-// Helper to write a full table snapshot to Firebase
+// Helper to write a full table snapshot to Firestore
 export async function syncTableToFirebase(tableName: string, data: any[]) {
   try {
-    const tableRef = ref(firebaseDb, `tables/${tableName}`);
-    const mapped: Record<string, any> = {};
-    for (const row of data) {
-      if (row.id) {
-        mapped[row.id] = row;
+    const BATCH_SIZE = 500; // Firestore batch limit
+    for (let i = 0; i < data.length; i += BATCH_SIZE) {
+      const batch = writeBatch(firebaseDb);
+      const chunk = data.slice(i, i + BATCH_SIZE);
+      for (const row of chunk) {
+        if (row.id) {
+          const docRef = doc(firebaseDb, "tables", tableName, "records", row.id);
+          batch.set(docRef, row);
+        }
       }
+      await batch.commit();
     }
-    await set(tableRef, mapped);
     console.log(`[Firebase] Synced ${data.length} rows to ${tableName}`);
   } catch (err) {
     console.error(`[Firebase] Failed to sync ${tableName}:`, err);
@@ -34,18 +38,18 @@ export async function syncTableToFirebase(tableName: string, data: any[]) {
 // Sync a single record
 export async function syncRecordToFirebase(tableName: string, recordId: string, data: any) {
   try {
-    const recordRef = ref(firebaseDb, `tables/${tableName}/${recordId}`);
-    await set(recordRef, data);
+    const docRef = doc(firebaseDb, "tables", tableName, "records", recordId);
+    await setDoc(docRef, data);
   } catch (err) {
     console.error(`[Firebase] Failed to sync record ${tableName}/${recordId}:`, err);
   }
 }
 
-// Delete a single record from Firebase
+// Delete a single record from Firestore
 export async function deleteRecordFromFirebase(tableName: string, recordId: string) {
   try {
-    const recordRef = ref(firebaseDb, `tables/${tableName}/${recordId}`);
-    await remove(recordRef);
+    const docRef = doc(firebaseDb, "tables", tableName, "records", recordId);
+    await deleteDoc(docRef);
   } catch (err) {
     console.error(`[Firebase] Failed to delete record ${tableName}/${recordId}:`, err);
   }
@@ -54,8 +58,8 @@ export async function deleteRecordFromFirebase(tableName: string, recordId: stri
 // Update sync metadata
 export async function updateSyncMetadata(tableName: string) {
   try {
-    const metaRef = ref(firebaseDb, `sync_metadata/${tableName}`);
-    await set(metaRef, {
+    const metaRef = doc(firebaseDb, "sync_metadata", tableName);
+    await setDoc(metaRef, {
       lastSynced: new Date().toISOString(),
       source: "lovable_cloud",
     });
@@ -63,5 +67,3 @@ export async function updateSyncMetadata(tableName: string) {
     console.error(`[Firebase] Failed to update metadata for ${tableName}:`, err);
   }
 }
-
-export { ref, onValue, off };

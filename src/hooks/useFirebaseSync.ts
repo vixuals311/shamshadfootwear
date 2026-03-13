@@ -18,13 +18,13 @@ const SYNC_TABLES = [
   "recovery_client_amounts",
   "returns",
   "return_items",
-  "return_items",
   "manual_bills",
   "brands",
   "payment_accounts",
   "product_categories",
   "default_size_ranges",
   "audit_logs",
+  "cheques",
 ] as const;
 
 type SyncTable = typeof SYNC_TABLES[number];

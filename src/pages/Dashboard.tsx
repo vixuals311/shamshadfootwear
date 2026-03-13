@@ -1,14 +1,46 @@
-import { DollarSign, FileText, Package, Users, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
+import { DollarSign, FileText, Package, Users, TrendingUp, TrendingDown, Loader2, FileCheck, Calendar } from "lucide-react";
 import { MetricCard, SalesChart, RecentInvoices, LowStockAlert } from "@/components/dashboard";
 import { motion } from "framer-motion";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { format, addDays, isAfter, isBefore, parseISO } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
+
+interface UpcomingCheque {
+  id: string;
+  cheque_number: string;
+  amount: number;
+  cheque_date: string;
+  given_to: string;
+}
 
 const Dashboard = () => {
   const { role, profile } = useSupabaseAuthContext();
   const { stats, recentInvoices, lowStockProducts, monthlySales, loading } = useDashboardData();
-  
+  const [upcomingCheques, setUpcomingCheques] = useState<UpcomingCheque[]>([]);
+
   const isRestrictedRole = role === "biller" || role === "cashier";
+
+  useEffect(() => {
+    const fetchUpcomingCheques = async () => {
+      const today = new Date();
+      const sevenDaysLater = addDays(today, 7);
+      const { data } = await supabase
+        .from("cheques")
+        .select("id, cheque_number, amount, cheque_date, given_to")
+        .eq("status", "pending")
+        .gte("cheque_date", format(today, "yyyy-MM-dd"))
+        .lte("cheque_date", format(sevenDaysLater, "yyyy-MM-dd"))
+        .order("cheque_date", { ascending: true })
+        .limit(7);
+      setUpcomingCheques(data || []);
+    };
+    fetchUpcomingCheques();
+  }, []);
 
   if (loading) {
     return (
@@ -46,6 +78,44 @@ const Dashboard = () => {
           })}
         </div>
       </motion.div>
+
+      {/* Upcoming Cheques Reminder */}
+      {upcomingCheques.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-card rounded-xl p-4 sm:p-6 shadow-card border border-warning/20"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileCheck className="w-5 h-5 text-warning" />
+              <h3 className="text-lg font-semibold text-foreground">Upcoming Cheques (Next 7 Days)</h3>
+            </div>
+            <Link to="/cheques" className="text-sm text-primary hover:underline">View All</Link>
+          </div>
+          <div className="space-y-2">
+            {upcomingCheques.map((cheque) => (
+              <div key={cheque.id} className="flex items-center justify-between p-3 rounded-lg bg-warning/5 border border-warning/10">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Calendar className="w-4 h-4 text-warning shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      #{cheque.cheque_number} — {cheque.given_to}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Due: {format(parseISO(cheque.cheque_date), "dd MMM yyyy")}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-sm font-bold text-warning whitespace-nowrap ml-2">
+                  Rs {cheque.amount.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Full Dashboard for Admin */}
       {!isRestrictedRole && stats && (

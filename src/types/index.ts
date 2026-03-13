@@ -217,7 +217,7 @@ export type AuditAction =
 
 export type AuditEntity = 
   | "user" | "product" | "brand" | "client" | "invoice" 
-  | "recovery" | "payment" | "settings" | "report";
+  | "recovery" | "payment" | "settings" | "report" | "cheque";
 
 export interface AuditLog {
   id: string;

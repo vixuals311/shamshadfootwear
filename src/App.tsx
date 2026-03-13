@@ -22,6 +22,8 @@ import UserManagement from "./pages/UserManagement";
 import AuditLogs from "./pages/AuditLogs";
 import Returns from "./pages/Returns";
 import ClientPortal from "./pages/ClientPortal";
+import PriceCheck from "./pages/PriceCheck";
+import Cheques from "./pages/Cheques";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -143,6 +145,8 @@ function AppRoutes() {
         <Route path="/recovery" element={<Recovery />} />
         <Route path="/returns" element={<Returns />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/price-check" element={<PriceCheck />} />
+        <Route path="/cheques" element={<Cheques />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/users" element={<UserManagement />} />
         <Route path="/audit-logs" element={<AuditLogs />} />
