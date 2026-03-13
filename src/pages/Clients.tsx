@@ -977,7 +977,11 @@ const Clients = () => {
             </Button>
             <div className="flex-1 min-w-0">
               <h2 className="text-xl sm:text-2xl font-bold text-foreground truncate">{selectedClient.name}</h2>
-              <p className="text-sm text-muted-foreground">{selectedClient.city}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
+                {selectedClient.city !== "N/A" && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{selectedClient.city}</span>}
+                {selectedClient.address !== "N/A" && <span>• {selectedClient.address}</span>}
+                {selectedClient.referenceNumber !== "N/A" && <span>• Ref: {selectedClient.referenceNumber}</span>}
+              </div>
             </div>
           </div>
           {/* Action row - stacks on mobile */}
