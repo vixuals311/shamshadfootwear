@@ -1623,7 +1623,7 @@ const Clients = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="address">Address <span className="text-destructive">*</span></Label>
                   <Input
                     id="address"
                     value={newClient.address}
