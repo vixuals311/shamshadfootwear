@@ -1613,7 +1613,7 @@ const Clients = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
+                    <Label htmlFor="city">City <span className="text-destructive">*</span></Label>
                     <CityCombobox
                       value={newClient.city}
                       onChange={(city) => setNewClient({ ...newClient, city })}
