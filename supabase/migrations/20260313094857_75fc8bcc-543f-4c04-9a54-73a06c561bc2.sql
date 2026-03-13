@@ -1,0 +1,15 @@
+ALTER PUBLICATION supabase_realtime ADD TABLE public.clients;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.product_size_bundles;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.invoices;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.invoice_items;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.recoveries;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.recovery_client_amounts;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.returns;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.return_items;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.manual_bills;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.brands;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.payment_accounts;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.product_categories;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.default_size_ranges;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs
