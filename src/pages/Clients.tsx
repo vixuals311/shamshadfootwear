@@ -78,6 +78,7 @@ interface Client {
   phone: string;
   address: string;
   city: string;
+  referenceNumber: string;
   openingBalance: number;
   currentBalance: number;
   totalSpent: number;
