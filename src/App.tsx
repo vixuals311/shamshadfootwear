@@ -145,6 +145,8 @@ function AppRoutes() {
         <Route path="/recovery" element={<Recovery />} />
         <Route path="/returns" element={<Returns />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/price-check" element={<PriceCheck />} />
+        <Route path="/cheques" element={<Cheques />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/users" element={<UserManagement />} />
         <Route path="/audit-logs" element={<AuditLogs />} />
