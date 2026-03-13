@@ -78,6 +78,7 @@ interface Client {
   phone: string;
   address: string;
   city: string;
+  referenceNumber: string;
   openingBalance: number;
   currentBalance: number;
   totalSpent: number;
@@ -188,6 +189,7 @@ const Clients = () => {
         phone: c.phone || "N/A",
         address: c.address || "N/A",
         city: c.city || "N/A",
+        referenceNumber: c.reference_number || "N/A",
         openingBalance: c.opening_balance || 0,
         currentBalance: c.current_balance || 0,
         totalSpent: c.total_spent || 0,
@@ -434,10 +436,10 @@ const Clients = () => {
   };
 
   const handleAddClient = async () => {
-    if (!newClient.name || !newClient.phone) {
+    if (!newClient.name || !newClient.phone || !newClient.city || !newClient.address || !newClient.referenceNumber) {
       toast({
         title: "Missing Information",
-        description: "Name and phone are required",
+        description: "Name, phone, city, address, and reference number are required",
         variant: "destructive",
       });
       return;
@@ -975,7 +977,11 @@ const Clients = () => {
             </Button>
             <div className="flex-1 min-w-0">
               <h2 className="text-xl sm:text-2xl font-bold text-foreground truncate">{selectedClient.name}</h2>
-              <p className="text-sm text-muted-foreground">{selectedClient.city}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
+                {selectedClient.city !== "N/A" && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{selectedClient.city}</span>}
+                {selectedClient.address !== "N/A" && <span>• {selectedClient.address}</span>}
+                {selectedClient.referenceNumber !== "N/A" && <span>• Ref: {selectedClient.referenceNumber}</span>}
+              </div>
             </div>
           </div>
           {/* Action row - stacks on mobile */}
@@ -1607,7 +1613,7 @@ const Clients = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
+                    <Label htmlFor="city">City <span className="text-destructive">*</span></Label>
                     <CityCombobox
                       value={newClient.city}
                       onChange={(city) => setNewClient({ ...newClient, city })}
@@ -1617,7 +1623,7 @@ const Clients = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="address">Address <span className="text-destructive">*</span></Label>
                   <Input
                     id="address"
                     value={newClient.address}
@@ -1629,7 +1635,7 @@ const Clients = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="referenceNumber">Reference Number</Label>
+                    <Label htmlFor="referenceNumber">Reference Number <span className="text-destructive">*</span></Label>
                     <Input
                       id="referenceNumber"
                       value={newClient.referenceNumber}
