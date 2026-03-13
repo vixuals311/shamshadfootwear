@@ -119,6 +119,48 @@ export type Database = {
         }
         Relationships: []
       }
+      cheques: {
+        Row: {
+          amount: number
+          bank_name: string | null
+          cheque_date: string
+          cheque_number: string
+          created_at: string
+          created_by: string | null
+          given_to: string
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          bank_name?: string | null
+          cheque_date: string
+          cheque_number: string
+          created_at?: string
+          created_by?: string | null
+          given_to: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_name?: string | null
+          cheque_date?: string
+          cheque_number?: string
+          created_at?: string
+          created_by?: string | null
+          given_to?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
