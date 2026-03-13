@@ -436,10 +436,10 @@ const Clients = () => {
   };
 
   const handleAddClient = async () => {
-    if (!newClient.name || !newClient.phone) {
+    if (!newClient.name || !newClient.phone || !newClient.city || !newClient.address || !newClient.referenceNumber) {
       toast({
         title: "Missing Information",
-        description: "Name and phone are required",
+        description: "Name, phone, city, address, and reference number are required",
         variant: "destructive",
       });
       return;
