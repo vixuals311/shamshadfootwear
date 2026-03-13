@@ -18,7 +18,7 @@ const SYNC_TABLES = [
   "recovery_client_amounts",
   "returns",
   "return_items",
-  "payments",
+  "return_items",
   "manual_bills",
   "brands",
   "payment_accounts",
