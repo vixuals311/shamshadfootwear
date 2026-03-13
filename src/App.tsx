@@ -22,6 +22,8 @@ import UserManagement from "./pages/UserManagement";
 import AuditLogs from "./pages/AuditLogs";
 import Returns from "./pages/Returns";
 import ClientPortal from "./pages/ClientPortal";
+import PriceCheck from "./pages/PriceCheck";
+import Cheques from "./pages/Cheques";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
