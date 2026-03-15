@@ -325,9 +325,12 @@ const NewInvoice = () => {
 
   const updateSizeBundles = (sizeRange: string, bundles: number) => {
     setSizeSelections((prev) =>
-      prev.map((s) =>
-        s.sizeRange === sizeRange ? { ...s, bundles: Math.max(0, bundles) } : s
-      )
+      prev.map((s) => {
+        if (s.sizeRange !== sizeRange) return s;
+        // Block if out of stock
+        const clamped = Math.max(0, Math.min(bundles, s.availableQuantity));
+        return { ...s, bundles: clamped };
+      })
     );
   };
 
