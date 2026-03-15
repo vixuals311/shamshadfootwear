@@ -325,9 +325,12 @@ const NewInvoice = () => {
 
   const updateSizeBundles = (sizeRange: string, bundles: number) => {
     setSizeSelections((prev) =>
-      prev.map((s) =>
-        s.sizeRange === sizeRange ? { ...s, bundles: Math.max(0, bundles) } : s
-      )
+      prev.map((s) => {
+        if (s.sizeRange !== sizeRange) return s;
+        // Block if out of stock
+        const clamped = Math.max(0, Math.min(bundles, s.availableQuantity));
+        return { ...s, bundles: clamped };
+      })
     );
   };
 
@@ -1068,16 +1071,13 @@ const NewInvoice = () => {
                                     Rs {selection.pricePerPair}
                                   </span>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                  <span className={cn(
-                                    "text-[10px]",
-                                    selection.availableQuantity === 0 ? "text-destructive font-medium" :
-                                    selection.bundles > selection.availableQuantity ? "text-warning font-medium" :
-                                    "text-muted-foreground"
-                                  )}>
-                                    {selection.availableQuantity === 0 ? "Out of stock" : `${selection.availableQuantity} avail`}
-                                  </span>
-                                </div>
+                                {selection.availableQuantity === 0 ? (
+                                  <span className="text-[10px] text-destructive font-medium">Out of stock</span>
+                                ) : selection.bundles > selection.availableQuantity ? (
+                                  <span className="text-[10px] text-warning font-medium">{selection.availableQuantity} avail</span>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground">{selection.availableQuantity} avail</span>
+                                )}
                                 <div className="flex items-center gap-1 mt-1">
                                   <Button
                                     variant="outline"

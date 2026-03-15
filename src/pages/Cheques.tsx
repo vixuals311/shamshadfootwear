@@ -11,6 +11,10 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
@@ -126,15 +130,25 @@ const Cheques = () => {
     }
   };
 
+  // Status change confirmation
+  const [statusConfirm, setStatusConfirm] = useState<{ id: string; newStatus: string } | null>(null);
+
   const handleStatusChange = async (id: string, newStatus: string) => {
+    setStatusConfirm({ id, newStatus });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusConfirm) return;
     try {
-      const { error } = await supabase.from("cheques").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", id);
+      const { error } = await supabase.from("cheques").update({ status: statusConfirm.newStatus, updated_at: new Date().toISOString() }).eq("id", statusConfirm.id);
       if (error) throw error;
-      await log({ action: "update", entityType: "cheque", entityId: id, details: { status: newStatus } });
-      toast({ title: "Updated", description: `Cheque marked as ${newStatus}` });
+      await log({ action: "update", entityType: "cheque", entityId: statusConfirm.id, details: { status: statusConfirm.newStatus } });
+      toast({ title: "Updated", description: `Cheque marked as ${statusConfirm.newStatus}` });
+      setStatusConfirm(null);
       fetchCheques();
     } catch (err: any) {
       toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+      setStatusConfirm(null);
     }
   };
 
@@ -204,7 +218,7 @@ const Cheques = () => {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent mode="single" selected={form.cheque_date} onSelect={(d) => setForm({ ...form, cheque_date: d })} initialFocus className="p-3 pointer-events-auto" />
+                        <CalendarComponent mode="single" selected={form.cheque_date} onSelect={(d) => setForm({ ...form, cheque_date: d })} disabled={() => false} initialFocus className="p-3 pointer-events-auto" />
                       </PopoverContent>
                     </Popover>
                   </div>
@@ -293,6 +307,21 @@ const Cheques = () => {
           </div>
         )}
       </div>
+      {/* Status Change Confirmation */}
+      <AlertDialog open={!!statusConfirm} onOpenChange={(open) => !open && setStatusConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to mark this cheque as <strong>{statusConfirm?.newStatus}</strong>? This action will be logged.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStatusChange}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

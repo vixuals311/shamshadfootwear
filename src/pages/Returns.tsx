@@ -112,7 +112,7 @@ export default function Returns() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResult | null>(null);
   const [returnItems, setReturnItems] = useState<ReturnItemEntry[]>([]);
   const [adjustmentType, setAdjustmentType] = useState<"reduce_balance" | "credit_note">("reduce_balance");
-  const [restock, setRestock] = useState(false);
+  const [restock, setRestock] = useState(true);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [searchingInvoice, setSearchingInvoice] = useState(false);
@@ -367,7 +367,7 @@ export default function Returns() {
     setSelectedInvoice(null);
     setReturnItems([]);
     setAdjustmentType("reduce_balance");
-    setRestock(false);
+    setRestock(true);
     setNotes("");
   };
 
