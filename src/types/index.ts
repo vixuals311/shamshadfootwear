@@ -16,9 +16,11 @@ export interface User {
 export type PageKey = 
   | "dashboard"
   | "inventory" 
+  | "price_check"
   | "clients"
   | "invoices"
   | "payments"
+  | "cheques"
   | "recovery"
   | "returns"
   | "reports"
