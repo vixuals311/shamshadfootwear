@@ -24,7 +24,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { icon: LayoutDashboard, label: "Dashboard", path: "/", show: hasPageAccess("dashboard") },
     { icon: FileText, label: "Invoices", path: "/invoices", show: hasPageAccess("invoices") && onlineBillingEnabled },
     { icon: CreditCard, label: "Payments", path: "/payments", show: hasPageAccess("payments") },
-    { icon: FileCheck, label: "Cheques", path: "/cheques", show: hasPageAccess("payments") },
+    { icon: FileCheck, label: "Cheques", path: "/cheques", show: hasPageAccess("cheques") },
     { icon: RotateCcw, label: "Returns", path: "/returns", show: hasPageAccess("returns") },
     { icon: BarChart3, label: "Reports", path: "/reports", show: hasPageAccess("reports") },
   ].filter(item => item.show);
