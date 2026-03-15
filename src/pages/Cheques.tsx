@@ -126,15 +126,25 @@ const Cheques = () => {
     }
   };
 
+  // Status change confirmation
+  const [statusConfirm, setStatusConfirm] = useState<{ id: string; newStatus: string } | null>(null);
+
   const handleStatusChange = async (id: string, newStatus: string) => {
+    setStatusConfirm({ id, newStatus });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusConfirm) return;
     try {
-      const { error } = await supabase.from("cheques").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", id);
+      const { error } = await supabase.from("cheques").update({ status: statusConfirm.newStatus, updated_at: new Date().toISOString() }).eq("id", statusConfirm.id);
       if (error) throw error;
-      await log({ action: "update", entityType: "cheque", entityId: id, details: { status: newStatus } });
-      toast({ title: "Updated", description: `Cheque marked as ${newStatus}` });
+      await log({ action: "update", entityType: "cheque", entityId: statusConfirm.id, details: { status: statusConfirm.newStatus } });
+      toast({ title: "Updated", description: `Cheque marked as ${statusConfirm.newStatus}` });
+      setStatusConfirm(null);
       fetchCheques();
     } catch (err: any) {
       toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+      setStatusConfirm(null);
     }
   };
 
