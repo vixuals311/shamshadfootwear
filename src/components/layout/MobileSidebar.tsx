@@ -21,7 +21,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
   const navItems = [
     { icon: Package, label: "Inventory", path: "/inventory", show: hasPageAccess("inventory") },
-    { icon: Tag, label: "Price Check", path: "/price-check", show: hasPageAccess("inventory") },
+    { icon: Tag, label: "Price Check", path: "/price-check", show: hasPageAccess("price_check") },
     { icon: Users, label: "Clients", path: "/clients", show: hasPageAccess("clients") },
     { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPageAccess("recovery") },
     { icon: LayoutDashboard, label: "Dashboard", path: "/", show: hasPageAccess("dashboard") },
