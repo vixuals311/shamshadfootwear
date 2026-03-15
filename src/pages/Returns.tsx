@@ -367,7 +367,7 @@ export default function Returns() {
     setSelectedInvoice(null);
     setReturnItems([]);
     setAdjustmentType("reduce_balance");
-    setRestock(false);
+    setRestock(true);
     setNotes("");
   };
 

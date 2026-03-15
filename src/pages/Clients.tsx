@@ -1456,6 +1456,7 @@ const Clients = () => {
                   id="billDate"
                   type="date"
                   value={manualBillForm.date}
+                  max={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setManualBillForm(prev => ({ ...prev, date: e.target.value }))}
                 />
               </div>

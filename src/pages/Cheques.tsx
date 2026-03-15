@@ -214,7 +214,7 @@ const Cheques = () => {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent mode="single" selected={form.cheque_date} onSelect={(d) => setForm({ ...form, cheque_date: d })} initialFocus className="p-3 pointer-events-auto" />
+                        <CalendarComponent mode="single" selected={form.cheque_date} onSelect={(d) => setForm({ ...form, cheque_date: d })} disabled={() => false} initialFocus className="p-3 pointer-events-auto" />
                       </PopoverContent>
                     </Popover>
                   </div>

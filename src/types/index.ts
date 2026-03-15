@@ -45,9 +45,11 @@ export const ROLE_DEFAULT_PAGES: Record<UserRole, PageKey[]> = {
 export const PAGE_METADATA: Record<PageKey, { label: string; description: string }> = {
   dashboard: { label: "Dashboard", description: "Overview & analytics" },
   inventory: { label: "Inventory", description: "Products & stock management" },
+  price_check: { label: "Price Check", description: "Quick price lookup" },
   clients: { label: "Clients", description: "Customer management" },
   invoices: { label: "Invoices", description: "Create & manage invoices" },
   payments: { label: "Payments", description: "Record payments" },
+  cheques: { label: "Cheques", description: "Track given cheques" },
   recovery: { label: "Recovery", description: "Debt recovery management" },
   returns: { label: "Returns", description: "Process returns" },
   reports: { label: "Reports", description: "Sales & financial reports" },
