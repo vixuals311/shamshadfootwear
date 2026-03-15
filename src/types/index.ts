@@ -35,10 +35,10 @@ export interface PagePermission {
 
 // Default page access per role
 export const ROLE_DEFAULT_PAGES: Record<UserRole, PageKey[]> = {
-  admin: ["dashboard", "inventory", "clients", "invoices", "payments", "recovery", "returns", "reports", "users", "audit_logs", "settings"],
-  manager: ["dashboard", "inventory", "clients", "invoices", "payments", "recovery", "returns", "reports", "audit_logs", "settings"],
-  biller: ["dashboard", "inventory", "clients", "invoices", "returns"],
-  cashier: ["dashboard", "payments", "recovery"],
+  admin: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "returns", "reports", "users", "audit_logs", "settings"],
+  manager: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "returns", "reports", "audit_logs", "settings"],
+  biller: ["dashboard", "inventory", "price_check", "clients", "invoices", "returns"],
+  cashier: ["dashboard", "payments", "cheques", "recovery"],
 };
 
 // Page metadata for UI display
