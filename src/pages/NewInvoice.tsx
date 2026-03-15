@@ -1125,11 +1125,6 @@ const NewInvoice = () => {
                           </div>
                           {totalSelectedBundles > 0 && (
                             <div className="sticky bottom-0 bg-card pt-2 pb-1 -mx-3 px-3 border-t border-border/30">
-                              {sizeSelections.some(s => s.bundles > s.availableQuantity) && (
-                                <p className="text-xs text-warning mb-2">
-                                  ⚠ Some sizes exceed available stock. Bill will still be saved.
-                                </p>
-                              )}
                               <Button
                                 className="w-full h-11 sm:h-9 text-sm"
                                 onClick={(e) => {
