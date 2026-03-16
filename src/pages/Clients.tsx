@@ -892,57 +892,102 @@ const Clients = () => {
     try {
       const amount = parseFloat(quickRecoveryAmount);
       const newBalance = selectedClient.currentBalance - amount;
-      
-      // Insert recovery — try online, queue if offline
-      const recoveryResult = await offlineMutation("recoveries", "insert", {
-        client_id: selectedClient.id,
-        amount: amount,
-        notes: quickRecoveryNotes || null,
-        type: "client",
-      });
 
-      if (recoveryResult.error) throw new Error(recoveryResult.error);
+      if (recoveryType === "city") {
+        // City recovery: create a city recovery record and add client amount
+        const clientCity = selectedClient.city !== "N/A" ? selectedClient.city : null;
+        
+        // Check if there's already a city recovery for today
+        const today = new Date().toISOString().split("T")[0];
+        const { data: existingRecovery } = await supabase
+          .from("recoveries")
+          .select("id, amount")
+          .eq("type", "city")
+          .eq("city", clientCity || "")
+          .eq("date", today)
+          .maybeSingle();
 
-      // Update client balance
-      const balanceResult = await offlineMutation("clients", "update", {
-        current_balance: newBalance,
-      }, selectedClient.id);
+        let recoveryId: string;
 
-      if (balanceResult.error) throw new Error(balanceResult.error);
+        if (existingRecovery) {
+          // Add to existing city recovery
+          recoveryId = existingRecovery.id;
+          await supabase
+            .from("recoveries")
+            .update({ amount: existingRecovery.amount + amount })
+            .eq("id", recoveryId);
+        } else {
+          // Create new city recovery
+          const { data: newRecovery, error: recError } = await supabase
+            .from("recoveries")
+            .insert({
+              amount,
+              type: "city",
+              city: clientCity,
+              notes: quickRecoveryNotes || null,
+              date: today,
+            })
+            .select()
+            .single();
+          if (recError) throw recError;
+          recoveryId = newRecovery.id;
+        }
 
-      // Log audit event (best-effort)
+        // Add client amount entry
+        const { error: rcaError } = await supabase
+          .from("recovery_client_amounts")
+          .insert({
+            recovery_id: recoveryId,
+            client_id: selectedClient.id,
+            amount,
+          });
+        if (rcaError) throw rcaError;
+
+        // Update client balance
+        await supabase
+          .from("clients")
+          .update({ current_balance: newBalance })
+          .eq("id", selectedClient.id);
+      } else {
+        // Individual recovery (existing flow)
+        const recoveryResult = await offlineMutation("recoveries", "insert", {
+          client_id: selectedClient.id,
+          amount: amount,
+          notes: quickRecoveryNotes || null,
+          type: "client",
+        });
+        if (recoveryResult.error) throw new Error(recoveryResult.error);
+
+        const balanceResult = await offlineMutation("clients", "update", {
+          current_balance: newBalance,
+        }, selectedClient.id);
+        if (balanceResult.error) throw new Error(balanceResult.error);
+      }
+
       log({
         action: "create",
         entityType: "recovery",
         entityId: selectedClient.id,
         details: {
           clientName: selectedClient.name,
-          amount: amount,
+          amount,
+          type: recoveryType,
           notes: quickRecoveryNotes,
-          queued: recoveryResult.queued,
         },
       }).catch(() => {});
 
       toast({
-        title: recoveryResult.queued ? "Queued" : "Success",
-        description: recoveryResult.queued
-          ? `Recovery of Rs ${amount.toLocaleString()} queued — will sync when online`
-          : `Recovery of Rs ${amount.toLocaleString()} added for ${selectedClient.name}`,
+        title: "Success",
+        description: `${recoveryType === "city" ? "City" : "Individual"} recovery of Rs ${amount.toLocaleString()} added for ${selectedClient.name}`,
       });
 
-      // Update local state
-      setSelectedClient({
-        ...selectedClient,
-        currentBalance: newBalance,
-      });
-      
-      // Refresh client details (will use cache if offline)
+      setSelectedClient({ ...selectedClient, currentBalance: newBalance });
       fetchClientDetails(selectedClient.id);
       fetchClients();
       
-      // Reset form
       setQuickRecoveryAmount("");
       setQuickRecoveryNotes("");
+      setRecoveryType("individual");
       setShowQuickRecoveryConfirm(false);
       setIsQuickRecoveryOpen(false);
     } catch (error: any) {
