@@ -167,6 +167,7 @@ const Clients = () => {
   const [quickRecoveryNotes, setQuickRecoveryNotes] = useState("");
   const [quickRecoveryLoading, setQuickRecoveryLoading] = useState(false);
   const [showQuickRecoveryConfirm, setShowQuickRecoveryConfirm] = useState(false);
+  const [recoveryType, setRecoveryType] = useState<"individual" | "city">("individual");
   
   const [newClient, setNewClient] = useState({
     name: "",
