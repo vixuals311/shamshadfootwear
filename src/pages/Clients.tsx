@@ -1443,8 +1443,11 @@ const Clients = () => {
             }
           }}
         />
-        <Dialog open={isQuickRecoveryOpen} onOpenChange={setIsQuickRecoveryOpen}>
-          <DialogContent className="sm:max-w-[400px]">
+        <Dialog open={isQuickRecoveryOpen} onOpenChange={(open) => {
+          setIsQuickRecoveryOpen(open);
+          if (!open) setRecoveryType("individual");
+        }}>
+          <DialogContent className="max-w-[95vw] sm:max-w-[440px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-primary" />
@@ -1455,6 +1458,41 @@ const Clients = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Recovery Type Toggle */}
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setRecoveryType("individual")}
+                  className={cn(
+                    "flex-1 py-2.5 px-3 text-sm font-medium transition-colors",
+                    recoveryType === "individual"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  Individual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecoveryType("city")}
+                  className={cn(
+                    "flex-1 py-2.5 px-3 text-sm font-medium transition-colors border-l border-border",
+                    recoveryType === "city"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  City Recovery
+                </button>
+              </div>
+
+              {recoveryType === "city" && (
+                <div className="p-3 rounded-lg bg-accent/50 border border-accent text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4 inline mr-1" />
+                  This will be added to today's city recovery list for <span className="font-medium text-foreground">{selectedClient.city !== "N/A" ? selectedClient.city : "Unknown"}</span>
+                </div>
+              )}
+
               <div className="p-3 rounded-lg bg-muted/50">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Current Balance</span>
