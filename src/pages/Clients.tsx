@@ -560,6 +560,75 @@ const Clients = () => {
     }
   };
 
+  // Open edit client dialog
+  const handleOpenEditClient = (client: Client) => {
+    setEditClientData(client);
+    setEditClientForm({
+      name: client.name,
+      email: client.email === "N/A" ? "" : client.email,
+      phone: client.phone === "N/A" ? "" : client.phone,
+      address: client.address === "N/A" ? "" : client.address,
+      city: client.city === "N/A" ? "" : client.city,
+      referenceNumber: client.referenceNumber === "N/A" ? "" : client.referenceNumber,
+    });
+    setEditClientDialogOpen(true);
+  };
+
+  // Save edited client
+  const handleSaveEditClient = async () => {
+    if (!editClientData) return;
+    if (!editClientForm.name || !editClientForm.phone) {
+      toast({ title: "Missing Info", description: "Name and phone are required", variant: "destructive" });
+      return;
+    }
+    const phonePattern = /^0\d{3}-\d{7}$/;
+    if (!phonePattern.test(editClientForm.phone)) {
+      toast({ title: "Invalid Phone", description: "Phone must follow 0XXX-XXXXXXX", variant: "destructive" });
+      return;
+    }
+    setEditClientSaving(true);
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          name: editClientForm.name,
+          email: editClientForm.email || null,
+          phone: editClientForm.phone,
+          address: editClientForm.address || null,
+          city: editClientForm.city || null,
+          reference_number: editClientForm.referenceNumber || null,
+        })
+        .eq("id", editClientData.id);
+      if (error) throw error;
+      await log({
+        action: "update",
+        entityType: "client",
+        entityId: editClientData.id,
+        details: { name: editClientForm.name, phone: editClientForm.phone },
+      });
+      toast({ title: "Success", description: "Client updated successfully" });
+      setEditClientDialogOpen(false);
+      setEditClientData(null);
+      // Update selectedClient if viewing
+      if (selectedClient?.id === editClientData.id) {
+        setSelectedClient({
+          ...selectedClient,
+          name: editClientForm.name,
+          email: editClientForm.email || "N/A",
+          phone: editClientForm.phone || "N/A",
+          address: editClientForm.address || "N/A",
+          city: editClientForm.city || "N/A",
+          referenceNumber: editClientForm.referenceNumber || "N/A",
+        });
+      }
+      fetchClients();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to update client", variant: "destructive" });
+    } finally {
+      setEditClientSaving(false);
+    }
+  };
+
   // Handle opening PIN dialog
   const handleOpenPinDialog = async (client: Client) => {
     setPinDialogClient(client);
