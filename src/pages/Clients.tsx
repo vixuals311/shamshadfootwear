@@ -2009,7 +2009,10 @@ const Clients = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem className="gap-2">
+                    <DropdownMenuItem className="gap-2" onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenEditClient(client);
+                    }}>
                       <Edit2 className="w-4 h-4" />
                       Edit
                     </DropdownMenuItem>
