@@ -142,6 +142,14 @@ const Clients = () => {
   const [currentClientPin, setCurrentClientPin] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
 
+  // Edit client states
+  const [editClientDialogOpen, setEditClientDialogOpen] = useState(false);
+  const [editClientData, setEditClientData] = useState<Client | null>(null);
+  const [editClientForm, setEditClientForm] = useState({
+    name: "", email: "", phone: "", address: "", city: "", referenceNumber: "",
+  });
+  const [editClientSaving, setEditClientSaving] = useState(false);
+
   // Manual bill states
   const [isAddManualBillOpen, setIsAddManualBillOpen] = useState(false);
   const [manualBillForm, setManualBillForm] = useState({
@@ -159,6 +167,7 @@ const Clients = () => {
   const [quickRecoveryNotes, setQuickRecoveryNotes] = useState("");
   const [quickRecoveryLoading, setQuickRecoveryLoading] = useState(false);
   const [showQuickRecoveryConfirm, setShowQuickRecoveryConfirm] = useState(false);
+  const [recoveryType, setRecoveryType] = useState<"individual" | "city">("individual");
   
   const [newClient, setNewClient] = useState({
     name: "",
@@ -551,6 +560,75 @@ const Clients = () => {
     }
   };
 
+  // Open edit client dialog
+  const handleOpenEditClient = (client: Client) => {
+    setEditClientData(client);
+    setEditClientForm({
+      name: client.name,
+      email: client.email === "N/A" ? "" : client.email,
+      phone: client.phone === "N/A" ? "" : client.phone,
+      address: client.address === "N/A" ? "" : client.address,
+      city: client.city === "N/A" ? "" : client.city,
+      referenceNumber: client.referenceNumber === "N/A" ? "" : client.referenceNumber,
+    });
+    setEditClientDialogOpen(true);
+  };
+
+  // Save edited client
+  const handleSaveEditClient = async () => {
+    if (!editClientData) return;
+    if (!editClientForm.name || !editClientForm.phone) {
+      toast({ title: "Missing Info", description: "Name and phone are required", variant: "destructive" });
+      return;
+    }
+    const phonePattern = /^0\d{3}-\d{7}$/;
+    if (!phonePattern.test(editClientForm.phone)) {
+      toast({ title: "Invalid Phone", description: "Phone must follow 0XXX-XXXXXXX", variant: "destructive" });
+      return;
+    }
+    setEditClientSaving(true);
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          name: editClientForm.name,
+          email: editClientForm.email || null,
+          phone: editClientForm.phone,
+          address: editClientForm.address || null,
+          city: editClientForm.city || null,
+          reference_number: editClientForm.referenceNumber || null,
+        })
+        .eq("id", editClientData.id);
+      if (error) throw error;
+      await log({
+        action: "update",
+        entityType: "client",
+        entityId: editClientData.id,
+        details: { name: editClientForm.name, phone: editClientForm.phone },
+      });
+      toast({ title: "Success", description: "Client updated successfully" });
+      setEditClientDialogOpen(false);
+      setEditClientData(null);
+      // Update selectedClient if viewing
+      if (selectedClient?.id === editClientData.id) {
+        setSelectedClient({
+          ...selectedClient,
+          name: editClientForm.name,
+          email: editClientForm.email || "N/A",
+          phone: editClientForm.phone || "N/A",
+          address: editClientForm.address || "N/A",
+          city: editClientForm.city || "N/A",
+          referenceNumber: editClientForm.referenceNumber || "N/A",
+        });
+      }
+      fetchClients();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to update client", variant: "destructive" });
+    } finally {
+      setEditClientSaving(false);
+    }
+  };
+
   // Handle opening PIN dialog
   const handleOpenPinDialog = async (client: Client) => {
     setPinDialogClient(client);
@@ -814,57 +892,102 @@ const Clients = () => {
     try {
       const amount = parseFloat(quickRecoveryAmount);
       const newBalance = selectedClient.currentBalance - amount;
-      
-      // Insert recovery — try online, queue if offline
-      const recoveryResult = await offlineMutation("recoveries", "insert", {
-        client_id: selectedClient.id,
-        amount: amount,
-        notes: quickRecoveryNotes || null,
-        type: "client",
-      });
 
-      if (recoveryResult.error) throw new Error(recoveryResult.error);
+      if (recoveryType === "city") {
+        // City recovery: create a city recovery record and add client amount
+        const clientCity = selectedClient.city !== "N/A" ? selectedClient.city : null;
+        
+        // Check if there's already a city recovery for today
+        const today = new Date().toISOString().split("T")[0];
+        const { data: existingRecovery } = await supabase
+          .from("recoveries")
+          .select("id, amount")
+          .eq("type", "city")
+          .eq("city", clientCity || "")
+          .eq("date", today)
+          .maybeSingle();
 
-      // Update client balance
-      const balanceResult = await offlineMutation("clients", "update", {
-        current_balance: newBalance,
-      }, selectedClient.id);
+        let recoveryId: string;
 
-      if (balanceResult.error) throw new Error(balanceResult.error);
+        if (existingRecovery) {
+          // Add to existing city recovery
+          recoveryId = existingRecovery.id;
+          await supabase
+            .from("recoveries")
+            .update({ amount: existingRecovery.amount + amount })
+            .eq("id", recoveryId);
+        } else {
+          // Create new city recovery
+          const { data: newRecovery, error: recError } = await supabase
+            .from("recoveries")
+            .insert({
+              amount,
+              type: "city",
+              city: clientCity,
+              notes: quickRecoveryNotes || null,
+              date: today,
+            })
+            .select()
+            .single();
+          if (recError) throw recError;
+          recoveryId = newRecovery.id;
+        }
 
-      // Log audit event (best-effort)
+        // Add client amount entry
+        const { error: rcaError } = await supabase
+          .from("recovery_client_amounts")
+          .insert({
+            recovery_id: recoveryId,
+            client_id: selectedClient.id,
+            amount,
+          });
+        if (rcaError) throw rcaError;
+
+        // Update client balance
+        await supabase
+          .from("clients")
+          .update({ current_balance: newBalance })
+          .eq("id", selectedClient.id);
+      } else {
+        // Individual recovery (existing flow)
+        const recoveryResult = await offlineMutation("recoveries", "insert", {
+          client_id: selectedClient.id,
+          amount: amount,
+          notes: quickRecoveryNotes || null,
+          type: "client",
+        });
+        if (recoveryResult.error) throw new Error(recoveryResult.error);
+
+        const balanceResult = await offlineMutation("clients", "update", {
+          current_balance: newBalance,
+        }, selectedClient.id);
+        if (balanceResult.error) throw new Error(balanceResult.error);
+      }
+
       log({
         action: "create",
         entityType: "recovery",
         entityId: selectedClient.id,
         details: {
           clientName: selectedClient.name,
-          amount: amount,
+          amount,
+          type: recoveryType,
           notes: quickRecoveryNotes,
-          queued: recoveryResult.queued,
         },
       }).catch(() => {});
 
       toast({
-        title: recoveryResult.queued ? "Queued" : "Success",
-        description: recoveryResult.queued
-          ? `Recovery of Rs ${amount.toLocaleString()} queued — will sync when online`
-          : `Recovery of Rs ${amount.toLocaleString()} added for ${selectedClient.name}`,
+        title: "Success",
+        description: `${recoveryType === "city" ? "City" : "Individual"} recovery of Rs ${amount.toLocaleString()} added for ${selectedClient.name}`,
       });
 
-      // Update local state
-      setSelectedClient({
-        ...selectedClient,
-        currentBalance: newBalance,
-      });
-      
-      // Refresh client details (will use cache if offline)
+      setSelectedClient({ ...selectedClient, currentBalance: newBalance });
       fetchClientDetails(selectedClient.id);
       fetchClients();
       
-      // Reset form
       setQuickRecoveryAmount("");
       setQuickRecoveryNotes("");
+      setRecoveryType("individual");
       setShowQuickRecoveryConfirm(false);
       setIsQuickRecoveryOpen(false);
     } catch (error: any) {
@@ -1320,8 +1443,11 @@ const Clients = () => {
             }
           }}
         />
-        <Dialog open={isQuickRecoveryOpen} onOpenChange={setIsQuickRecoveryOpen}>
-          <DialogContent className="sm:max-w-[400px]">
+        <Dialog open={isQuickRecoveryOpen} onOpenChange={(open) => {
+          setIsQuickRecoveryOpen(open);
+          if (!open) setRecoveryType("individual");
+        }}>
+          <DialogContent className="max-w-[95vw] sm:max-w-[440px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-primary" />
@@ -1332,6 +1458,41 @@ const Clients = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Recovery Type Toggle */}
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setRecoveryType("individual")}
+                  className={cn(
+                    "flex-1 py-2.5 px-3 text-sm font-medium transition-colors",
+                    recoveryType === "individual"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  Individual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecoveryType("city")}
+                  className={cn(
+                    "flex-1 py-2.5 px-3 text-sm font-medium transition-colors border-l border-border",
+                    recoveryType === "city"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  City Recovery
+                </button>
+              </div>
+
+              {recoveryType === "city" && (
+                <div className="p-3 rounded-lg bg-accent/50 border border-accent text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4 inline mr-1" />
+                  This will be added to today's city recovery list for <span className="font-medium text-foreground">{selectedClient.city !== "N/A" ? selectedClient.city : "Unknown"}</span>
+                </div>
+              )}
+
               <div className="p-3 rounded-lg bg-muted/50">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Current Balance</span>
@@ -1848,7 +2009,10 @@ const Clients = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem className="gap-2">
+                    <DropdownMenuItem className="gap-2" onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenEditClient(client);
+                    }}>
                       <Edit2 className="w-4 h-4" />
                       Edit
                     </DropdownMenuItem>
@@ -1965,7 +2129,10 @@ const Clients = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem className="gap-2">
+                          <DropdownMenuItem className="gap-2" onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditClient(client);
+                          }}>
                             <Edit2 className="w-4 h-4" />
                             Edit
                           </DropdownMenuItem>
@@ -2119,6 +2286,88 @@ const Clients = () => {
                 {currentClientPin ? "Update PIN" : "Set PIN"}
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Client Dialog */}
+      <Dialog open={editClientDialogOpen} onOpenChange={(open) => {
+        setEditClientDialogOpen(open);
+        if (!open) setEditClientData(null);
+      }}>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Client</DialogTitle>
+            <DialogDescription>Update client details</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Client Name *</Label>
+                <Input
+                  value={editClientForm.name}
+                  onChange={(e) => setEditClientForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter client name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone *</Label>
+                <Input
+                  value={editClientForm.phone}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+                    let formatted = raw;
+                    if (raw.length > 4) formatted = raw.slice(0, 4) + "-" + raw.slice(4);
+                    setEditClientForm(prev => ({ ...prev, phone: formatted }));
+                  }}
+                  placeholder="0306-1728311"
+                  maxLength={12}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={editClientForm.email}
+                  onChange={(e) => setEditClientForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Enter email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>City</Label>
+                <CityCombobox
+                  value={editClientForm.city}
+                  onChange={(city) => setEditClientForm(prev => ({ ...prev, city }))}
+                  existingCities={existingCities}
+                  placeholder="Select or add city..."
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <Input
+                value={editClientForm.address}
+                onChange={(e) => setEditClientForm(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="Enter full address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Reference Number</Label>
+              <Input
+                value={editClientForm.referenceNumber}
+                onChange={(e) => setEditClientForm(prev => ({ ...prev, referenceNumber: e.target.value }))}
+                placeholder="e.g. REF-001"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditClientDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEditClient} disabled={editClientSaving}>
+              {editClientSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
