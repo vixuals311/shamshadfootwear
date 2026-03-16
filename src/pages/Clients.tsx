@@ -142,6 +142,14 @@ const Clients = () => {
   const [currentClientPin, setCurrentClientPin] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
 
+  // Edit client states
+  const [editClientDialogOpen, setEditClientDialogOpen] = useState(false);
+  const [editClientData, setEditClientData] = useState<Client | null>(null);
+  const [editClientForm, setEditClientForm] = useState({
+    name: "", email: "", phone: "", address: "", city: "", referenceNumber: "",
+  });
+  const [editClientSaving, setEditClientSaving] = useState(false);
+
   // Manual bill states
   const [isAddManualBillOpen, setIsAddManualBillOpen] = useState(false);
   const [manualBillForm, setManualBillForm] = useState({
