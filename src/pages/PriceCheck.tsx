@@ -127,20 +127,20 @@ const PriceCheck = () => {
                 </div>
               </div>
               {product.sizeBundles.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {product.sizeBundles.map((sb, i) => (
                     <div
                       key={i}
                       className={cn(
-                        "p-3 rounded-lg border text-center",
+                        "p-4 rounded-lg border text-center",
                         sb.quantity > 0
                           ? "border-success/30 bg-success/5"
                           : "border-border bg-muted/30"
                       )}
                     >
-                      <p className="text-xs text-muted-foreground">{sb.sizeRange}</p>
-                      <p className="text-lg font-bold text-foreground">Rs {sb.pricePerPair}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm font-medium text-muted-foreground">{sb.sizeRange}</p>
+                      <p className="text-2xl font-bold text-foreground">Rs {sb.pricePerPair}</p>
+                      <p className="text-sm text-muted-foreground">
                         {sb.quantity > 0 ? `${sb.quantity} bundles` : "Out of stock"}
                       </p>
                     </div>

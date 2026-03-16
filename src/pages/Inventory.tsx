@@ -503,8 +503,11 @@ const Inventory = () => {
     }
   };
 
-  const getStockStatus = (stockDozens: number, pairsPerDozen: number) => {
-    const totalPairs = stockDozens * pairsPerDozen;
+  const getStockStatus = (product: { sizeBundles: any[] }) => {
+    const totalPairs = product.sizeBundles.reduce(
+      (sum: number, sb: any) => sum + (sb.quantity ?? 0) * (sb.pairsPerBundle ?? 6),
+      0
+    );
     if (totalPairs <= 24)
       return { label: "Critical", class: "status-badge-danger" };
     if (totalPairs <= 60) return { label: "Low", class: "status-badge-warning" };
