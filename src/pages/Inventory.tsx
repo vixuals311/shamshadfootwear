@@ -1515,7 +1515,7 @@ const Inventory = () => {
                   (sum: number, sb: any) => sum + (sb.quantity ?? 0) * (sb.pairsPerBundle ?? 6),
                   0
                 );
-                const stockStatus = getStockStatus(product.stockDozens, product.pairsPerDozen);
+                const stockStatus = getStockStatus(product);
                 return (
                   <motion.tr
                     key={product.id}
