@@ -2289,6 +2289,88 @@ const Clients = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Client Dialog */}
+      <Dialog open={editClientDialogOpen} onOpenChange={(open) => {
+        setEditClientDialogOpen(open);
+        if (!open) setEditClientData(null);
+      }}>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Client</DialogTitle>
+            <DialogDescription>Update client details</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Client Name *</Label>
+                <Input
+                  value={editClientForm.name}
+                  onChange={(e) => setEditClientForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter client name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone *</Label>
+                <Input
+                  value={editClientForm.phone}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+                    let formatted = raw;
+                    if (raw.length > 4) formatted = raw.slice(0, 4) + "-" + raw.slice(4);
+                    setEditClientForm(prev => ({ ...prev, phone: formatted }));
+                  }}
+                  placeholder="0306-1728311"
+                  maxLength={12}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={editClientForm.email}
+                  onChange={(e) => setEditClientForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Enter email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>City</Label>
+                <CityCombobox
+                  value={editClientForm.city}
+                  onChange={(city) => setEditClientForm(prev => ({ ...prev, city }))}
+                  existingCities={existingCities}
+                  placeholder="Select or add city..."
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <Input
+                value={editClientForm.address}
+                onChange={(e) => setEditClientForm(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="Enter full address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Reference Number</Label>
+              <Input
+                value={editClientForm.referenceNumber}
+                onChange={(e) => setEditClientForm(prev => ({ ...prev, referenceNumber: e.target.value }))}
+                placeholder="e.g. REF-001"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditClientDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEditClient} disabled={editClientSaving}>
+              {editClientSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
