@@ -92,6 +92,11 @@ interface Recovery {
   clientAmounts?: { clientId: string; clientName: string; amount: number }[];
 }
 
+interface PaymentAccount {
+  id: string;
+  name: string;
+}
+
 interface CityClientRecovery {
   clientId: string;
   clientName: string;
@@ -99,6 +104,7 @@ interface CityClientRecovery {
   currentBalance: number;
   recoveryAmount: string;
   isCollected?: boolean;
+  accountId?: string;
 }
 
 interface SortableCityItem {
