@@ -998,6 +998,7 @@ const Clients = () => {
       
       setQuickRecoveryAmount("");
       setQuickRecoveryNotes("");
+      setQuickRecoveryAccountId("");
       setRecoveryType("individual");
       setShowQuickRecoveryConfirm(false);
       setIsQuickRecoveryOpen(false);
