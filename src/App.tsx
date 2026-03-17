@@ -29,6 +29,7 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 import { DeviceLimitDialog } from "@/components/auth/DeviceLimitDialog";
+import { PwaUpdatePrompt } from "@/components/layout/PwaUpdatePrompt";
 
 const queryClient = new QueryClient();
 
@@ -166,6 +167,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <PwaUpdatePrompt />
             <BrowserRouter>
               <AppRoutes />
             </BrowserRouter>

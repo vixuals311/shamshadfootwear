@@ -92,6 +92,11 @@ interface Recovery {
   clientAmounts?: { clientId: string; clientName: string; amount: number }[];
 }
 
+interface PaymentAccount {
+  id: string;
+  name: string;
+}
+
 interface CityClientRecovery {
   clientId: string;
   clientName: string;
@@ -99,6 +104,7 @@ interface CityClientRecovery {
   currentBalance: number;
   recoveryAmount: string;
   isCollected?: boolean;
+  accountId?: string;
 }
 
 interface SortableCityItem {
@@ -111,6 +117,7 @@ const RecoveryPage = () => {
   const { log } = useAuditLog();
   const { drafts, saveDraft, deleteDraft, getDraftForCityDate } = useRecoveryDrafts();
   const [clients, setClients] = useState<Client[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
   const [recoveries, setRecoveries] = useState<Recovery[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -139,6 +146,7 @@ const RecoveryPage = () => {
     clientName: "",
     amount: "",
     notes: "",
+    accountId: "",
   });
 
   const [cityRecoveryCity, setCityRecoveryCity] = useState("");
@@ -191,12 +199,13 @@ const RecoveryPage = () => {
     try {
       setLoading(true);
 
-      const { data: clientsData, error: clientsError } = await supabase
-        .from("clients")
-        .select("id, name, phone, city, current_balance")
-        .order("name");
+      const [{ data: clientsData, error: clientsError }, { data: accountsData }] = await Promise.all([
+        supabase.from("clients").select("id, name, phone, city, current_balance").order("name"),
+        supabase.from("payment_accounts").select("*").order("name"),
+      ]);
 
       if (clientsError) throw clientsError;
+      setPaymentAccounts((accountsData || []).map(a => ({ id: a.id, name: a.name })));
 
       const formattedClients = (clientsData || []).map((c) => ({
         id: c.id,
@@ -489,6 +498,12 @@ const RecoveryPage = () => {
     );
   };
 
+  const updateClientAccountId = (clientId: string, accountId: string) => {
+    setCityClientRecoveries((prev) =>
+      prev.map((c) => (c.clientId === clientId ? { ...c, accountId: accountId === "cash" ? "" : accountId } : c))
+    );
+  };
+
   // Filter city clients by search
   const filteredCityClients = useMemo(() => {
     if (!cityClientSearch.trim()) return cityClientRecoveries;
@@ -527,11 +542,12 @@ const RecoveryPage = () => {
       if (recoveryCategory === "client") {
         if (!clientRecovery.clientId || !clientRecovery.amount) return;
 
-        const recoveryData = {
+        const recoveryData: any = {
           client_id: clientRecovery.clientId,
           amount: parseFloat(clientRecovery.amount),
           notes: clientRecovery.notes || null,
           type: "client",
+          ...(clientRecovery.accountId ? { account_id: clientRecovery.accountId } : {}),
         };
 
         let onlineSaved = false;
@@ -577,7 +593,7 @@ const RecoveryPage = () => {
           title: onlineSaved ? "Success" : "Queued for sync",
           description: onlineSaved ? "Client recovery added" : "Recovery saved offline and will sync when back online.",
         });
-        setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "" });
+        setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "", accountId: "" });
       } else {
         if (!cityRecoveryCity) return;
 
@@ -611,6 +627,7 @@ const RecoveryPage = () => {
             recovery_id: recoveryResult.id,
             client_id: ca.clientId,
             amount: parseFloat(ca.recoveryAmount),
+            ...(ca.accountId ? { account_id: ca.accountId } : {}),
           }));
 
           const { error: amountsError } = await supabase
@@ -1330,6 +1347,20 @@ const RecoveryPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label>Account</Label>
+                  <Select value={clientRecovery.accountId || "cash"} onValueChange={(v) => setClientRecovery({ ...clientRecovery, accountId: v === "cash" ? "" : v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      {paymentAccounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Notes (Optional)</Label>
                   <Textarea
                     value={clientRecovery.notes}
@@ -1421,6 +1452,7 @@ const RecoveryPage = () => {
                             <th>Client</th>
                             <th>Phone</th>
                             <th>Pending Balance</th>
+                            <th>Account</th>
                             <th>Recovery Amount</th>
                           </tr>
                         </thead>
@@ -1450,6 +1482,19 @@ const RecoveryPage = () => {
                               <td className="text-muted-foreground text-sm">{client.phone}</td>
                               <td className="text-destructive font-medium">
                                 Rs {client.currentBalance.toLocaleString()}
+                              </td>
+                              <td>
+                                <Select value={client.accountId || "cash"} onValueChange={(v) => updateClientAccountId(client.clientId, v)}>
+                                  <SelectTrigger className="h-8 w-28">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="cash">Cash</SelectItem>
+                                    {paymentAccounts.map((acc) => (
+                                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </td>
                               <td>
                                 <Input
@@ -1500,15 +1545,26 @@ const RecoveryPage = () => {
                               <div className="text-sm text-destructive font-medium mt-1">
                                 Balance: Rs {client.currentBalance.toLocaleString()}
                               </div>
-                              <div className="mt-2">
+                              <div className="mt-2 flex gap-2">
+                                <Select value={client.accountId || "cash"} onValueChange={(v) => updateClientAccountId(client.clientId, v)}>
+                                  <SelectTrigger className="h-10 w-28">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="cash">Cash</SelectItem>
+                                    {paymentAccounts.map((acc) => (
+                                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <Input
                                   type="number"
                                   value={client.recoveryAmount}
                                   onChange={(e) =>
                                     updateClientRecoveryAmount(client.clientId, e.target.value)
                                   }
-                                  placeholder="Enter recovery amount"
-                                  className="h-10"
+                                  placeholder="Amount"
+                                  className="h-10 flex-1"
                                 />
                               </div>
                             </div>

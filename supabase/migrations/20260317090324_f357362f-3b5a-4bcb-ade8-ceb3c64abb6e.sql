@@ -1,0 +1,2 @@
+ALTER TABLE public.recoveries ADD COLUMN account_id uuid REFERENCES public.payment_accounts(id) DEFAULT NULL;
+ALTER TABLE public.recovery_client_amounts ADD COLUMN account_id uuid REFERENCES public.payment_accounts(id) DEFAULT NULL;

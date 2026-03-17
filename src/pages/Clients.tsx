@@ -168,7 +168,8 @@ const Clients = () => {
   const [quickRecoveryLoading, setQuickRecoveryLoading] = useState(false);
   const [showQuickRecoveryConfirm, setShowQuickRecoveryConfirm] = useState(false);
   const [recoveryType, setRecoveryType] = useState<"individual" | "city">("individual");
-  
+  const [quickRecoveryAccountId, setQuickRecoveryAccountId] = useState("");
+  const [paymentAccounts, setPaymentAccounts] = useState<{ id: string; name: string }[]>([]);
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
@@ -218,8 +219,14 @@ const Clients = () => {
     }
   };
 
+  const fetchPaymentAccounts = async () => {
+    const { data } = await supabase.from("payment_accounts").select("*").order("name");
+    setPaymentAccounts((data || []).map(a => ({ id: a.id, name: a.name })));
+  };
+
   useEffect(() => {
     fetchClients();
+    fetchPaymentAccounts();
   }, []);
 
   // Fetch client details when selected
@@ -934,13 +941,15 @@ const Clients = () => {
         }
 
         // Add client amount entry
+        const rcaData: any = {
+          recovery_id: recoveryId,
+          client_id: selectedClient.id,
+          amount,
+        };
+        if (quickRecoveryAccountId) rcaData.account_id = quickRecoveryAccountId;
         const { error: rcaError } = await supabase
           .from("recovery_client_amounts")
-          .insert({
-            recovery_id: recoveryId,
-            client_id: selectedClient.id,
-            amount,
-          });
+          .insert(rcaData);
         if (rcaError) throw rcaError;
 
         // Update client balance
@@ -950,12 +959,14 @@ const Clients = () => {
           .eq("id", selectedClient.id);
       } else {
         // Individual recovery (existing flow)
-        const recoveryResult = await offlineMutation("recoveries", "insert", {
+        const insertData: any = {
           client_id: selectedClient.id,
           amount: amount,
           notes: quickRecoveryNotes || null,
           type: "client",
-        });
+        };
+        if (quickRecoveryAccountId) insertData.account_id = quickRecoveryAccountId;
+        const recoveryResult = await offlineMutation("recoveries", "insert", insertData);
         if (recoveryResult.error) throw new Error(recoveryResult.error);
 
         const balanceResult = await offlineMutation("clients", "update", {
@@ -987,6 +998,7 @@ const Clients = () => {
       
       setQuickRecoveryAmount("");
       setQuickRecoveryNotes("");
+      setQuickRecoveryAccountId("");
       setRecoveryType("individual");
       setShowQuickRecoveryConfirm(false);
       setIsQuickRecoveryOpen(false);
@@ -1512,6 +1524,21 @@ const Clients = () => {
                   placeholder="Enter amount"
                   autoFocus
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Account</Label>
+                <Select value={quickRecoveryAccountId || "cash"} onValueChange={(v) => setQuickRecoveryAccountId(v === "cash" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    {paymentAccounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="space-y-2">
