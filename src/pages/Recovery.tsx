@@ -585,7 +585,7 @@ const RecoveryPage = () => {
           title: onlineSaved ? "Success" : "Queued for sync",
           description: onlineSaved ? "Client recovery added" : "Recovery saved offline and will sync when back online.",
         });
-        setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "" });
+        setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "", accountId: "" });
       } else {
         if (!cityRecoveryCity) return;
 
