@@ -959,12 +959,14 @@ const Clients = () => {
           .eq("id", selectedClient.id);
       } else {
         // Individual recovery (existing flow)
-        const recoveryResult = await offlineMutation("recoveries", "insert", {
+        const insertData: any = {
           client_id: selectedClient.id,
           amount: amount,
           notes: quickRecoveryNotes || null,
           type: "client",
-        });
+        };
+        if (quickRecoveryAccountId) insertData.account_id = quickRecoveryAccountId;
+        const recoveryResult = await offlineMutation("recoveries", "insert", insertData);
         if (recoveryResult.error) throw new Error(recoveryResult.error);
 
         const balanceResult = await offlineMutation("clients", "update", {
