@@ -941,13 +941,15 @@ const Clients = () => {
         }
 
         // Add client amount entry
+        const rcaData: any = {
+          recovery_id: recoveryId,
+          client_id: selectedClient.id,
+          amount,
+        };
+        if (quickRecoveryAccountId) rcaData.account_id = quickRecoveryAccountId;
         const { error: rcaError } = await supabase
           .from("recovery_client_amounts")
-          .insert({
-            recovery_id: recoveryId,
-            client_id: selectedClient.id,
-            amount,
-          });
+          .insert(rcaData);
         if (rcaError) throw rcaError;
 
         // Update client balance
