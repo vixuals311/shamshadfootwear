@@ -1545,15 +1545,26 @@ const RecoveryPage = () => {
                               <div className="text-sm text-destructive font-medium mt-1">
                                 Balance: Rs {client.currentBalance.toLocaleString()}
                               </div>
-                              <div className="mt-2">
+                              <div className="mt-2 flex gap-2">
+                                <Select value={client.accountId || "cash"} onValueChange={(v) => updateClientAccountId(client.clientId, v)}>
+                                  <SelectTrigger className="h-10 w-28">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="cash">Cash</SelectItem>
+                                    {paymentAccounts.map((acc) => (
+                                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <Input
                                   type="number"
                                   value={client.recoveryAmount}
                                   onChange={(e) =>
                                     updateClientRecoveryAmount(client.clientId, e.target.value)
                                   }
-                                  placeholder="Enter recovery amount"
-                                  className="h-10"
+                                  placeholder="Amount"
+                                  className="h-10 flex-1"
                                 />
                               </div>
                             </div>
