@@ -1484,6 +1484,19 @@ const RecoveryPage = () => {
                                 Rs {client.currentBalance.toLocaleString()}
                               </td>
                               <td>
+                                <Select value={client.accountId || "cash"} onValueChange={(v) => updateClientAccountId(client.clientId, v)}>
+                                  <SelectTrigger className="h-8 w-28">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="cash">Cash</SelectItem>
+                                    {paymentAccounts.map((acc) => (
+                                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </td>
+                              <td>
                                 <Input
                                   type="number"
                                   value={client.recoveryAmount}
@@ -1494,9 +1507,6 @@ const RecoveryPage = () => {
                                   className="h-8 w-32"
                                 />
                               </td>
-                            </tr>
-                          ))}
-                        </tbody>
                       </table>
                       
                       {/* Mobile Cards */}
