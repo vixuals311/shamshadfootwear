@@ -498,6 +498,12 @@ const RecoveryPage = () => {
     );
   };
 
+  const updateClientAccountId = (clientId: string, accountId: string) => {
+    setCityClientRecoveries((prev) =>
+      prev.map((c) => (c.clientId === clientId ? { ...c, accountId: accountId === "cash" ? "" : accountId } : c))
+    );
+  };
+
   // Filter city clients by search
   const filteredCityClients = useMemo(() => {
     if (!cityClientSearch.trim()) return cityClientRecoveries;
