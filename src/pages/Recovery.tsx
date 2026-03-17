@@ -1452,6 +1452,7 @@ const RecoveryPage = () => {
                             <th>Client</th>
                             <th>Phone</th>
                             <th>Pending Balance</th>
+                            <th>Account</th>
                             <th>Recovery Amount</th>
                           </tr>
                         </thead>
