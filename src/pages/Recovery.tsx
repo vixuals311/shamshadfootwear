@@ -146,6 +146,7 @@ const RecoveryPage = () => {
     clientName: "",
     amount: "",
     notes: "",
+    accountId: "",
   });
 
   const [cityRecoveryCity, setCityRecoveryCity] = useState("");
