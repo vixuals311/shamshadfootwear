@@ -1507,6 +1507,9 @@ const RecoveryPage = () => {
                                   className="h-8 w-32"
                                 />
                               </td>
+                            </tr>
+                          ))}
+                        </tbody>
                       </table>
                       
                       {/* Mobile Cards */}
