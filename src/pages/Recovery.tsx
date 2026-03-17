@@ -536,11 +536,12 @@ const RecoveryPage = () => {
       if (recoveryCategory === "client") {
         if (!clientRecovery.clientId || !clientRecovery.amount) return;
 
-        const recoveryData = {
+        const recoveryData: any = {
           client_id: clientRecovery.clientId,
           amount: parseFloat(clientRecovery.amount),
           notes: clientRecovery.notes || null,
           type: "client",
+          ...(clientRecovery.accountId ? { account_id: clientRecovery.accountId } : {}),
         };
 
         let onlineSaved = false;
