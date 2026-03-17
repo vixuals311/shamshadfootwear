@@ -621,6 +621,7 @@ const RecoveryPage = () => {
             recovery_id: recoveryResult.id,
             client_id: ca.clientId,
             amount: parseFloat(ca.recoveryAmount),
+            ...(ca.accountId ? { account_id: ca.accountId } : {}),
           }));
 
           const { error: amountsError } = await supabase
