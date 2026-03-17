@@ -199,12 +199,13 @@ const RecoveryPage = () => {
     try {
       setLoading(true);
 
-      const { data: clientsData, error: clientsError } = await supabase
-        .from("clients")
-        .select("id, name, phone, city, current_balance")
-        .order("name");
+      const [{ data: clientsData, error: clientsError }, { data: accountsData }] = await Promise.all([
+        supabase.from("clients").select("id, name, phone, city, current_balance").order("name"),
+        supabase.from("payment_accounts").select("*").order("name"),
+      ]);
 
       if (clientsError) throw clientsError;
+      setPaymentAccounts((accountsData || []).map(a => ({ id: a.id, name: a.name })));
 
       const formattedClients = (clientsData || []).map((c) => ({
         id: c.id,
