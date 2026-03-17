@@ -219,8 +219,14 @@ const Clients = () => {
     }
   };
 
+  const fetchPaymentAccounts = async () => {
+    const { data } = await supabase.from("payment_accounts").select("*").order("name");
+    setPaymentAccounts((data || []).map(a => ({ id: a.id, name: a.name })));
+  };
+
   useEffect(() => {
     fetchClients();
+    fetchPaymentAccounts();
   }, []);
 
   // Fetch client details when selected
