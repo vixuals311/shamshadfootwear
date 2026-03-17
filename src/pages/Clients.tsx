@@ -168,7 +168,8 @@ const Clients = () => {
   const [quickRecoveryLoading, setQuickRecoveryLoading] = useState(false);
   const [showQuickRecoveryConfirm, setShowQuickRecoveryConfirm] = useState(false);
   const [recoveryType, setRecoveryType] = useState<"individual" | "city">("individual");
-  
+  const [quickRecoveryAccountId, setQuickRecoveryAccountId] = useState("");
+  const [paymentAccounts, setPaymentAccounts] = useState<{ id: string; name: string }[]>([]);
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
