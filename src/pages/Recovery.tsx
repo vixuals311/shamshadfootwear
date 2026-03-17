@@ -117,6 +117,7 @@ const RecoveryPage = () => {
   const { log } = useAuditLog();
   const { drafts, saveDraft, deleteDraft, getDraftForCityDate } = useRecoveryDrafts();
   const [clients, setClients] = useState<Client[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
   const [recoveries, setRecoveries] = useState<Recovery[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
