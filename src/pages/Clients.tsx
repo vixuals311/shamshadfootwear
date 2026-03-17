@@ -1525,6 +1525,21 @@ const Clients = () => {
                   autoFocus
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Account</Label>
+                <Select value={quickRecoveryAccountId || "cash"} onValueChange={(v) => setQuickRecoveryAccountId(v === "cash" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    {paymentAccounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="quickNotes">Notes (Optional)</Label>
