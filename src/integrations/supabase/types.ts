@@ -622,6 +622,7 @@ export type Database = {
       }
       recoveries: {
         Row: {
+          account_id: string | null
           amount: number
           city: string | null
           client_id: string | null
@@ -633,6 +634,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          account_id?: string | null
           amount: number
           city?: string | null
           client_id?: string | null
@@ -644,6 +646,7 @@ export type Database = {
           type?: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
           city?: string | null
           client_id?: string | null
@@ -656,6 +659,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "recoveries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "payment_accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "recoveries_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -666,6 +676,7 @@ export type Database = {
       }
       recovery_client_amounts: {
         Row: {
+          account_id: string | null
           amount: number
           client_id: string | null
           created_at: string
@@ -673,6 +684,7 @@ export type Database = {
           recovery_id: string
         }
         Insert: {
+          account_id?: string | null
           amount: number
           client_id?: string | null
           created_at?: string
@@ -680,6 +692,7 @@ export type Database = {
           recovery_id: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
           client_id?: string | null
           created_at?: string
@@ -687,6 +700,13 @@ export type Database = {
           recovery_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recovery_client_amounts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "payment_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recovery_client_amounts_client_id_fkey"
             columns: ["client_id"]
