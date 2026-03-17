@@ -1347,6 +1347,20 @@ const RecoveryPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label>Account</Label>
+                  <Select value={clientRecovery.accountId || "cash"} onValueChange={(v) => setClientRecovery({ ...clientRecovery, accountId: v === "cash" ? "" : v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      {paymentAccounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Notes (Optional)</Label>
                   <Textarea
                     value={clientRecovery.notes}
