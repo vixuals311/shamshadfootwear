@@ -669,20 +669,27 @@ export default function Returns() {
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{item.productName}</div>
                             <div className="text-muted-foreground text-xs">
-                              {item.sizeRange} • Max {item.maxPairs} pairs • Rs {item.pricePerPair}/pair
+                              {item.sizeRange} • Max {item.maxBundles} bdl ({item.pairsPerBundle}p/bdl) • Rs {item.pricePerPair}/pair
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              min={1}
-                              max={item.maxPairs}
-                              value={item.pairsReturned}
-                              onChange={(e) =>
-                                updatePairsReturned(index, parseInt(e.target.value) || 1)
-                              }
-                              className="w-20 text-center"
-                            />
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-muted-foreground">Bundles</span>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={item.maxBundles}
+                                value={item.bundlesReturned}
+                                onChange={(e) =>
+                                  updateBundlesReturned(index, parseInt(e.target.value) || 1)
+                                }
+                                className="w-16 text-center"
+                              />
+                            </div>
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-muted-foreground">Pairs</span>
+                              <span className="text-sm font-medium">{item.pairsReturned}</span>
+                            </div>
                             <span className="text-muted-foreground whitespace-nowrap">
                               Rs {item.total.toLocaleString()}
                             </span>
