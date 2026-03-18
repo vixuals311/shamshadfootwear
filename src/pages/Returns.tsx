@@ -79,7 +79,9 @@ interface ReturnItemEntry {
   articleNumber: string;
   brandName: string | null;
   sizeRange: string;
-  maxPairs: number;
+  maxBundles: number;
+  bundlesReturned: number;
+  pairsPerBundle: number;
   pairsReturned: number;
   pricePerPair: number;
   total: number;
