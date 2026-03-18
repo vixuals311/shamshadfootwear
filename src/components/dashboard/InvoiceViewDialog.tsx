@@ -284,7 +284,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
               <span>Total:</span>
               <span>Rs {invoice.total.toLocaleString()}</span>
             </div>
-            {invoice.amount_received > 0 && (
+            {(invoice.credit_applied ?? 0) <= 0 && invoice.amount_received > 0 && (
               <div className="flex justify-between text-success">
                 <span>Received:</span>
                 <span>Rs {invoice.amount_received.toLocaleString()}</span>
