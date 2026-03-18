@@ -1098,92 +1098,134 @@ const Clients = () => {
 
   // Client Detail View
   if (selectedClient) {
+    // Build "All" combined list
+    const allItems: { type: "bill" | "manual" | "recovery"; date: Date; data: any }[] = [
+      ...clientInvoices.map((inv) => ({ type: "bill" as const, date: inv.createdAt, data: inv })),
+      ...clientManualBills.map((bill) => ({ type: "manual" as const, date: new Date(bill.date), data: bill })),
+      ...clientRecoveries.map((rec) => ({ type: "recovery" as const, date: rec.date, data: rec })),
+    ].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    const handlePrintManualBills = () => {
+      if (!selectedClient) return;
+      const content = `<!DOCTYPE html><html><head><title>Manual Bills - ${selectedClient.name}</title>
+        <style>body{font-family:Arial,sans-serif;padding:20px;}h1{text-align:center;margin-bottom:5px;}h3{text-align:center;color:#666;margin-top:0;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px 8px;text-align:left;}th{background-color:#f5f5f5;font-weight:bold;}@media print{button{display:none;}}</style></head><body>
+        <h1>Manual Bills History</h1><h3>${selectedClient.name} - ${format(new Date(), "dd MMM yyyy")}</h3>
+        <table><thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+        ${clientManualBills.map(b => `<tr><td>${b.bill_number}</td><td>${format(new Date(b.date), "dd MMM yyyy")}</td><td>Rs ${b.amount.toLocaleString()}</td><td>${b.status}</td><td>${b.notes || "-"}</td></tr>`).join("")}
+        </tbody></table><script>window.print();</script></body></html>`;
+      const w = window.open("", "_blank");
+      if (w) { w.document.write(content); w.document.close(); }
+    };
+
+    const handlePrintAll = () => {
+      if (!selectedClient) return;
+      const content = `<!DOCTYPE html><html><head><title>All History - ${selectedClient.name}</title>
+        <style>body{font-family:Arial,sans-serif;padding:20px;}h1{text-align:center;margin-bottom:5px;}h3{text-align:center;color:#666;margin-top:0;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px 8px;text-align:left;}th{background-color:#f5f5f5;font-weight:bold;}.recovery{color:green;}.bill{color:#333;}@media print{button{display:none;}}</style></head><body>
+        <h1>Complete History</h1><h3>${selectedClient.name} - ${format(new Date(), "dd MMM yyyy")}</h3>
+        <table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Notes</th></tr></thead><tbody>
+        ${allItems.map(item => {
+          if (item.type === "bill") {
+            const inv = item.data as Invoice;
+            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yyyy")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td>${inv.status}</td></tr>`;
+          } else if (item.type === "manual") {
+            const bill = item.data as ManualBill;
+            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yyyy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td>${bill.notes || "-"}</td></tr>`;
+          } else {
+            const rec = item.data as RecoveryRecord;
+            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yyyy")}</td><td>${rec.isFromCity ? "City Recovery" : "Recovery"}</td><td>-</td><td style="color:green">Rs ${rec.amount.toLocaleString()}</td><td>${rec.notes || "-"}</td></tr>`;
+          }
+        }).join("")}
+        </tbody></table><script>window.print();</script></body></html>`;
+      const w = window.open("", "_blank");
+      if (w) { w.document.write(content); w.document.close(); }
+    };
+
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-4"
+          className="flex flex-col gap-3"
         >
           {/* Top row with back button and title */}
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="shrink-0 h-9 w-9">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground truncate">{selectedClient.name}</h2>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
-                {selectedClient.city !== "N/A" && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{selectedClient.city}</span>}
-                {selectedClient.address !== "N/A" && <span>• {selectedClient.address}</span>}
+              <h2 className="text-lg sm:text-2xl font-bold text-foreground truncate">{selectedClient.name}</h2>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground">
+                {selectedClient.city !== "N/A" && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{selectedClient.city}</span>}
                 {selectedClient.referenceNumber !== "N/A" && <span>• Ref: {selectedClient.referenceNumber}</span>}
               </div>
             </div>
           </div>
-          {/* Action row - stacks on mobile */}
+          {/* Action row */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <Button 
               onClick={() => setIsQuickRecoveryOpen(true)}
               className="gap-2 w-full sm:w-auto"
+              size="sm"
             >
               <CreditCard className="w-4 h-4" />
               Add Recovery
             </Button>
-            <div className="text-center sm:text-right bg-primary/5 rounded-lg p-3">
-              <p className="text-sm text-muted-foreground">Current Balance</p>
-              <p className="text-xl sm:text-2xl font-bold text-primary">
+            <div className="text-center sm:text-right bg-primary/5 rounded-lg p-2.5 sm:p-3">
+              <p className="text-xs text-muted-foreground">Current Balance</p>
+              <p className="text-lg sm:text-2xl font-bold text-primary">
                 Rs {selectedClient.currentBalance.toLocaleString()}
               </p>
             </div>
           </div>
         </motion.div>
 
-        {/* Client Info Cards */}
+        {/* Client Info Cards - 2 cols on mobile, 4 on desktop */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-4"
+          className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4"
         >
-          <div className="bg-card rounded-xl p-4 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Phone className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Phone</p>
-                <p className="font-medium">{selectedClient.phone}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-card rounded-xl p-4 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Email</p>
-                <p className="font-medium truncate">{selectedClient.email}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Phone</p>
+                <p className="font-medium text-xs sm:text-sm truncate">{selectedClient.phone}</p>
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-xl p-4 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Opening Balance</p>
-                <p className="font-medium">Rs {selectedClient.openingBalance.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Email</p>
+                <p className="font-medium text-xs sm:text-sm truncate">{selectedClient.email}</p>
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-xl p-4 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total Spent</p>
-                <p className="font-medium">Rs {selectedClient.totalSpent.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Opening Bal.</p>
+                <p className="font-medium text-xs sm:text-sm">Rs {selectedClient.openingBalance.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Total Spent</p>
+                <p className="font-medium text-xs sm:text-sm">Rs {selectedClient.totalSpent.toLocaleString()}</p>
               </div>
             </div>
           </div>
