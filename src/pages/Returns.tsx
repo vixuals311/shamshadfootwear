@@ -628,6 +628,8 @@ export default function Returns() {
                       );
                       const prevReturned = alreadyReturnedPairs[item.id] || 0;
                       const remainingPairs = item.total_pairs - prevReturned;
+                      const pairsPerBundle = item.quantity > 0 ? Math.round(item.total_pairs / item.quantity) : item.total_pairs;
+                      const remainingBundles = Math.floor(remainingPairs / pairsPerBundle) || (remainingPairs > 0 ? 1 : 0);
                       const fullyReturned = remainingPairs <= 0;
                       return (
                         <div
