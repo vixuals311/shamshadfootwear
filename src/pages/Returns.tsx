@@ -639,7 +639,7 @@ export default function Returns() {
                           <div>
                             <span className="font-medium">{item.product_name}</span>
                             <span className="text-muted-foreground ml-2">
-                              {item.article_number} • {item.size_range} • {remainingPairs}/{item.total_pairs} pairs left
+                              {item.article_number} • {item.size_range} • {remainingBundles} bdl ({remainingPairs}p) left
                             </span>
                           </div>
                           <Button
