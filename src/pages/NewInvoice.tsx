@@ -1514,21 +1514,41 @@ const NewInvoice = () => {
               <p className="text-sm text-muted-foreground">{selectedClient?.city}</p>
             </div>
 
-            {/* Items Summary */}
+            {/* Items Summary Table */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Items ({items.length})</p>
                 <p className="text-sm font-semibold">{items.reduce((sum, i) => sum + i.quantity, 0)} bundles • {items.reduce((sum, i) => sum + i.totalPairs, 0)} pairs</p>
               </div>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                {items.map((item, idx) => (
-                  <div key={item.id} className="flex justify-between text-sm p-2 bg-muted/30 rounded">
-                    <span>
-                      {idx + 1}. {item.productName} ({item.sizeRange}) - {item.totalPairs} pairs
-                    </span>
-                    <span className="font-medium">Rs {item.total.toLocaleString()}</span>
-                  </div>
-                ))}
+              <div className="max-h-48 overflow-y-auto overflow-x-auto border rounded-lg">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left py-1.5 px-2">#</th>
+                      <th className="text-left py-1.5 px-2">Product</th>
+                      <th className="text-left py-1.5 px-2">Size</th>
+                      <th className="text-right py-1.5 px-2">Bdl</th>
+                      <th className="text-right py-1.5 px-2">Prs</th>
+                      <th className="text-right py-1.5 px-2">Rate</th>
+                      <th className="text-right py-1.5 px-2">Disc</th>
+                      <th className="text-right py-1.5 px-2">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, idx) => (
+                      <tr key={item.id} className="border-b last:border-b-0">
+                        <td className="py-1 px-2">{idx + 1}</td>
+                        <td className="py-1 px-2 font-medium">{item.productName}<br/><span className="text-muted-foreground">{item.articleNumber}</span></td>
+                        <td className="py-1 px-2">{item.sizeRange}</td>
+                        <td className="py-1 px-2 text-right">{item.quantity}</td>
+                        <td className="py-1 px-2 text-right">{item.totalPairs}</td>
+                        <td className="py-1 px-2 text-right">Rs {item.pricePerPair}</td>
+                        <td className="py-1 px-2 text-right">{item.discountPerPair > 0 ? `Rs ${item.discountPerPair}` : '-'}</td>
+                        <td className="py-1 px-2 text-right font-semibold">Rs {item.total.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 

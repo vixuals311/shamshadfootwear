@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useDefaultSizeRanges } from "@/hooks/useDefaultSizeRanges";
 
 interface PriceProduct {
   id: string;
@@ -21,6 +22,7 @@ const PriceCheck = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
+  const { sortBySizeRangeOrder } = useDefaultSizeRanges();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -40,12 +42,12 @@ const PriceCheck = () => {
             brandName: p.brands?.name || "Unknown",
             category: p.category,
             gender: p.gender,
-            sizeBundles: (p.product_size_bundles || []).map((sb: any) => ({
+            sizeBundles: sortBySizeRangeOrder((p.product_size_bundles || []).map((sb: any) => ({
               sizeRange: sb.size_range,
               pricePerPair: sb.price_per_pair,
               pairsPerBundle: sb.pairs_per_bundle,
               quantity: sb.quantity ?? 0,
-            })),
+            }))) as any[],
           }))
         );
       } catch (err) {
@@ -55,7 +57,7 @@ const PriceCheck = () => {
       }
     };
     fetchProducts();
-  }, []);
+  }, [sortBySizeRangeOrder]);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
