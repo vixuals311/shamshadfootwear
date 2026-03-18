@@ -185,6 +185,8 @@ export default function Returns() {
     const remainingPairs = item.total_pairs - alreadyReturned;
     if (remainingPairs <= 0) return;
     const effectivePrice = item.price_per_pair - item.discount_per_pair;
+    const pairsPerBundle = item.quantity > 0 ? Math.round(item.total_pairs / item.quantity) : item.total_pairs;
+    const maxBundles = Math.floor(remainingPairs / pairsPerBundle) || (remainingPairs > 0 ? 1 : 0);
     setReturnItems((prev) => [
       ...prev,
       {
@@ -194,25 +196,29 @@ export default function Returns() {
         articleNumber: item.article_number,
         brandName: item.brand_name,
         sizeRange: item.size_range,
-        maxPairs: remainingPairs,
-        pairsReturned: 1,
+        maxBundles,
+        bundlesReturned: 1,
+        pairsPerBundle,
+        pairsReturned: pairsPerBundle,
         pricePerPair: effectivePrice,
-        total: effectivePrice,
+        total: pairsPerBundle * effectivePrice,
       },
     ]);
   };
 
-  const updatePairsReturned = (index: number, pairs: number) => {
+  const updateBundlesReturned = (index: number, bundles: number) => {
     setReturnItems((prev) =>
-      prev.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              pairsReturned: Math.min(Math.max(1, pairs), item.maxPairs),
-              total: Math.min(Math.max(1, pairs), item.maxPairs) * item.pricePerPair,
-            }
-          : item
-      )
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const clamped = Math.min(Math.max(1, bundles), item.maxBundles);
+        const pairs = clamped * item.pairsPerBundle;
+        return {
+          ...item,
+          bundlesReturned: clamped,
+          pairsReturned: pairs,
+          total: pairs * item.pricePerPair,
+        };
+      })
     );
   };
 
