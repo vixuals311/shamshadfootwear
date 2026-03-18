@@ -1042,7 +1042,7 @@ const NewInvoice = () => {
                             </p>
                           </div>
                           <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                            {product.stock_dozens * product.pairs_per_dozen}p
+                            {product.size_bundles.reduce((sum, sb) => sum + sb.available_quantity * sb.pairs_per_bundle, 0)}p
                           </span>
                         </div>
                       </div>
