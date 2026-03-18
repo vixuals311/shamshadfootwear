@@ -1042,7 +1042,7 @@ const NewInvoice = () => {
                             </p>
                           </div>
                           <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                            {product.stock_dozens * product.pairs_per_dozen}p
+                            {product.size_bundles.reduce((sum, sb) => sum + sb.available_quantity * sb.pairs_per_bundle, 0)}p
                           </span>
                         </div>
                       </div>
@@ -1149,9 +1149,9 @@ const NewInvoice = () => {
             </div>
           )}
 
-          {/* Items List - Compact cards on mobile */}
+          {/* Items Table */}
           {items.length > 0 ? (
-            <div className="space-y-2 sm:space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Package className="w-4 h-4 text-primary" />
@@ -1161,103 +1161,57 @@ const NewInvoice = () => {
                   {items.reduce((sum, i) => sum + i.quantity, 0)} bundles • {items.reduce((sum, i) => sum + i.totalPairs, 0)} pairs
                 </span>
               </div>
-              {items.map((item, idx) => {
-                const discountTotal = item.totalPairs * item.discountPerPair;
-                return (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="p-3 rounded-lg bg-card border border-border/50 shadow-sm"
-                  >
-                    {/* Top row: product info + total + delete */}
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm text-foreground truncate">
-                          <span className="text-muted-foreground mr-1">{idx + 1}.</span>
-                          {item.productName}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {item.articleNumber} • {item.sizeRange} • Rs {item.pricePerPair}/pr
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-bold text-sm text-foreground">
-                          Rs {item.total.toLocaleString()}
-                        </p>
-                        {discountTotal > 0 && (
-                          <p className="text-[10px] text-destructive">
-                            -Rs {discountTotal.toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive/60 hover:text-destructive h-7 w-7 shrink-0 -mr-1"
-                        onClick={() => setRemoveItemId(item.id)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                    {/* Bottom row: controls */}
-                    <div className="grid grid-cols-3 gap-2 items-center">
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground">Bundles</Label>
-                        <div className="flex items-center gap-0.5 mt-0.5">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 sm:h-7 sm:w-7 shrink-0"
-                            onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
-                          >
-                            -
+              <div className="bg-card rounded-lg border border-border/50 shadow-sm overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground w-8">#</th>
+                      <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground">Product</th>
+                      <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground hidden sm:table-cell">Article</th>
+                      <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground">Size</th>
+                      <th className="text-center py-2 px-1 text-xs font-medium text-muted-foreground">Bdl</th>
+                      <th className="text-center py-2 px-1 text-xs font-medium text-muted-foreground">Prs</th>
+                      <th className="text-right py-2 px-2 text-xs font-medium text-muted-foreground hidden sm:table-cell">Rate</th>
+                      <th className="text-center py-2 px-1 text-xs font-medium text-muted-foreground">Disc</th>
+                      <th className="text-right py-2 px-2 text-xs font-medium text-muted-foreground">Total</th>
+                      <th className="w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, idx) => (
+                      <tr key={item.id} className="border-b last:border-b-0 hover:bg-muted/20">
+                        <td className="py-1.5 px-2 text-muted-foreground">{idx + 1}</td>
+                        <td className="py-1.5 px-2">
+                          <span className="font-medium text-foreground truncate block max-w-[120px] sm:max-w-[180px]">{item.productName}</span>
+                          <span className="text-[10px] text-muted-foreground sm:hidden">{item.articleNumber}</span>
+                        </td>
+                        <td className="py-1.5 px-2 text-muted-foreground hidden sm:table-cell">{item.articleNumber}</td>
+                        <td className="py-1.5 px-2 text-muted-foreground">{item.sizeRange}</td>
+                        <td className="py-1.5 px-1">
+                          <div className="flex items-center justify-center gap-0.5">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity - 1)}>-</Button>
+                            <Input type="number" value={item.quantity} onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 0)} className="w-9 h-6 text-center text-xs p-0" />
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity + 1)}>+</Button>
+                          </div>
+                        </td>
+                        <td className="py-1.5 px-1">
+                          <Input type="number" value={item.totalPairs} onChange={(e) => updateItemTotalPairs(item.id, parseInt(e.target.value) || 0)} className="w-14 h-6 text-center text-xs p-0" />
+                        </td>
+                        <td className="py-1.5 px-2 text-right text-muted-foreground hidden sm:table-cell">Rs {item.pricePerPair}</td>
+                        <td className="py-1.5 px-1">
+                          <Input type="number" value={item.discountPerPair || ""} onChange={(e) => updateItemDiscountPerPair(item.id, parseFloat(e.target.value) || 0)} className="w-14 h-6 text-center text-xs p-0" placeholder="0" />
+                        </td>
+                        <td className="py-1.5 px-2 text-right font-semibold text-foreground whitespace-nowrap">Rs {item.total.toLocaleString()}</td>
+                        <td className="py-1.5 px-1">
+                          <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-6 w-6" onClick={() => setRemoveItemId(item.id)}>
+                            <Trash2 className="w-3 h-3" />
                           </Button>
-                          <Input
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) =>
-                              updateItemQuantity(item.id, parseInt(e.target.value) || 0)
-                            }
-                            className="w-10 h-8 sm:h-7 text-center text-sm p-0"
-                          />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 sm:h-7 sm:w-7 shrink-0"
-                            onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                          >
-                            +
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground">Pairs</Label>
-                        <Input
-                          type="number"
-                          value={item.totalPairs}
-                          onChange={(e) =>
-                            updateItemTotalPairs(item.id, parseInt(e.target.value) || 0)
-                          }
-                          className="h-8 sm:h-7 mt-0.5 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground">Disc/pr</Label>
-                        <Input
-                          type="number"
-                          value={item.discountPerPair || ""}
-                          onChange={(e) =>
-                            updateItemDiscountPerPair(item.id, parseFloat(e.target.value) || 0)
-                          }
-                          className="h-8 sm:h-7 mt-0.5 text-sm"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             !productOpen && (
@@ -1560,21 +1514,41 @@ const NewInvoice = () => {
               <p className="text-sm text-muted-foreground">{selectedClient?.city}</p>
             </div>
 
-            {/* Items Summary */}
+            {/* Items Summary Table */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Items ({items.length})</p>
                 <p className="text-sm font-semibold">{items.reduce((sum, i) => sum + i.quantity, 0)} bundles • {items.reduce((sum, i) => sum + i.totalPairs, 0)} pairs</p>
               </div>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                {items.map((item, idx) => (
-                  <div key={item.id} className="flex justify-between text-sm p-2 bg-muted/30 rounded">
-                    <span>
-                      {idx + 1}. {item.productName} ({item.sizeRange}) - {item.totalPairs} pairs
-                    </span>
-                    <span className="font-medium">Rs {item.total.toLocaleString()}</span>
-                  </div>
-                ))}
+              <div className="max-h-48 overflow-y-auto overflow-x-auto border rounded-lg">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left py-1.5 px-2">#</th>
+                      <th className="text-left py-1.5 px-2">Product</th>
+                      <th className="text-left py-1.5 px-2">Size</th>
+                      <th className="text-right py-1.5 px-2">Bdl</th>
+                      <th className="text-right py-1.5 px-2">Prs</th>
+                      <th className="text-right py-1.5 px-2">Rate</th>
+                      <th className="text-right py-1.5 px-2">Disc</th>
+                      <th className="text-right py-1.5 px-2">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, idx) => (
+                      <tr key={item.id} className="border-b last:border-b-0">
+                        <td className="py-1 px-2">{idx + 1}</td>
+                        <td className="py-1 px-2 font-medium">{item.productName}<br/><span className="text-muted-foreground">{item.articleNumber}</span></td>
+                        <td className="py-1 px-2">{item.sizeRange}</td>
+                        <td className="py-1 px-2 text-right">{item.quantity}</td>
+                        <td className="py-1 px-2 text-right">{item.totalPairs}</td>
+                        <td className="py-1 px-2 text-right">Rs {item.pricePerPair}</td>
+                        <td className="py-1 px-2 text-right">{item.discountPerPair > 0 ? `Rs ${item.discountPerPair}` : '-'}</td>
+                        <td className="py-1 px-2 text-right font-semibold">Rs {item.total.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 

@@ -141,8 +141,8 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
           <p>Subtotal: Rs ${invoice.subtotal.toLocaleString()}</p>
           ${invoice.total_discount > 0 ? `<p>Discount: - Rs ${invoice.total_discount.toLocaleString()}</p>` : ''}
           ${invoice.tax > 0 ? `<p>Tax: Rs ${invoice.tax.toLocaleString()}</p>` : ''}
-          <p class="total-final">Total: Rs ${invoice.total.toLocaleString()}</p>
-          ${invoice.amount_received > 0 ? `<p style="color:green;">Received: Rs ${invoice.amount_received.toLocaleString()}</p>` : ''}
+           <p class="total-final">Total: Rs ${invoice.total.toLocaleString()}</p>
+          ${(invoice.credit_applied ?? 0) <= 0 && invoice.amount_received > 0 ? `<p style="color:green;">Received: Rs ${invoice.amount_received.toLocaleString()}</p>` : ''}
           ${(invoice.credit_applied ?? 0) > 0 ? `<p>Credit Applied: Rs ${(invoice.credit_applied ?? 0).toLocaleString()}</p>` : ''}
           ${invoice.balance_due > 0 ? `<p style="color:#d97706;font-weight:600;">Balance Due: Rs ${invoice.balance_due.toLocaleString()}</p>` : ''}
         </div>
@@ -284,7 +284,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
               <span>Total:</span>
               <span>Rs {invoice.total.toLocaleString()}</span>
             </div>
-            {invoice.amount_received > 0 && (
+            {(invoice.credit_applied ?? 0) <= 0 && invoice.amount_received > 0 && (
               <div className="flex justify-between text-success">
                 <span>Received:</span>
                 <span>Rs {invoice.amount_received.toLocaleString()}</span>

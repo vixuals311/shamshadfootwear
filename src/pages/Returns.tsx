@@ -79,7 +79,9 @@ interface ReturnItemEntry {
   articleNumber: string;
   brandName: string | null;
   sizeRange: string;
-  maxPairs: number;
+  maxBundles: number;
+  bundlesReturned: number;
+  pairsPerBundle: number;
   pairsReturned: number;
   pricePerPair: number;
   total: number;
@@ -183,6 +185,8 @@ export default function Returns() {
     const remainingPairs = item.total_pairs - alreadyReturned;
     if (remainingPairs <= 0) return;
     const effectivePrice = item.price_per_pair - item.discount_per_pair;
+    const pairsPerBundle = item.quantity > 0 ? Math.round(item.total_pairs / item.quantity) : item.total_pairs;
+    const maxBundles = Math.floor(remainingPairs / pairsPerBundle) || (remainingPairs > 0 ? 1 : 0);
     setReturnItems((prev) => [
       ...prev,
       {
@@ -192,25 +196,29 @@ export default function Returns() {
         articleNumber: item.article_number,
         brandName: item.brand_name,
         sizeRange: item.size_range,
-        maxPairs: remainingPairs,
-        pairsReturned: 1,
+        maxBundles,
+        bundlesReturned: 1,
+        pairsPerBundle,
+        pairsReturned: pairsPerBundle,
         pricePerPair: effectivePrice,
-        total: effectivePrice,
+        total: pairsPerBundle * effectivePrice,
       },
     ]);
   };
 
-  const updatePairsReturned = (index: number, pairs: number) => {
+  const updateBundlesReturned = (index: number, bundles: number) => {
     setReturnItems((prev) =>
-      prev.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              pairsReturned: Math.min(Math.max(1, pairs), item.maxPairs),
-              total: Math.min(Math.max(1, pairs), item.maxPairs) * item.pricePerPair,
-            }
-          : item
-      )
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const clamped = Math.min(Math.max(1, bundles), item.maxBundles);
+        const pairs = clamped * item.pairsPerBundle;
+        return {
+          ...item,
+          bundlesReturned: clamped,
+          pairsReturned: pairs,
+          total: pairs * item.pricePerPair,
+        };
+      })
     );
   };
 
@@ -620,6 +628,8 @@ export default function Returns() {
                       );
                       const prevReturned = alreadyReturnedPairs[item.id] || 0;
                       const remainingPairs = item.total_pairs - prevReturned;
+                      const pairsPerBundle = item.quantity > 0 ? Math.round(item.total_pairs / item.quantity) : item.total_pairs;
+                      const remainingBundles = Math.floor(remainingPairs / pairsPerBundle) || (remainingPairs > 0 ? 1 : 0);
                       const fullyReturned = remainingPairs <= 0;
                       return (
                         <div
@@ -629,7 +639,7 @@ export default function Returns() {
                           <div>
                             <span className="font-medium">{item.product_name}</span>
                             <span className="text-muted-foreground ml-2">
-                              {item.article_number} • {item.size_range} • {remainingPairs}/{item.total_pairs} pairs left
+                              {item.article_number} • {item.size_range} • {remainingBundles} bdl ({remainingPairs}p) left
                             </span>
                           </div>
                           <Button
@@ -659,20 +669,27 @@ export default function Returns() {
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{item.productName}</div>
                             <div className="text-muted-foreground text-xs">
-                              {item.sizeRange} • Max {item.maxPairs} pairs • Rs {item.pricePerPair}/pair
+                              {item.sizeRange} • Max {item.maxBundles} bdl ({item.pairsPerBundle}p/bdl) • Rs {item.pricePerPair}/pair
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              min={1}
-                              max={item.maxPairs}
-                              value={item.pairsReturned}
-                              onChange={(e) =>
-                                updatePairsReturned(index, parseInt(e.target.value) || 1)
-                              }
-                              className="w-20 text-center"
-                            />
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-muted-foreground">Bundles</span>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={item.maxBundles}
+                                value={item.bundlesReturned}
+                                onChange={(e) =>
+                                  updateBundlesReturned(index, parseInt(e.target.value) || 1)
+                                }
+                                className="w-16 text-center"
+                              />
+                            </div>
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-muted-foreground">Pairs</span>
+                              <span className="text-sm font-medium">{item.pairsReturned}</span>
+                            </div>
                             <span className="text-muted-foreground whitespace-nowrap">
                               Rs {item.total.toLocaleString()}
                             </span>

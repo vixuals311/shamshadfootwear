@@ -1098,115 +1098,215 @@ const Clients = () => {
 
   // Client Detail View
   if (selectedClient) {
+    // Build "All" combined list
+    const allItems: { type: "bill" | "manual" | "recovery"; date: Date; data: any }[] = [
+      ...clientInvoices.map((inv) => ({ type: "bill" as const, date: inv.createdAt, data: inv })),
+      ...clientManualBills.map((bill) => ({ type: "manual" as const, date: new Date(bill.date), data: bill })),
+      ...clientRecoveries.map((rec) => ({ type: "recovery" as const, date: rec.date, data: rec })),
+    ].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    const handlePrintManualBills = () => {
+      if (!selectedClient) return;
+      const content = `<!DOCTYPE html><html><head><title>Manual Bills - ${selectedClient.name}</title>
+        <style>body{font-family:Arial,sans-serif;padding:20px;}h1{text-align:center;margin-bottom:5px;}h3{text-align:center;color:#666;margin-top:0;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px 8px;text-align:left;}th{background-color:#f5f5f5;font-weight:bold;}@media print{button{display:none;}}</style></head><body>
+        <h1>Manual Bills History</h1><h3>${selectedClient.name} - ${format(new Date(), "dd MMM yyyy")}</h3>
+        <table><thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+        ${clientManualBills.map(b => `<tr><td>${b.bill_number}</td><td>${format(new Date(b.date), "dd MMM yyyy")}</td><td>Rs ${b.amount.toLocaleString()}</td><td>${b.status}</td><td>${b.notes || "-"}</td></tr>`).join("")}
+        </tbody></table><script>window.print();</script></body></html>`;
+      const w = window.open("", "_blank");
+      if (w) { w.document.write(content); w.document.close(); }
+    };
+
+    const handlePrintAll = () => {
+      if (!selectedClient) return;
+      const content = `<!DOCTYPE html><html><head><title>All History - ${selectedClient.name}</title>
+        <style>body{font-family:Arial,sans-serif;padding:20px;}h1{text-align:center;margin-bottom:5px;}h3{text-align:center;color:#666;margin-top:0;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px 8px;text-align:left;}th{background-color:#f5f5f5;font-weight:bold;}.recovery{color:green;}.bill{color:#333;}@media print{button{display:none;}}</style></head><body>
+        <h1>Complete History</h1><h3>${selectedClient.name} - ${format(new Date(), "dd MMM yyyy")}</h3>
+        <table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Notes</th></tr></thead><tbody>
+        ${allItems.map(item => {
+          if (item.type === "bill") {
+            const inv = item.data as Invoice;
+            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yyyy")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td>${inv.status}</td></tr>`;
+          } else if (item.type === "manual") {
+            const bill = item.data as ManualBill;
+            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yyyy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td>${bill.notes || "-"}</td></tr>`;
+          } else {
+            const rec = item.data as RecoveryRecord;
+            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yyyy")}</td><td>${rec.isFromCity ? "City Recovery" : "Recovery"}</td><td>-</td><td style="color:green">Rs ${rec.amount.toLocaleString()}</td><td>${rec.notes || "-"}</td></tr>`;
+          }
+        }).join("")}
+        </tbody></table><script>window.print();</script></body></html>`;
+      const w = window.open("", "_blank");
+      if (w) { w.document.write(content); w.document.close(); }
+    };
+
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-4"
+          className="flex flex-col gap-3"
         >
           {/* Top row with back button and title */}
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="shrink-0 h-9 w-9">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground truncate">{selectedClient.name}</h2>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
-                {selectedClient.city !== "N/A" && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{selectedClient.city}</span>}
-                {selectedClient.address !== "N/A" && <span>• {selectedClient.address}</span>}
+              <h2 className="text-lg sm:text-2xl font-bold text-foreground truncate">{selectedClient.name}</h2>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground">
+                {selectedClient.city !== "N/A" && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{selectedClient.city}</span>}
                 {selectedClient.referenceNumber !== "N/A" && <span>• Ref: {selectedClient.referenceNumber}</span>}
               </div>
             </div>
           </div>
-          {/* Action row - stacks on mobile */}
+          {/* Action row */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <Button 
               onClick={() => setIsQuickRecoveryOpen(true)}
               className="gap-2 w-full sm:w-auto"
+              size="sm"
             >
               <CreditCard className="w-4 h-4" />
               Add Recovery
             </Button>
-            <div className="text-center sm:text-right bg-primary/5 rounded-lg p-3">
-              <p className="text-sm text-muted-foreground">Current Balance</p>
-              <p className="text-xl sm:text-2xl font-bold text-primary">
+            <div className="text-center sm:text-right bg-primary/5 rounded-lg p-2.5 sm:p-3">
+              <p className="text-xs text-muted-foreground">Current Balance</p>
+              <p className="text-lg sm:text-2xl font-bold text-primary">
                 Rs {selectedClient.currentBalance.toLocaleString()}
               </p>
             </div>
           </div>
         </motion.div>
 
-        {/* Client Info Cards */}
+        {/* Client Info Cards - 2 cols on mobile, 4 on desktop */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-4"
+          className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4"
         >
-          <div className="bg-card rounded-xl p-4 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Phone className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Phone</p>
-                <p className="font-medium">{selectedClient.phone}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-card rounded-xl p-4 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Email</p>
-                <p className="font-medium truncate">{selectedClient.email}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Phone</p>
+                <p className="font-medium text-xs sm:text-sm truncate">{selectedClient.phone}</p>
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-xl p-4 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Opening Balance</p>
-                <p className="font-medium">Rs {selectedClient.openingBalance.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Email</p>
+                <p className="font-medium text-xs sm:text-sm truncate">{selectedClient.email}</p>
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-xl p-4 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total Spent</p>
-                <p className="font-medium">Rs {selectedClient.totalSpent.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Opening Bal.</p>
+                <p className="font-medium text-xs sm:text-sm">Rs {selectedClient.openingBalance.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl p-3 sm:p-4 shadow-card">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Total Spent</p>
+                <p className="font-medium text-xs sm:text-sm">Rs {selectedClient.totalSpent.toLocaleString()}</p>
               </div>
             </div>
           </div>
         </motion.div>
 
         {/* Tabs for Bills and Recoveries */}
-        <Tabs defaultValue="bills" className="w-full">
+        <Tabs defaultValue="all" className="w-full">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <TabsList className="w-full sm:w-auto">
-              <TabsTrigger value="bills" className="gap-2 flex-1 sm:flex-none">
-                <FileText className="w-4 h-4" />
-                <span className="hidden sm:inline">Bills</span> ({clientInvoices.length})
+            <TabsList className="w-full sm:w-auto grid grid-cols-4">
+              <TabsTrigger value="all" className="gap-1 text-xs sm:text-sm">All</TabsTrigger>
+              <TabsTrigger value="bills" className="gap-1 text-xs sm:text-sm">
+                <FileText className="w-3.5 h-3.5 hidden sm:block" /> Bills ({clientInvoices.length})
               </TabsTrigger>
-              <TabsTrigger value="manual_bills" className="gap-2 flex-1 sm:flex-none">
-                <ClipboardList className="w-4 h-4" />
-                <span className="hidden sm:inline">Manual</span> ({clientManualBills.length})
+              <TabsTrigger value="manual_bills" className="gap-1 text-xs sm:text-sm">
+                <ClipboardList className="w-3.5 h-3.5 hidden sm:block" /> Manual ({clientManualBills.length})
               </TabsTrigger>
-              <TabsTrigger value="recoveries" className="gap-2 flex-1 sm:flex-none">
-                <CreditCard className="w-4 h-4" />
-                <span className="hidden sm:inline">Recoveries</span> ({clientRecoveries.length})
+              <TabsTrigger value="recoveries" className="gap-1 text-xs sm:text-sm">
+                <CreditCard className="w-3.5 h-3.5 hidden sm:block" /> Rec ({clientRecoveries.length})
               </TabsTrigger>
             </TabsList>
           </div>
+
+          {/* All Tab */}
+          <TabsContent value="all">
+            <div className="flex flex-wrap justify-end gap-2 mb-4">
+              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={handlePrintAll}>
+                <Printer className="w-4 h-4" />
+                <span className="hidden sm:inline">Print</span>
+              </Button>
+            </div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
+              {allItems.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="data-table min-w-[500px]">
+                    <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th></tr></thead>
+                    <tbody>
+                      {allItems.map((item, idx) => {
+                        if (item.type === "bill") {
+                          const inv = item.data as Invoice;
+                          return (
+                            <tr key={`bill-${inv.id}`} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewClientInvoice(inv.id)}>
+                              <td className="text-sm text-muted-foreground whitespace-nowrap">{format(inv.createdAt, "dd MMM yyyy")}</td>
+                              <td><span className="status-badge status-badge-info">Invoice</span></td>
+                              <td className="font-mono text-sm">{inv.invoiceNumber}</td>
+                              <td className="font-semibold whitespace-nowrap">Rs {inv.total.toLocaleString()}</td>
+                            </tr>
+                          );
+                        } else if (item.type === "manual") {
+                          const bill = item.data as ManualBill;
+                          return (
+                            <tr key={`manual-${bill.id}`}>
+                              <td className="text-sm text-muted-foreground whitespace-nowrap">{format(new Date(bill.date), "dd MMM yyyy")}</td>
+                              <td><span className="status-badge status-badge-warning">Manual Bill</span></td>
+                              <td className="font-mono text-sm">{bill.bill_number}</td>
+                              <td className="font-semibold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</td>
+                            </tr>
+                          );
+                        } else {
+                          const rec = item.data as RecoveryRecord;
+                          return (
+                            <tr key={`rec-${rec.id}-${idx}`}>
+                              <td className="text-sm text-muted-foreground whitespace-nowrap">{format(rec.date, "dd MMM yyyy")}</td>
+                              <td><span className={cn("status-badge", rec.isFromCity ? "status-badge-warning" : "status-badge-success")}>{rec.isFromCity ? "City Rec." : "Recovery"}</span></td>
+                              <td className="text-sm text-muted-foreground">-</td>
+                              <td className="font-semibold text-success whitespace-nowrap">Rs {rec.amount.toLocaleString()}</td>
+                            </tr>
+                          );
+                        }
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-1">No history</h3>
+                  <p className="text-muted-foreground">No transactions for this client yet.</p>
+                </div>
+              )}
+            </motion.div>
+          </TabsContent>
 
           <TabsContent value="bills">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
@@ -1214,71 +1314,28 @@ const Clients = () => {
                 <Printer className="w-4 h-4" />
                 <span className="hidden sm:inline">Print</span>
               </Button>
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("bills")}>
-                <DownloadIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Download PDF</span>
-              </Button>
             </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="bg-card rounded-xl shadow-card overflow-hidden"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientInvoices.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="data-table min-w-[600px]">
-                    <thead>
-                      <tr>
-                        <th>Invoice #</th>
-                        <th>Date & Time</th>
-                        <th>Items</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                        <th className="w-12"></th>
-                      </tr>
-                    </thead>
+                    <thead><tr><th>Invoice #</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th className="w-12"></th></tr></thead>
                     <tbody>
                       {clientInvoices.map((invoice) => (
-                        <tr key={invoice.id} className="group">
+                        <tr key={invoice.id}>
                           <td className="font-mono text-sm">{invoice.invoiceNumber}</td>
-                          <td>
-                            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                              <Calendar className="w-4 h-4 shrink-0" />
-                              <span className="whitespace-nowrap">{format(invoice.createdAt, "dd MMM yyyy, hh:mm a")}</span>
-                            </div>
-                          </td>
+                          <td className="text-muted-foreground text-sm whitespace-nowrap">{format(invoice.createdAt, "dd MMM yyyy")}</td>
                           <td className="text-sm">{invoice.items.length} items</td>
                           <td className="font-semibold whitespace-nowrap">Rs {invoice.total.toLocaleString()}</td>
-                          <td>
-                            <span className={cn(
-                              "status-badge",
-                              invoice.status === "paid" && "status-badge-success",
-                              invoice.status === "partial" && "status-badge-warning",
-                              invoice.status === "overdue" && "status-badge-danger"
-                            )}>
-                              {invoice.status}
-                            </span>
-                          </td>
-                          <td>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleViewClientInvoice(invoice.id)}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </td>
+                          <td><span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span></td>
+                          <td><Button variant="ghost" size="icon" onClick={() => handleViewClientInvoice(invoice.id)}><Eye className="w-4 h-4" /></Button></td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <div className="p-8 sm:p-12 text-center">
-                  <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-1">No bills yet</h3>
-                  <p className="text-muted-foreground">This client has no invoices.</p>
-                </div>
+                <div className="p-8 text-center"><FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-medium text-foreground mb-1">No bills yet</h3></div>
               )}
             </motion.div>
           </TabsContent>
@@ -1286,97 +1343,46 @@ const Clients = () => {
           {/* Manual Bills Tab */}
           <TabsContent value="manual_bills">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
+              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={handlePrintManualBills}>
+                <Printer className="w-4 h-4" />
+                <span className="hidden sm:inline">Print</span>
+              </Button>
               <Button size="sm" className="gap-2" onClick={() => setIsAddManualBillOpen(true)}>
                 <Plus className="w-4 h-4" />
                 Add Manual Bill
               </Button>
             </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="bg-card rounded-xl shadow-card overflow-hidden"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientManualBills.length > 0 ? (
                 <>
-                  {/* Desktop */}
                   <div className="overflow-x-auto hidden sm:block">
                     <table className="data-table min-w-[500px]">
-                      <thead>
-                        <tr>
-                          <th>Bill #</th>
-                          <th>Date</th>
-                          <th>Amount</th>
-                          <th>Status</th>
-                          <th>Notes</th>
-                          <th className="w-12"></th>
-                        </tr>
-                      </thead>
+                      <thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Notes</th><th className="w-12"></th></tr></thead>
                       <tbody>
                         {clientManualBills.map((bill) => (
                           <tr key={bill.id}>
                             <td className="font-mono text-sm font-medium">{bill.bill_number}</td>
-                            <td className="text-muted-foreground text-sm whitespace-nowrap">
-                              {format(new Date(bill.date), "dd MMM yyyy")}
-                            </td>
+                            <td className="text-muted-foreground text-sm whitespace-nowrap">{format(new Date(bill.date), "dd MMM yyyy")}</td>
                             <td className="font-semibold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</td>
-                            <td>
-                              <button
-                                onClick={() => handleToggleManualBillStatus(bill)}
-                                className={cn(
-                                  "status-badge cursor-pointer",
-                                  bill.status === "paid" ? "status-badge-success" : "status-badge-danger"
-                                )}
-                              >
-                                {bill.status}
-                              </button>
-                            </td>
+                            <td><button onClick={() => handleToggleManualBillStatus(bill)} className={cn("status-badge cursor-pointer", bill.status === "paid" ? "status-badge-success" : "status-badge-danger")}>{bill.status}</button></td>
                             <td className="text-muted-foreground text-sm max-w-[150px] truncate">{bill.notes || "-"}</td>
-                            <td>
-                              <button
-                                onClick={() => handleToggleManualBillStatus(bill)}
-                                className="text-xs text-primary hover:underline"
-                              >
-                                {bill.status === "paid" ? "Mark Unpaid" : "Mark Paid"}
-                              </button>
-                            </td>
+                            <td><button onClick={() => handleToggleManualBillStatus(bill)} className="text-xs text-primary hover:underline">{bill.status === "paid" ? "Mark Unpaid" : "Mark Paid"}</button></td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  {/* Mobile Cards */}
                   <div className="sm:hidden divide-y">
                     {clientManualBills.map((bill) => (
                       <div key={bill.id} className="p-4 space-y-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-mono font-medium text-sm">{bill.bill_number}</p>
-                            <p className="text-xs text-muted-foreground">{format(new Date(bill.date), "dd MMM yyyy")}</p>
-                          </div>
-                          <span className="font-bold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <button
-                            onClick={() => handleToggleManualBillStatus(bill)}
-                            className={cn(
-                              "status-badge cursor-pointer",
-                              bill.status === "paid" ? "status-badge-success" : "status-badge-danger"
-                            )}
-                          >
-                            {bill.status}
-                          </button>
-                          {bill.notes && <p className="text-xs text-muted-foreground truncate max-w-[150px]">{bill.notes}</p>}
-                        </div>
+                        <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono font-medium text-sm">{bill.bill_number}</p><p className="text-xs text-muted-foreground">{format(new Date(bill.date), "dd MMM yyyy")}</p></div><span className="font-bold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</span></div>
+                        <div className="flex items-center justify-between"><button onClick={() => handleToggleManualBillStatus(bill)} className={cn("status-badge cursor-pointer", bill.status === "paid" ? "status-badge-success" : "status-badge-danger")}>{bill.status}</button>{bill.notes && <p className="text-xs text-muted-foreground truncate max-w-[150px]">{bill.notes}</p>}</div>
                       </div>
                     ))}
                   </div>
                 </>
               ) : (
-                <div className="p-8 sm:p-12 text-center">
-                  <ClipboardList className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-1">No manual bills</h3>
-                  <p className="text-muted-foreground">Add offline/manual bills for this client.</p>
-                </div>
+                <div className="p-8 text-center"><ClipboardList className="w-12 h-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-medium text-foreground mb-1">No manual bills</h3></div>
               )}
             </motion.div>
           </TabsContent>
@@ -1387,47 +1393,18 @@ const Clients = () => {
                 <Printer className="w-4 h-4" />
                 <span className="hidden sm:inline">Print</span>
               </Button>
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("recoveries")}>
-                <DownloadIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Download PDF</span>
-              </Button>
             </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="bg-card rounded-xl shadow-card overflow-hidden"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientRecoveries.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="data-table min-w-[500px]">
-                    <thead>
-                      <tr>
-                        <th>Date & Time</th>
-                        <th>Amount</th>
-                        <th>Category</th>
-                        <th>Notes</th>
-                      </tr>
-                    </thead>
+                    <thead><tr><th>Date</th><th>Amount</th><th>Category</th><th>Notes</th></tr></thead>
                     <tbody>
                       {clientRecoveries.map((recovery) => (
                         <tr key={recovery.id}>
-                          <td>
-                            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                              <Calendar className="w-4 h-4 shrink-0" />
-                              <span className="whitespace-nowrap">{format(recovery.date, "dd MMM yyyy, hh:mm a")}</span>
-                            </div>
-                          </td>
-                          <td className="font-semibold text-success whitespace-nowrap">
-                            Rs {recovery.amount.toLocaleString()}
-                          </td>
-                          <td>
-                            <span className={cn(
-                              "status-badge",
-                              recovery.isFromCity ? "status-badge-warning" : "status-badge-success"
-                            )}>
-                              {recovery.isFromCity ? "City Recovery" : "Individual"}
-                            </span>
-                          </td>
+                          <td className="text-muted-foreground text-sm whitespace-nowrap">{format(recovery.date, "dd MMM yyyy")}</td>
+                          <td className="font-semibold text-success whitespace-nowrap">Rs {recovery.amount.toLocaleString()}</td>
+                          <td><span className={cn("status-badge", recovery.isFromCity ? "status-badge-warning" : "status-badge-success")}>{recovery.isFromCity ? "City Recovery" : "Individual"}</span></td>
                           <td className="text-muted-foreground text-sm max-w-[150px] truncate">{recovery.notes || "-"}</td>
                         </tr>
                       ))}
@@ -1435,11 +1412,7 @@ const Clients = () => {
                   </table>
                 </div>
               ) : (
-                <div className="p-8 sm:p-12 text-center">
-                  <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-1">No recoveries yet</h3>
-                  <p className="text-muted-foreground">This client has no recovery records.</p>
-                </div>
+                <div className="p-8 text-center"><CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-medium text-foreground mb-1">No recoveries yet</h3></div>
               )}
             </motion.div>
           </TabsContent>
