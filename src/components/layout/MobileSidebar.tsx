@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, 
-  Settings, Wallet, UserCog, History, X, RotateCcw, Tag, FileCheck
+  Settings, Wallet, UserCog, History, X, RotateCcw, Tag, FileCheck, MapPin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
