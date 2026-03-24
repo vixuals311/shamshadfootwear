@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, 
-  Settings, Wallet, UserCog, History, X, RotateCcw, Tag, FileCheck
+  Settings, Wallet, UserCog, History, X, RotateCcw, Tag, FileCheck, MapPin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
@@ -24,6 +24,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     { icon: Tag, label: "Price Check", path: "/price-check", show: hasPageAccess("price_check") },
     { icon: Users, label: "Clients", path: "/clients", show: hasPageAccess("clients") },
     { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPageAccess("recovery") },
+    { icon: MapPin, label: "City Recovery", path: "/city-recovery", show: hasPageAccess("recovery") },
     { icon: LayoutDashboard, label: "Dashboard", path: "/", show: hasPageAccess("dashboard") },
     { icon: FileText, label: "Invoices", path: "/invoices", show: hasPageAccess("invoices") && onlineBillingEnabled },
     { icon: CreditCard, label: "Payments", path: "/payments", show: hasPageAccess("payments") },

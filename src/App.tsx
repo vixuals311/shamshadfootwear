@@ -24,6 +24,7 @@ import Returns from "./pages/Returns";
 import ClientPortal from "./pages/ClientPortal";
 import PriceCheck from "./pages/PriceCheck";
 import Cheques from "./pages/Cheques";
+import CityRecovery from "./pages/CityRecovery";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -144,6 +145,7 @@ function AppRoutes() {
         <Route path="/invoices/edit/:invoiceId" element={<NewInvoice />} />
         <Route path="/payments" element={<Payments />} />
         <Route path="/recovery" element={<Recovery />} />
+        <Route path="/city-recovery" element={<CityRecovery />} />
         <Route path="/returns" element={<Returns />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/price-check" element={<PriceCheck />} />
