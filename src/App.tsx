@@ -145,6 +145,7 @@ function AppRoutes() {
         <Route path="/invoices/edit/:invoiceId" element={<NewInvoice />} />
         <Route path="/payments" element={<Payments />} />
         <Route path="/recovery" element={<Recovery />} />
+        <Route path="/city-recovery" element={<CityRecovery />} />
         <Route path="/returns" element={<Returns />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/price-check" element={<PriceCheck />} />
