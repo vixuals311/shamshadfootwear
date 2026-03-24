@@ -24,6 +24,7 @@ import Returns from "./pages/Returns";
 import ClientPortal from "./pages/ClientPortal";
 import PriceCheck from "./pages/PriceCheck";
 import Cheques from "./pages/Cheques";
+import CityRecovery from "./pages/CityRecovery";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
