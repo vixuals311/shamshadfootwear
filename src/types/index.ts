@@ -27,7 +27,8 @@ export type PageKey =
   | "reports"
   | "audit_logs"
   | "settings"
-  | "users";
+  | "users"
+  | "bulk_clients";
 
 export interface PagePermission {
   pageKey: PageKey;
@@ -36,8 +37,8 @@ export interface PagePermission {
 
 // Default page access per role
 export const ROLE_DEFAULT_PAGES: Record<UserRole, PageKey[]> = {
-  admin: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "users", "audit_logs", "settings"],
-  manager: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "audit_logs", "settings"],
+  admin: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "users", "audit_logs", "settings", "bulk_clients"],
+  manager: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "audit_logs", "settings", "bulk_clients"],
   biller: ["dashboard", "inventory", "price_check", "clients", "invoices", "returns"],
   cashier: ["dashboard", "payments", "cheques", "recovery", "city_recovery"],
 };
@@ -58,6 +59,7 @@ export const PAGE_METADATA: Record<PageKey, { label: string; description: string
   audit_logs: { label: "Audit Logs", description: "Activity history" },
   settings: { label: "Settings", description: "App configuration" },
   users: { label: "Users", description: "User management (Admin only)" },
+  bulk_clients: { label: "Bulk Clients", description: "Import clients in bulk" },
 };
 
 // Legacy permission interface (kept for backward compat in some components)
