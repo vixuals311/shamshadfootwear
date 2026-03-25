@@ -22,6 +22,7 @@ export type PageKey =
   | "payments"
   | "cheques"
   | "recovery"
+  | "city_recovery"
   | "returns"
   | "reports"
   | "audit_logs"
@@ -35,10 +36,10 @@ export interface PagePermission {
 
 // Default page access per role
 export const ROLE_DEFAULT_PAGES: Record<UserRole, PageKey[]> = {
-  admin: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "returns", "reports", "users", "audit_logs", "settings"],
-  manager: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "returns", "reports", "audit_logs", "settings"],
+  admin: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "users", "audit_logs", "settings"],
+  manager: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "audit_logs", "settings"],
   biller: ["dashboard", "inventory", "price_check", "clients", "invoices", "returns"],
-  cashier: ["dashboard", "payments", "cheques", "recovery"],
+  cashier: ["dashboard", "payments", "cheques", "recovery", "city_recovery"],
 };
 
 // Page metadata for UI display
@@ -51,6 +52,7 @@ export const PAGE_METADATA: Record<PageKey, { label: string; description: string
   payments: { label: "Payments", description: "Record payments" },
   cheques: { label: "Cheques", description: "Track given cheques" },
   recovery: { label: "Recovery", description: "Debt recovery management" },
+  city_recovery: { label: "City Recovery", description: "City-wise recovery entry & print" },
   returns: { label: "Returns", description: "Process returns" },
   reports: { label: "Reports", description: "Sales & financial reports" },
   audit_logs: { label: "Audit Logs", description: "Activity history" },
