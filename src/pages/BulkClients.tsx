@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Upload, Plus, Trash2, AlertTriangle, CheckCircle2, Loader2, Download, UsersRound } from "lucide-react";
 import { parseCSV, findColumnIndex, triggerFileInput } from "@/utils/importUtils";
 import { CityCombobox } from "@/components/clients/CityCombobox";
+import { ReferenceCombobox } from "@/components/clients/ReferenceCombobox";
 import { Label } from "@/components/ui/label";
 
 interface BulkClientRow {
@@ -44,12 +45,15 @@ export default function BulkClients() {
   const [refPrefix, setRefPrefix] = useState("");
   const [masterCity, setMasterCity] = useState("");
   const [existingCities, setExistingCities] = useState<string[]>([]);
+  const [existingReferences, setExistingReferences] = useState<string[]>([]);
 
   useEffect(() => {
-    supabase.from("clients").select("city").then(({ data }) => {
+    supabase.from("clients").select("city, reference_number").then(({ data }) => {
       if (data) {
         const cities = data.map(c => c.city).filter(Boolean) as string[];
         setExistingCities(cities);
+        const refs = data.map(c => c.reference_number).filter(Boolean) as string[];
+        setExistingReferences(refs);
       }
     });
   }, []);
@@ -410,13 +414,16 @@ export default function BulkClients() {
                           />
                         </TableCell>
                         <TableCell>
-                          <Input
-                            value={row.referenceNumber}
-                            onChange={e => updateRow(row.id, "referenceNumber", e.target.value)}
-                            placeholder="REF-001"
-                            className="h-8 text-sm"
-                            disabled={row.status === "imported"}
-                          />
+                          {row.status === "imported" ? (
+                            <span className="text-sm px-3">{row.referenceNumber}</span>
+                          ) : (
+                            <ReferenceCombobox
+                              value={row.referenceNumber}
+                              onChange={(val) => updateRow(row.id, "referenceNumber", val)}
+                              existingReferences={existingReferences}
+                              placeholder="Ref #"
+                            />
+                          )}
                         </TableCell>
                         <TableCell>
                           <Input
