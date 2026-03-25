@@ -41,6 +41,7 @@ export default function BulkClients() {
   const [isValidating, setIsValidating] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [validated, setValidated] = useState(false);
+  const [refPrefix, setRefPrefix] = useState("");
   const [masterCity, setMasterCity] = useState("");
   const [existingCities, setExistingCities] = useState<string[]>([]);
 
@@ -56,6 +57,16 @@ export default function BulkClients() {
   const applyMasterCity = (city: string) => {
     setMasterCity(city);
     setRows(prev => prev.map(r => r.status !== "imported" ? { ...r, city, status: "pending" } : r));
+    setValidated(false);
+  };
+
+  const applyRefPrefix = (prefix: string) => {
+    setRefPrefix(prefix);
+    setRows(prev => prev.map((r, idx) =>
+      r.status !== "imported"
+        ? { ...r, referenceNumber: `${prefix}${idx + 1}`, status: "pending" }
+        : r
+    ));
     setValidated(false);
   };
 
@@ -304,7 +315,23 @@ export default function BulkClients() {
                 {masterCity && (
                   <p className="text-xs text-muted-foreground pb-2">All rows set to <span className="font-semibold text-foreground">{masterCity}</span></p>
                 )}
-              </div>
+                <div className="flex-1 max-w-xs space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground">Reference Prefix (auto-numbers all rows)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={refPrefix}
+                      onChange={e => setRefPrefix(e.target.value)}
+                      placeholder="e.g. REF-"
+                      className="h-9 text-sm"
+                    />
+                    <Button size="sm" variant="outline" onClick={() => applyRefPrefix(refPrefix)} disabled={!refPrefix.trim()}>
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+                {refPrefix && (
+                  <p className="text-xs text-muted-foreground pb-2">e.g. <span className="font-semibold text-foreground">{refPrefix}1</span>, <span className="font-semibold text-foreground">{refPrefix}2</span>, ...</p>
+                )}
             </CardHeader>
             <CardContent>
               <div className="overflow-auto max-h-[60vh]">
