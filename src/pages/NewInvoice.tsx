@@ -878,7 +878,7 @@ const NewInvoice = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto pb-28 sm:pb-20">
+    <div className="space-y-4 sm:space-y-6 max-w-[1600px] mx-auto pb-28 sm:pb-20">
       {/* Header - Compact on mobile */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -984,9 +984,9 @@ const NewInvoice = () => {
         </Popover>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 sm:gap-6">
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Product Search - Sticky on mobile */}
           <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-2 sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:backdrop-blur-none">
             <div className="relative">
@@ -1019,7 +1019,7 @@ const NewInvoice = () => {
 
           {/* Product Selection Dropdown */}
           {productOpen && (
-            <div className="border rounded-lg max-h-[50vh] sm:max-h-[400px] overflow-y-auto bg-card shadow-lg">
+            <div className="border rounded-lg max-h-[60vh] sm:max-h-[500px] overflow-y-auto bg-card shadow-lg">
               {filteredProducts.length > 0 ? (
                 filteredProducts
                   .sort((a, b) => a.article_number.localeCompare(b.article_number))
@@ -1052,7 +1052,7 @@ const NewInvoice = () => {
                           <p className="text-xs font-medium text-muted-foreground">
                             Select bundles per size:
                           </p>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                             {sizeSelections.map((selection) => (
                               <div
                                 key={selection.sizeRange}
@@ -1438,7 +1438,7 @@ const NewInvoice = () => {
 
       {/* Floating Bottom Bar - Mobile only */}
       <div className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-card/95 backdrop-blur-md border-t border-border px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
-        <div className="flex items-center justify-between max-w-5xl mx-auto">
+        <div className="flex items-center justify-between max-w-[1600px] mx-auto">
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">{items.length} items • {items.reduce((s, i) => s + i.totalPairs, 0)} pairs</p>
             <p className="text-lg font-bold text-primary">Rs {calculations.total.toLocaleString()}</p>
