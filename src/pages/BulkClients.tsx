@@ -257,9 +257,9 @@ export default function BulkClients() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <UsersRound className="w-7 h-7" />
-            Bulk Add Clients
+            Add Client
           </h1>
-          <p className="text-muted-foreground mt-1">Import multiple clients at once via CSV or manual entry</p>
+          <p className="text-muted-foreground mt-1">Add clients via CSV or manual entry</p>
         </div>
       </div>
 
