@@ -462,6 +462,41 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 
 ---
 
+## 9B. City Recovery (Dedicated Page)
+
+### 9B.1 Overview
+- **Route:** `/city-recovery`
+- **Actors:** Admin, Manager, Cashier
+- **Purpose:** Dedicated page for city-wise recovery entry and printing, designed for non-technical field use with minimal navigation
+
+### 9B.2 Enter Recovery Tab (UC-CREC-01)
+- **Flow:**
+  1. Select city from dropdown (shows all cities with clients)
+  2. Select date (defaults to today)
+  3. System displays all clients in selected city with current balances
+  4. Enter recovery amount per client
+  5. Select payment account per client (defaults to Cash)
+  6. Mark clients as "collected" for tracking
+  7. Click "Save Recovery" to persist
+  8. Auto-saves drafts locally to prevent data loss
+- **Features:**
+  - Draft persistence via `useRecoveryDrafts` hook
+  - Summary showing total amount and number of clients with amounts
+  - Validation prevents saving with zero total
+
+### 9B.3 Print List Tab (UC-CREC-02)
+- **Flow:**
+  1. Select one or more cities
+  2. Reorder cities via drag-and-drop
+  3. Toggle "Show Previous Balance" column
+  4. Click "Print Recovery Sheet"
+  5. Generates formatted print-ready recovery list grouped by city
+- **Features:**
+  - Multi-city selection
+  - Drag-and-drop city ordering
+  - Professional print layout with company header
+  - Empty amount column for field use
+
 ## 10. Returns & Credit Notes
 
 ### 10.1 View Returns (UC-RET-01)
@@ -811,19 +846,22 @@ recoveries ──< recovery_client_amounts
 
 ### Default Page Access by Role
 
-| Page | Admin | Manager | Biller | Cashier |
-|------|:-----:|:-------:|:------:|:-------:|
-| Dashboard | ✅ | ✅ | ✅ | ✅ |
-| Inventory | ✅ | ✅ | ✅ | ❌ |
-| Clients | ✅ | ✅ | ✅ | ❌ |
-| Invoices | ✅ | ✅ | ✅ | ❌ |
-| Payments | ✅ | ✅ | ❌ | ✅ |
-| Recovery | ✅ | ✅ | ❌ | ✅ |
-| Returns | ✅ | ✅ | ✅ | ❌ |
-| Reports | ✅ | ✅ | ❌ | ❌ |
-| Users | ✅ | ❌ | ❌ | ❌ |
-| Audit Logs | ✅ | ✅ | ❌ | ❌ |
-| Settings | ✅ | ✅ | ❌ | ❌ |
+| Page | Admin | Manager | Biller | Cashier | Biller+Cashier |
+|------|:-----:|:-------:|:------:|:-------:|:--------------:|
+| Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Inventory | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Price Check | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Clients | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Invoices | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Payments | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Cheques | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Recovery | ✅ | ✅ | ❌ | ✅ | ✅ |
+| City Recovery | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Returns | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Reports | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Users | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Audit Logs | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Settings | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ### Granular Page Overrides
 - Admins can customize any user's page access beyond their role defaults
