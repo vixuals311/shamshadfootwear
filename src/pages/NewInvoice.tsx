@@ -1438,7 +1438,7 @@ const NewInvoice = () => {
 
       {/* Floating Bottom Bar - Mobile only */}
       <div className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-card/95 backdrop-blur-md border-t border-border px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
-        <div className="flex items-center justify-between max-w-5xl mx-auto">
+        <div className="flex items-center justify-between max-w-[1600px] mx-auto">
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">{items.length} items • {items.reduce((s, i) => s + i.totalPairs, 0)} pairs</p>
             <p className="text-lg font-bold text-primary">Rs {calculations.total.toLocaleString()}</p>
