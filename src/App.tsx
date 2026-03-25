@@ -26,6 +26,7 @@ import PriceCheck from "./pages/PriceCheck";
 import Cheques from "./pages/Cheques";
 import CityRecovery from "./pages/CityRecovery";
 import BulkClients from "./pages/BulkClients";
+import AddProduct from "./pages/AddProduct";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -140,6 +141,7 @@ function AppRoutes() {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/inventory" element={<Inventory />} />
+        <Route path="/inventory/add" element={<AddProduct />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/invoices/new" element={<NewInvoice />} />

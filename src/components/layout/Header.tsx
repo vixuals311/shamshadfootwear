@@ -78,7 +78,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               <Link to="/bulk-clients">Add Client</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/inventory">Add Product</Link>
+              <Link to="/inventory/add">Add Product</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
