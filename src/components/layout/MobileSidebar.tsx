@@ -20,15 +20,15 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const { onlineBillingEnabled } = useOnlineBilling();
 
   const navItems = [
+    { icon: LayoutDashboard, label: "Dashboard", path: "/", show: hasPageAccess("dashboard") },
     { icon: Package, label: "Inventory", path: "/inventory", show: hasPageAccess("inventory") },
     { icon: Tag, label: "Price Check", path: "/price-check", show: hasPageAccess("price_check") },
     { icon: Users, label: "Clients", path: "/clients", show: hasPageAccess("clients") },
-    { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPageAccess("recovery") },
-    { icon: MapPin, label: "City Recovery", path: "/city-recovery", show: hasPageAccess("recovery") },
-    { icon: LayoutDashboard, label: "Dashboard", path: "/", show: hasPageAccess("dashboard") },
     { icon: FileText, label: "Invoices", path: "/invoices", show: hasPageAccess("invoices") && onlineBillingEnabled },
     { icon: CreditCard, label: "Payments", path: "/payments", show: hasPageAccess("payments") },
     { icon: FileCheck, label: "Cheques", path: "/cheques", show: hasPageAccess("cheques") },
+    { icon: Wallet, label: "Recovery", path: "/recovery", show: hasPageAccess("recovery") },
+    { icon: MapPin, label: "City Recovery", path: "/city-recovery", show: hasPageAccess("city_recovery") },
     { icon: RotateCcw, label: "Returns", path: "/returns", show: hasPageAccess("returns") },
     { icon: BarChart3, label: "Reports", path: "/reports", show: hasPageAccess("reports") },
   ].filter(item => item.show);
