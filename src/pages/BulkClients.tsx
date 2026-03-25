@@ -37,7 +37,7 @@ const emptyRow = (): BulkClientRow => ({
 });
 
 export default function BulkClients() {
-  const [rows, setRows] = useState<BulkClientRow[]>([emptyRow(), emptyRow(), emptyRow()]);
+  const [rows, setRows] = useState<BulkClientRow[]>([emptyRow()]);
   const [isValidating, setIsValidating] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [validated, setValidated] = useState(false);
