@@ -24,7 +24,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     { icon: Package, label: "Inventory", path: "/inventory", show: hasPageAccess("inventory") },
     { icon: Tag, label: "Price Check", path: "/price-check", show: hasPageAccess("price_check") },
     { icon: Users, label: "Clients", path: "/clients", show: hasPageAccess("clients") },
-    { icon: UsersRound, label: "Bulk Clients", path: "/bulk-clients", show: hasPageAccess("bulk_clients") },
+    { icon: UsersRound, label: "Add Client", path: "/bulk-clients", show: hasPageAccess("bulk_clients") },
     { icon: FileText, label: "Invoices", path: "/invoices", show: hasPageAccess("invoices") && onlineBillingEnabled },
     { icon: CreditCard, label: "Payments", path: "/payments", show: hasPageAccess("payments") },
     { icon: FileCheck, label: "Cheques", path: "/cheques", show: hasPageAccess("cheques") },
