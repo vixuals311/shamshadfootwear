@@ -156,14 +156,18 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   - Size bundle details: size range, price/pair, pairs/bundle, quantity (bundles)
 
 ### 5.2 Add Product (UC-INV-02)
+- **Route:** `/add-product`
 - **Actors:** Admin, Manager, Biller
+- **Dedicated Page:** Accessible from sidebar navigation and header quick actions
 - **Flow:**
-  1. Click "Add Product" button
+  1. Navigate to the standalone "Add Product" page
   2. Fill in: Name, Article Number, Brand (dropdown), Category, Gender, Pairs Per Dozen, Supplier
-  3. Add size bundles with: Size Range (from defaults or custom), Price Per Pair, Pairs Per Bundle, Quantity
-  4. Confirmation dialog before saving
-  5. Product and size bundles are inserted into the database
-  6. Audit log entry is created
+  3. Size bundles auto-load based on selected gender (from default size ranges)
+  4. Set Price Per Pair, Pairs Per Bundle, and Quantity per size range
+  5. Real-time stock calculation shows total pairs and dozens
+  6. Confirmation dialog before saving
+  7. Product and size bundles are inserted into the database
+  8. Audit log entry is created
 
 ### 5.3 Edit Product (UC-INV-03)
 - **Actors:** Admin, Manager, Biller
@@ -301,6 +305,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 - **Route:** `/invoices`
 - **Actors:** Admin, Manager, Biller
 - **Features:**
+  - **Draft Invoices Section:** Prominently displayed at the top of the page when drafts exist, showing invoice number, client, date, and amount. Click to edit directly.
   - Invoice list with: number, client name, amount, status, date, item count
   - **Search:** By invoice number or client name
   - **Filter by Status:** All, Paid, Pending, Overdue, Draft, Partial
@@ -311,14 +316,16 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 ### 7.2 Create New Invoice (UC-INV-NEW-01)
 - **Route:** `/invoices/new`
 - **Actors:** Admin, Manager, Biller
+- **Layout:** Two-column layout for maximum screen utilization
+  - **Left Column:** Client selection + product search/selection with size bundle pickers
+  - **Right Column:** Items table + payment method + summary totals + save button
 - **Flow:**
-  1. **Select Client:** Searchable combobox with all clients (shows phone + city)
+  1. **Select Client:** Searchable combobox with all clients (shows phone + city + balance)
   2. **Add Products:**
-     - Searchable product list showing article number, name, brand
-     - Select a product → see all its size bundles
-     - For each size bundle: set number of bundles to add (+ / - controls)
+     - Searchable product list on the left showing article number, name, brand
+     - Select a product → see all its size bundles with +/- controls
      - Shows available quantity, pairs per bundle, price per pair
-     - Click "Add to Invoice" → items are added (or merged if same product+size exists)
+     - Click "Add to Invoice" → items appear in the right column table
   3. **Edit Line Items:**
      - Adjust bundles quantity (+ / -)
      - Edit total pairs directly (overrides bundle calculation)
@@ -327,8 +334,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   4. **Payment Section:**
      - Payment method: Cash or Account (select payment account)
      - Enter amount received
-     - Tax percentage (optional)
-     - Credit notes: Auto-detected from client's return credit notes, can be applied
+     - Credit notes: Auto-detected from client's return credit notes, applied on save
   5. **Review & Save:**
      - Review dialog shows complete invoice summary
      - Auto-generated invoice number: `INV-YYYY-XXXX`
@@ -340,7 +346,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
   6. **Save as Draft:**
      - Saves with status `draft`
      - Does NOT update stock or client balance
-     - Can be edited later
+     - Can be edited later from the Invoices page draft section
 
 ### 7.3 Edit Draft Invoice (UC-INV-EDIT-01)
 - **Route:** `/invoices/edit/:invoiceId`
@@ -850,8 +856,10 @@ recoveries ──< recovery_client_amounts
 |------|:-----:|:-------:|:------:|:-------:|:--------------:|
 | Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Inventory | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Add Product | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Price Check | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Clients | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Add Client | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Invoices | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Payments | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Cheques | ✅ | ✅ | ❌ | ✅ | ✅ |
