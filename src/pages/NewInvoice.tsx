@@ -878,7 +878,7 @@ const NewInvoice = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto pb-28 sm:pb-20">
+    <div className="space-y-4 sm:space-y-6 max-w-[1600px] mx-auto pb-28 sm:pb-20">
       {/* Header - Compact on mobile */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -984,9 +984,9 @@ const NewInvoice = () => {
         </Popover>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 sm:gap-6">
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Product Search - Sticky on mobile */}
           <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-2 sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:backdrop-blur-none">
             <div className="relative">
