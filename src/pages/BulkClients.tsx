@@ -72,8 +72,17 @@ export default function BulkClients() {
     setValidated(false);
   };
 
+  const formatPhone = (value: string): string => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length > 4) {
+      return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+    }
+    return digits;
+  };
+
   const updateRow = (id: string, field: keyof BulkClientRow, value: string) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value, status: "pending" } : r));
+    const finalValue = field === "phone" ? formatPhone(value) : value;
+    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: finalValue, status: "pending" } : r));
     setValidated(false);
   };
 
