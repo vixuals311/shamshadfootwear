@@ -544,6 +544,46 @@ const Invoices = () => {
         </div>
       </motion.div>
 
+      {/* Draft Invoices Section */}
+      {invoices.filter(inv => inv.status === "draft").length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-card rounded-xl p-4 shadow-card border-l-4 border-l-muted-foreground"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <FileText className="w-4 h-4 text-muted-foreground" />
+              Draft Invoices ({invoices.filter(inv => inv.status === "draft").length})
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {invoices.filter(inv => inv.status === "draft").map((draft) => (
+              <div
+                key={draft.id}
+                className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                onClick={() => handleEditDraft(draft.id)}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Edit className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{draft.number}</p>
+                    <p className="text-xs text-muted-foreground truncate">{draft.client} • {format(new Date(draft.date), "dd MMM yyyy")}</p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0 ml-3">
+                  <p className="text-sm font-semibold text-foreground">Rs {draft.amount.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">{draft.items} items</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Stats Cards */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
