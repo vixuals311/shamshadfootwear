@@ -29,6 +29,7 @@ import {
   SortAsc,
 } from "lucide-react";
 import { CityCombobox } from "@/components/clients/CityCombobox";
+import { ReferenceCombobox } from "@/components/clients/ReferenceCombobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -395,6 +396,11 @@ const Clients = () => {
   const existingCities = useMemo(() => {
     const cities = clients.map((c) => c.city).filter((city) => city && city !== "N/A");
     return [...new Set(cities)].sort();
+  }, [clients]);
+
+  const existingReferences = useMemo(() => {
+    const refs = clients.map((c) => c.referenceNumber).filter((r) => r && r !== "N/A");
+    return [...new Set(refs)].sort();
   }, [clients]);
 
   const uniqueCities = existingCities;
