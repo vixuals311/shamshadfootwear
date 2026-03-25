@@ -19,6 +19,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/", show: hasPageAccess("dashboard") },
     { icon: Package, label: "Inventory", path: "/inventory", show: hasPageAccess("inventory") },
+    { icon: Plus, label: "Add Product", path: "/add-product", show: hasPageAccess("inventory") },
     { icon: Tag, label: "Price Check", path: "/price-check", show: hasPageAccess("price_check") },
     { icon: Users, label: "Clients", path: "/clients", show: hasPageAccess("clients") },
     { icon: UsersRound, label: "Add Client", path: "/bulk-clients", show: hasPageAccess("bulk_clients") },
