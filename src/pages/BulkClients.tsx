@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,6 +9,8 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Plus, Trash2, AlertTriangle, CheckCircle2, Loader2, Download, UsersRound } from "lucide-react";
 import { parseCSV, findColumnIndex, triggerFileInput } from "@/utils/importUtils";
+import { CityCombobox } from "@/components/clients/CityCombobox";
+import { Label } from "@/components/ui/label";
 
 interface BulkClientRow {
   id: string;
@@ -39,6 +41,23 @@ export default function BulkClients() {
   const [isValidating, setIsValidating] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [validated, setValidated] = useState(false);
+  const [masterCity, setMasterCity] = useState("");
+  const [existingCities, setExistingCities] = useState<string[]>([]);
+
+  useEffect(() => {
+    supabase.from("clients").select("city").then(({ data }) => {
+      if (data) {
+        const cities = data.map(c => c.city).filter(Boolean) as string[];
+        setExistingCities(cities);
+      }
+    });
+  }, []);
+
+  const applyMasterCity = (city: string) => {
+    setMasterCity(city);
+    setRows(prev => prev.map(r => r.status !== "imported" ? { ...r, city, status: "pending" } : r));
+    setValidated(false);
+  };
 
   const updateRow = (id: string, field: keyof BulkClientRow, value: string) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value, status: "pending" } : r));
@@ -256,19 +275,35 @@ export default function BulkClients() {
 
         <TabsContent value="manual">
           <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <CardTitle className="text-lg">Client Entries</CardTitle>
-                <CardDescription>{rows.length} rows total</CardDescription>
+            <CardHeader className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-lg">Client Entries</CardTitle>
+                  <CardDescription>{rows.length} rows total</CardDescription>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" variant="outline" onClick={() => addRows(1)} className="gap-1">
+                    <Plus className="w-3 h-3" /> Add Row
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addRows(5)} className="gap-1">
+                    <Plus className="w-3 h-3" /> Add 5
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={clearAll}>Clear All</Button>
+                </div>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button size="sm" variant="outline" onClick={() => addRows(1)} className="gap-1">
-                  <Plus className="w-3 h-3" /> Add Row
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => addRows(5)} className="gap-1">
-                  <Plus className="w-3 h-3" /> Add 5
-                </Button>
-                <Button size="sm" variant="ghost" onClick={clearAll}>Clear All</Button>
+              <div className="flex items-end gap-3 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/5">
+                <div className="flex-1 max-w-xs space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground">Master City (applies to all rows)</Label>
+                  <CityCombobox
+                    value={masterCity}
+                    onChange={applyMasterCity}
+                    existingCities={existingCities}
+                    placeholder="Select city for all..."
+                  />
+                </div>
+                {masterCity && (
+                  <p className="text-xs text-muted-foreground pb-2">All rows set to <span className="font-semibold text-foreground">{masterCity}</span></p>
+                )}
               </div>
             </CardHeader>
             <CardContent>
