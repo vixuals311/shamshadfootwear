@@ -332,6 +332,7 @@ export default function BulkClients() {
                 {refPrefix && (
                   <p className="text-xs text-muted-foreground pb-2">e.g. <span className="font-semibold text-foreground">{refPrefix}1</span>, <span className="font-semibold text-foreground">{refPrefix}2</span>, ...</p>
                 )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-auto max-h-[60vh]">
