@@ -1798,13 +1798,11 @@ const Clients = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="referenceNumber">Reference Number <span className="text-destructive">*</span></Label>
-                    <Input
-                      id="referenceNumber"
+                    <ReferenceCombobox
                       value={newClient.referenceNumber}
-                      onChange={(e) =>
-                        setNewClient({ ...newClient, referenceNumber: e.target.value })
-                      }
-                      placeholder="e.g. REF-001, ABC123"
+                      onChange={(ref) => setNewClient({ ...newClient, referenceNumber: ref })}
+                      existingReferences={existingReferences}
+                      placeholder="Select or type reference..."
                     />
                   </div>
                   <div className="space-y-2">
@@ -2355,10 +2353,11 @@ const Clients = () => {
             </div>
             <div className="space-y-2">
               <Label>Reference Number</Label>
-              <Input
+              <ReferenceCombobox
                 value={editClientForm.referenceNumber}
-                onChange={(e) => setEditClientForm(prev => ({ ...prev, referenceNumber: e.target.value }))}
-                placeholder="e.g. REF-001"
+                onChange={(ref) => setEditClientForm(prev => ({ ...prev, referenceNumber: ref }))}
+                existingReferences={existingReferences}
+                placeholder="Select or type reference..."
               />
             </div>
           </div>
