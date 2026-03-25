@@ -333,11 +333,11 @@ export default function BulkClients() {
                 <div className="flex-1 max-w-xs space-y-1">
                   <Label className="text-xs font-medium text-muted-foreground">Reference Prefix (applies to all rows)</Label>
                   <div className="flex gap-2">
-                    <Input
+                    <ReferenceCombobox
                       value={refPrefix}
-                      onChange={e => setRefPrefix(e.target.value)}
+                      onChange={(val) => setRefPrefix(val)}
+                      existingReferences={existingReferences}
                       placeholder="e.g. Fateh"
-                      className="h-9 text-sm"
                     />
                     <Button size="sm" variant="outline" onClick={() => applyRefPrefix(refPrefix)} disabled={!refPrefix.trim()}>
                       Apply
