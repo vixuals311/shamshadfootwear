@@ -1019,7 +1019,7 @@ const NewInvoice = () => {
 
           {/* Product Selection Dropdown */}
           {productOpen && (
-            <div className="border rounded-lg max-h-[50vh] sm:max-h-[400px] overflow-y-auto bg-card shadow-lg">
+            <div className="border rounded-lg max-h-[60vh] sm:max-h-[500px] overflow-y-auto bg-card shadow-lg">
               {filteredProducts.length > 0 ? (
                 filteredProducts
                   .sort((a, b) => a.article_number.localeCompare(b.article_number))
@@ -1052,7 +1052,7 @@ const NewInvoice = () => {
                           <p className="text-xs font-medium text-muted-foreground">
                             Select bundles per size:
                           </p>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                             {sizeSelections.map((selection) => (
                               <div
                                 key={selection.sizeRange}
