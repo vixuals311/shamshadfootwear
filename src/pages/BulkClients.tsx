@@ -350,13 +350,16 @@ export default function BulkClients() {
                           />
                         </TableCell>
                         <TableCell>
-                          <Input
-                            value={row.city}
-                            onChange={e => updateRow(row.id, "city", e.target.value)}
-                            placeholder="City"
-                            className="h-8 text-sm"
-                            disabled={row.status === "imported"}
-                          />
+                          {row.status === "imported" ? (
+                            <span className="text-sm px-3">{row.city}</span>
+                          ) : (
+                            <CityCombobox
+                              value={row.city}
+                              onChange={(val) => updateRow(row.id, "city", val)}
+                              existingCities={existingCities}
+                              placeholder="City"
+                            />
+                          )}
                         </TableCell>
                         <TableCell>
                           <Input
