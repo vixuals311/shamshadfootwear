@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, Settings, ChevronLeft, ChevronRight, Wallet, UserCog, History, RotateCcw, Tag, FileCheck, MapPin, UsersRound } from "lucide-react";
+import { LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, Settings, ChevronLeft, ChevronRight, Wallet, UserCog, History, RotateCcw, Tag, FileCheck, MapPin, UsersRound, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { useOnlineBilling } from "@/hooks/useOnlineBilling";
@@ -19,6 +19,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/", show: hasPageAccess("dashboard") },
     { icon: Package, label: "Inventory", path: "/inventory", show: hasPageAccess("inventory") },
+    { icon: Plus, label: "Add Product", path: "/add-product", show: hasPageAccess("inventory") },
     { icon: Tag, label: "Price Check", path: "/price-check", show: hasPageAccess("price_check") },
     { icon: Users, label: "Clients", path: "/clients", show: hasPageAccess("clients") },
     { icon: UsersRound, label: "Add Client", path: "/bulk-clients", show: hasPageAccess("bulk_clients") },
