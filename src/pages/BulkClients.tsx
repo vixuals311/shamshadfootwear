@@ -61,10 +61,12 @@ export default function BulkClients() {
   };
 
   const applyRefPrefix = (prefix: string) => {
-    setRefPrefix(prefix);
-    setRows(prev => prev.map((r, idx) =>
+    const formatted = prefix.trim().charAt(0).toUpperCase() + prefix.trim().slice(1);
+    const withDash = formatted.endsWith("-") ? formatted : `${formatted}-`;
+    setRefPrefix(withDash);
+    setRows(prev => prev.map(r =>
       r.status !== "imported"
-        ? { ...r, referenceNumber: `${prefix}${idx + 1}`, status: "pending" }
+        ? { ...r, referenceNumber: withDash, status: "pending" }
         : r
     ));
     setValidated(false);
@@ -316,12 +318,12 @@ export default function BulkClients() {
                   <p className="text-xs text-muted-foreground pb-2">All rows set to <span className="font-semibold text-foreground">{masterCity}</span></p>
                 )}
                 <div className="flex-1 max-w-xs space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground">Reference Prefix (auto-numbers all rows)</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Reference Prefix (applies to all rows)</Label>
                   <div className="flex gap-2">
                     <Input
                       value={refPrefix}
                       onChange={e => setRefPrefix(e.target.value)}
-                      placeholder="e.g. REF-"
+                      placeholder="e.g. Fateh"
                       className="h-9 text-sm"
                     />
                     <Button size="sm" variant="outline" onClick={() => applyRefPrefix(refPrefix)} disabled={!refPrefix.trim()}>
@@ -330,7 +332,7 @@ export default function BulkClients() {
                   </div>
                 </div>
                 {refPrefix && (
-                  <p className="text-xs text-muted-foreground pb-2">e.g. <span className="font-semibold text-foreground">{refPrefix}1</span>, <span className="font-semibold text-foreground">{refPrefix}2</span>, ...</p>
+                  <p className="text-xs text-muted-foreground pb-2">Each row starts with <span className="font-semibold text-foreground">{refPrefix}</span> — add number manually (e.g. <span className="font-semibold text-foreground">{refPrefix}001</span>)</p>
                 )}
               </div>
             </CardHeader>
