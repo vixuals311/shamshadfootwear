@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, Settings, ChevronLeft, ChevronRight, Wallet, UserCog, History, RotateCcw, Tag, FileCheck, MapPin } from "lucide-react";
+import { LayoutDashboard, Package, Users, FileText, CreditCard, BarChart3, Settings, ChevronLeft, ChevronRight, Wallet, UserCog, History, RotateCcw, Tag, FileCheck, MapPin, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { useOnlineBilling } from "@/hooks/useOnlineBilling";
@@ -21,6 +21,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { icon: Package, label: "Inventory", path: "/inventory", show: hasPageAccess("inventory") },
     { icon: Tag, label: "Price Check", path: "/price-check", show: hasPageAccess("price_check") },
     { icon: Users, label: "Clients", path: "/clients", show: hasPageAccess("clients") },
+    { icon: UsersRound, label: "Bulk Clients", path: "/bulk-clients", show: hasPageAccess("bulk_clients") },
     { icon: FileText, label: "Invoices", path: "/invoices", show: hasPageAccess("invoices") && onlineBillingEnabled },
     { icon: CreditCard, label: "Payments", path: "/payments", show: hasPageAccess("payments") },
     { icon: FileCheck, label: "Cheques", path: "/cheques", show: hasPageAccess("cheques") },
