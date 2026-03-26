@@ -48,20 +48,35 @@ export function UserMenu() {
     e.stopPropagation();
     setDownloadingId(notificationId);
     try {
-      const { data, error } = await supabase.storage
+      // Try signed URL first (more reliable than download)
+      const { data: signedData, error: signedError } = await supabase.storage
         .from("backups")
-        .download(fileName);
-      if (error) throw error;
+        .createSignedUrl(fileName, 300);
 
-      const url = URL.createObjectURL(data);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(url);
+      if (signedError) {
+        // Fallback to direct download
+        const { data, error } = await supabase.storage
+          .from("backups")
+          .download(fileName);
+        if (error) throw new Error(error.message || "Could not download backup file");
+
+        const url = URL.createObjectURL(data);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else if (signedData?.signedUrl) {
+        const link = document.createElement("a");
+        link.href = signedData.signedUrl;
+        link.download = fileName;
+        link.target = "_blank";
+        link.click();
+      }
+
       markNotificationAsRead(notificationId);
     } catch (error: any) {
-      toast({ title: "Download Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Download Failed", description: error?.message || "Unable to download backup. Please try from Settings > Backup & Restore.", variant: "destructive" });
     } finally {
       setDownloadingId(null);
     }
