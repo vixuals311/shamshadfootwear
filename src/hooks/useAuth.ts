@@ -35,9 +35,47 @@ export interface PageAccess {
 }
 
 const AUTH_CACHE_PREFIX = "sf-auth-cache";
+const SESSION_INIT_TIMEOUT_MS = 4000;
+const SESSION_CHECK_TIMEOUT_MS = 3000;
 
 function getCacheKey(userId: string, key: string) {
   return `${AUTH_CACHE_PREFIX}:${userId}:${key}`;
+}
+
+function isSessionLike(value: unknown): value is Session {
+  if (!value || typeof value !== "object") return false;
+
+  const session = value as Partial<Session> & { user?: { id?: unknown } };
+
+  return !!(
+    typeof session.access_token === "string" &&
+    typeof session.refresh_token === "string" &&
+    session.user &&
+    typeof session.user.id === "string"
+  );
+}
+
+function getStoredSession(projectRef: string): Session | null {
+  try {
+    const raw = localStorage.getItem(`sb-${projectRef}-auth-token`);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as
+      | Session
+      | { currentSession?: Session | null; session?: Session | null }
+      | null;
+
+    const candidate =
+      parsed && typeof parsed === "object" && "currentSession" in parsed
+        ? parsed.currentSession
+        : parsed && typeof parsed === "object" && "session" in parsed
+          ? parsed.session
+          : parsed;
+
+    return isSessionLike(candidate) ? candidate : null;
+  } catch {
+    return null;
+  }
 }
 
 function readCachedValue<T>(key: string): T | null {
@@ -219,6 +257,34 @@ export function useSupabaseAuth() {
     }
   }, []);
 
+  const applyCachedAuthState = useCallback((userId: string) => {
+    const cachedProfile = readCachedValue<Profile>(getCacheKey(userId, "profile"));
+    const cachedRole = readCachedValue<{ role: AppRole | null; sessionTimeoutMinutes: number }>(
+      getCacheKey(userId, "role")
+    );
+    const cachedPageAccess = readCachedValue<Record<PageKey, boolean>>(getCacheKey(userId, "page-access"));
+    const cachedNotifications = readCachedValue<Notification[]>(getCacheKey(userId, "notifications"));
+
+    if (cachedProfile) {
+      setProfile(cachedProfile);
+    }
+
+    if (cachedRole) {
+      setRole(cachedRole.role);
+      setSessionTimeoutMinutes(cachedRole.sessionTimeoutMinutes ?? 480);
+    }
+
+    if (cachedPageAccess) {
+      setPageAccess(cachedPageAccess);
+    } else if (cachedRole?.role) {
+      setPageAccess(buildDefaultPageAccess(cachedRole.role));
+    }
+
+    if (cachedNotifications) {
+      setNotifications(cachedNotifications);
+    }
+  }, []);
+
   const markNotificationAsRead = async (notificationId: string) => {
     try {
       const { error } = await supabase
@@ -296,36 +362,76 @@ export function useSupabaseAuth() {
     // BEFORE any async callback fires — this prevents refresh from logging a new login
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
     const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+    const storedSession = getStoredSession(projectRef);
     let isRestoredSession = !!localStorage.getItem(`sb-${projectRef}-auth-token`);
     let sessionCheckDone = false;
+    let initResolved = false;
 
     const handleSessionCheck = async (uid: string) => {
       if (sessionCheckDone) return;
       sessionCheckDone = true;
+      setSessionChecked(true);
+
       try {
-        const ok = await sessionManager.registerSession(uid);
+        const ok = await Promise.race<boolean>([
+          sessionManager.registerSession(uid),
+          new Promise<boolean>((resolve) => {
+            window.setTimeout(() => resolve(true), SESSION_CHECK_TIMEOUT_MS);
+          }),
+        ]);
+
         if (ok) {
           sessionManager.startHeartbeat();
         }
       } catch (e) {
         console.error("Session registration error:", e);
       }
-      setSessionChecked(true);
     };
 
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      if (existingSession?.user) {
-        isRestoredSession = true;
-        setSession(existingSession);
-        setUser(existingSession.user);
-        fetchProfile(existingSession.user.id);
-        fetchRole(existingSession.user.id);
-        fetchPageAccess(existingSession.user.id);
-        fetchNotifications(existingSession.user.id);
-        handleSessionCheck(existingSession.user.id);
-      }
+    const restoreStoredSession = () => {
+      if (!storedSession?.user) return;
+
+      setSession(storedSession);
+      setUser(storedSession.user);
+      applyCachedAuthState(storedSession.user.id);
+      handleSessionCheck(storedSession.user.id);
+    };
+
+    const initTimeout = window.setTimeout(() => {
+      if (initResolved) return;
+
+      console.warn("Auth initialization timed out. Restoring locally cached session state.");
+      restoreStoredSession();
       setLoading(false);
-    });
+    }, SESSION_INIT_TIMEOUT_MS);
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: existingSession } }) => {
+        initResolved = true;
+        window.clearTimeout(initTimeout);
+
+        if (existingSession?.user) {
+          isRestoredSession = true;
+          setSession(existingSession);
+          setUser(existingSession.user);
+          applyCachedAuthState(existingSession.user.id);
+          fetchProfile(existingSession.user.id);
+          fetchRole(existingSession.user.id);
+          fetchPageAccess(existingSession.user.id);
+          fetchNotifications(existingSession.user.id);
+          handleSessionCheck(existingSession.user.id);
+        }
+
+        setLoading(false);
+      })
+      .catch((error) => {
+        initResolved = true;
+        window.clearTimeout(initTimeout);
+        console.error("Error restoring session:", error);
+        restoreStoredSession();
+        setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
@@ -348,6 +454,7 @@ export function useSupabaseAuth() {
           if (event === "SIGNED_IN") {
             isRestoredSession = true;
           }
+          applyCachedAuthState(currentSession.user.id);
           handleSessionCheck(currentSession.user.id);
           fetchProfile(currentSession.user.id);
           fetchRole(currentSession.user.id);
@@ -366,8 +473,12 @@ export function useSupabaseAuth() {
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, [fetchProfile, fetchRole, fetchPageAccess, fetchNotifications]);
+    return () => {
+      initResolved = true;
+      window.clearTimeout(initTimeout);
+      subscription.unsubscribe();
+    };
+  }, [applyCachedAuthState, fetchProfile, fetchRole, fetchPageAccess, fetchNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
