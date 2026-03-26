@@ -95,6 +95,10 @@ function writeCachedValue<T>(key: string, value: T) {
   }
 }
 
+function deferAuthSideEffect(callback: () => void) {
+  window.setTimeout(callback, 0);
+}
+
 function buildDefaultPageAccess(role: AppRole | null): Record<PageKey, boolean> {
   const accessMap = {} as Record<PageKey, boolean>;
 
@@ -435,31 +439,39 @@ export function useSupabaseAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
-        // CRITICAL: Never await inside onAuthStateChange — it deadlocks getSession
+        // CRITICAL: Never call async Supabase APIs directly inside onAuthStateChange.
+        // Defer all follow-up work to avoid auth client deadlocks during sign-in.
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         if (currentSession?.user) {
-          // Only log login for genuine new sign-ins, NOT token refreshes or session restores
-          if (event === "SIGNED_IN" && !isRestoredSession) {
-            supabase.from("audit_logs").insert({
-              action: "login",
-              entity_type: "user",
-              user_id: currentSession.user.id,
-              user_name: currentSession.user.email || "Unknown",
-              details: { method: "password", event },
-            }).then(() => {});
-          }
+          const currentUserId = currentSession.user.id;
+          const shouldLogLogin = event === "SIGNED_IN" && !isRestoredSession;
+
           // After initial restore, mark as handled so subsequent SIGNED_IN from
           // token refresh won't log again
           if (event === "SIGNED_IN") {
             isRestoredSession = true;
           }
-          applyCachedAuthState(currentSession.user.id);
-          handleSessionCheck(currentSession.user.id);
-          fetchProfile(currentSession.user.id);
-          fetchRole(currentSession.user.id);
-          fetchPageAccess(currentSession.user.id);
-          fetchNotifications(currentSession.user.id);
+
+          applyCachedAuthState(currentUserId);
+
+          deferAuthSideEffect(() => {
+            if (shouldLogLogin) {
+              supabase.from("audit_logs").insert({
+                action: "login",
+                entity_type: "user",
+                user_id: currentUserId,
+                user_name: currentSession.user.email || "Unknown",
+                details: { method: "password", event },
+              }).then(() => {});
+            }
+
+            handleSessionCheck(currentUserId);
+            fetchProfile(currentUserId);
+            fetchRole(currentUserId);
+            fetchPageAccess(currentUserId);
+            fetchNotifications(currentUserId);
+          });
         } else {
           setProfile(null);
           setRole(null);
