@@ -11,6 +11,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { DeviceLimitDialog } from "@/components/auth/DeviceLimitDialog";
 
+const AUTH_REQUEST_TIMEOUT_MS = 12000;
+
+function isPreviewEnvironment() {
+  const hostname = window.location.hostname;
+  return hostname.includes("lovableproject.com") || hostname.includes("id-preview--");
+}
+
+function createAuthTimeoutError() {
+  return new Error(
+    isPreviewEnvironment()
+      ? "Login timed out in preview. Please try the published app URL."
+      : "Login timed out. Please try again."
+  );
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs = AUTH_REQUEST_TIMEOUT_MS): Promise<T> {
+  return Promise.race<T>([
+    promise,
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(createAuthTimeoutError()), timeoutMs);
+    }),
+  ]);
+}
+
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -25,29 +49,39 @@ const Login = () => {
   const [showSignUpOption, setShowSignUpOption] = useState(false);
 
   useEffect(() => {
-    supabase.rpc("check_admins_exist").then(({ data }) => {
-      setShowSignUpOption(data === false);
-    });
+    withTimeout(supabase.rpc("check_admins_exist"), 4000)
+      .then(({ data }) => {
+        setShowSignUpOption(data === false);
+      })
+      .catch(() => {
+        setShowSignUpOption(false);
+      });
   }, []);
 
   // Get the landing page for a given role from application_settings
   const getLandingPage = async (userId: string): Promise<string> => {
     try {
       // Get user role
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const { data: roleData } = await withTimeout(
+        supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        4000
+      );
 
       const userRole = roleData?.role || "biller";
 
       // Get landing page setting
-      const { data: settingData } = await supabase
-        .from("application_settings")
-        .select("setting_value")
-        .eq("setting_key", "default_landing_pages")
-        .maybeSingle();
+      const { data: settingData } = await withTimeout(
+        supabase
+          .from("application_settings")
+          .select("setting_value")
+          .eq("setting_key", "default_landing_pages")
+          .maybeSingle(),
+        4000
+      );
 
       if (settingData?.setting_value) {
         const pages = settingData.setting_value as Record<string, string>;
@@ -67,9 +101,11 @@ const Login = () => {
     }
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      const { error } = await withTimeout(
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        })
+      );
       if (error) throw error;
       toast({ title: "Email sent!", description: "Check your inbox for the password reset link." });
       setIsForgotPassword(false);
@@ -86,16 +122,18 @@ const Login = () => {
 
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: {
-              name: name || email.split("@")[0],
+        const { data, error } = await withTimeout(
+          supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: window.location.origin,
+              data: {
+                name: name || email.split("@")[0],
+              },
             },
-          },
-        });
+          })
+        );
 
         if (error) throw error;
 
@@ -105,10 +143,12 @@ const Login = () => {
         });
         navigate("/");
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { data, error } = await withTimeout(
+          supabase.auth.signInWithPassword({
+            email,
+            password,
+          })
+        );
 
         if (error) throw error;
 
