@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { PageKey } from "@/types";
+import { PageKey, ROLE_DEFAULT_PAGES } from "@/types";
 import { useSessionManager } from "@/hooks/useSessionManager";
 
 export type AppRole = "admin" | "manager" | "biller" | "cashier";
@@ -32,6 +32,41 @@ export interface Notification {
 export interface PageAccess {
   page_key: PageKey;
   has_access: boolean;
+}
+
+const AUTH_CACHE_PREFIX = "sf-auth-cache";
+
+function getCacheKey(userId: string, key: string) {
+  return `${AUTH_CACHE_PREFIX}:${userId}:${key}`;
+}
+
+function readCachedValue<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedValue<T>(key: string, value: T) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage failures
+  }
+}
+
+function buildDefaultPageAccess(role: AppRole | null): Record<PageKey, boolean> {
+  const accessMap = {} as Record<PageKey, boolean>;
+
+  if (!role) return accessMap;
+
+  for (const pageKey of ROLE_DEFAULT_PAGES[role]) {
+    accessMap[pageKey] = true;
+  }
+
+  return accessMap;
 }
 
 export function useSupabaseAuth() {
@@ -76,8 +111,17 @@ export function useSupabaseAuth() {
         .maybeSingle();
       if (error) throw error;
       setProfile(data);
+
+      if (data) {
+        writeCachedValue(getCacheKey(userId, "profile"), data);
+      }
     } catch (error) {
       console.error("Error fetching profile:", error);
+
+      const cachedProfile = readCachedValue<Profile>(getCacheKey(userId, "profile"));
+      if (cachedProfile) {
+        setProfile(cachedProfile);
+      }
     }
   }, []);
 
@@ -89,10 +133,40 @@ export function useSupabaseAuth() {
         .eq("user_id", userId)
         .maybeSingle();
       if (error) throw error;
-      setRole(data?.role as AppRole || null);
-      setSessionTimeoutMinutes(data?.session_timeout_minutes ?? 480);
+
+      const nextRole = (data?.role as AppRole) || null;
+      const nextTimeout = data?.session_timeout_minutes ?? 480;
+
+      setRole(nextRole);
+      setSessionTimeoutMinutes(nextTimeout);
+
+      if (nextRole) {
+        setPageAccess((prev) =>
+          Object.keys(prev).length > 0 ? prev : buildDefaultPageAccess(nextRole)
+        );
+      }
+
+      writeCachedValue(getCacheKey(userId, "role"), {
+        role: nextRole,
+        sessionTimeoutMinutes: nextTimeout,
+      });
     } catch (error) {
       console.error("Error fetching role:", error);
+
+      const cachedRole = readCachedValue<{ role: AppRole | null; sessionTimeoutMinutes: number }>(
+        getCacheKey(userId, "role")
+      );
+
+      if (cachedRole) {
+        setRole(cachedRole.role);
+        setSessionTimeoutMinutes(cachedRole.sessionTimeoutMinutes ?? 480);
+
+        if (cachedRole.role) {
+          setPageAccess((prev) =>
+            Object.keys(prev).length > 0 ? prev : buildDefaultPageAccess(cachedRole.role)
+          );
+        }
+      }
     }
   }, []);
 
@@ -106,9 +180,21 @@ export function useSupabaseAuth() {
       (data || []).forEach((row: { page_key: string; has_access: boolean }) => {
         accessMap[row.page_key as PageKey] = row.has_access;
       });
-      setPageAccess(accessMap);
+
+      const cachedRole = readCachedValue<{ role: AppRole | null }>(getCacheKey(userId, "role"));
+      const nextAccessMap = Object.keys(accessMap).length > 0
+        ? accessMap
+        : buildDefaultPageAccess(cachedRole?.role ?? null);
+
+      setPageAccess(nextAccessMap);
+      writeCachedValue(getCacheKey(userId, "page-access"), nextAccessMap);
     } catch (error) {
       console.error("Error fetching page access:", error);
+
+      const cachedPageAccess = readCachedValue<Record<PageKey, boolean>>(getCacheKey(userId, "page-access"));
+      const cachedRole = readCachedValue<{ role: AppRole | null }>(getCacheKey(userId, "role"));
+
+      setPageAccess(cachedPageAccess ?? buildDefaultPageAccess(cachedRole?.role ?? null));
     }
   }, []);
 
@@ -122,8 +208,14 @@ export function useSupabaseAuth() {
         .limit(20);
       if (error) throw error;
       setNotifications(data || []);
+      writeCachedValue(getCacheKey(userId, "notifications"), data || []);
     } catch (error) {
       console.error("Error fetching notifications:", error);
+
+      const cachedNotifications = readCachedValue<Notification[]>(getCacheKey(userId, "notifications"));
+      if (cachedNotifications) {
+        setNotifications(cachedNotifications);
+      }
     }
   }, []);
 

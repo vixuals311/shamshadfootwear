@@ -45,7 +45,12 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     if (!auth.role) return false;
     if (auth.role === "admin") return true;
     if (pageKey === "users") return false;
-    return auth.pageAccess[pageKey] ?? false;
+
+    if (pageKey in auth.pageAccess) {
+      return auth.pageAccess[pageKey] ?? false;
+    }
+
+    return false;
   };
 
   const getPermissions = (): RolePermissions | null => {
