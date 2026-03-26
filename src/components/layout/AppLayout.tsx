@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MobileSidebar } from "./MobileSidebar";
+import { BackupReminderDialog } from "./BackupReminderDialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
@@ -29,6 +30,8 @@ export function AppLayout() {
       signOut();
     },
   });
+
+  const isAdminOrManager = role === "admin" || role === "manager";
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -67,6 +70,9 @@ export function AppLayout() {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Daily backup reminder for admin/manager */}
+      {isAdminOrManager && <BackupReminderDialog />}
     </div>
   );
 }
