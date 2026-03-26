@@ -26,9 +26,9 @@ function createAuthTimeoutError() {
   );
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs = AUTH_REQUEST_TIMEOUT_MS): Promise<T> {
+async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs = AUTH_REQUEST_TIMEOUT_MS): Promise<T> {
   return Promise.race<T>([
-    promise,
+    Promise.resolve(promise),
     new Promise<T>((_, reject) => {
       window.setTimeout(() => reject(createAuthTimeoutError()), timeoutMs);
     }),
