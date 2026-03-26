@@ -88,20 +88,31 @@ export function DataBackupRestore() {
   const handleDownloadBackup = async (fileName: string) => {
     setDownloadingFile(fileName);
     try {
-      const { data, error } = await supabase.storage
+      const { data: signedData, error: signedError } = await supabase.storage
         .from("backups")
-        .download(fileName);
+        .createSignedUrl(fileName, 300);
 
-      if (error) throw error;
+      if (signedError) {
+        const { data, error } = await supabase.storage
+          .from("backups")
+          .download(fileName);
+        if (error) throw new Error(error.message || "Could not download backup file");
 
-      const url = URL.createObjectURL(data);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(url);
+        const url = URL.createObjectURL(data);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else if (signedData?.signedUrl) {
+        const link = document.createElement("a");
+        link.href = signedData.signedUrl;
+        link.download = fileName;
+        link.target = "_blank";
+        link.click();
+      }
     } catch (error: any) {
-      toast({ title: "Download Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Download Failed", description: error?.message || "Unable to download backup file.", variant: "destructive" });
     } finally {
       setDownloadingFile(null);
     }
