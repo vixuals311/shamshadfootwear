@@ -11,12 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useFirebaseSync } from "@/hooks/useFirebaseSync";
 
 export function AppLayout() {
-  useFirebaseSync();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const location = useLocation();
   const { signOut, sessionTimeoutMinutes, user, role } = useSupabaseAuthContext();
   const { toast } = useToast();
+
+  useFirebaseSync();
 
   useInactivityTimeout({
     timeoutMinutes: sessionTimeoutMinutes,
