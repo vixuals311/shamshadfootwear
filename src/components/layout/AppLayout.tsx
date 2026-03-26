@@ -15,7 +15,7 @@ export function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const location = useLocation();
-  const { signOut, sessionTimeoutMinutes, user } = useSupabaseAuthContext();
+  const { signOut, sessionTimeoutMinutes, user, role } = useSupabaseAuthContext();
   const { toast } = useToast();
 
   useInactivityTimeout({
