@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -104,9 +105,9 @@ const Inventory = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [isAddBrandDialogOpen, setIsAddBrandDialogOpen] = useState(false);
-  const [isSizeRangeDialogOpen, setIsSizeRangeDialogOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [customSizeRange, setCustomSizeRange] = useState("");
+  const navigate = useNavigate();
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
   const [categoryComboOpen, setCategoryComboOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
@@ -114,9 +115,6 @@ const Inventory = () => {
   const { sizeRanges, getSizeRangesForCategory, sortBySizeRangeOrder, addSizeRange, deleteSizeRange } = useDefaultSizeRanges();
 
   // Size range management
-  const [newSizeRangeCategory, setNewSizeRangeCategory] = useState<ProductCategory>("men");
-  const [newSizeRangeValue, setNewSizeRangeValue] = useState("");
-  const [newSizeRangePairs, setNewSizeRangePairs] = useState("6");
 
   // Confirmation dialogs
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
@@ -747,21 +745,6 @@ const Inventory = () => {
     }
   };
 
-  const handleAddDefaultSizeRange = async () => {
-    if (newSizeRangeValue.trim()) {
-      try {
-        await addSizeRange(
-          newSizeRangeCategory,
-          newSizeRangeValue.trim(),
-          parseInt(newSizeRangePairs) || 6
-        );
-        setNewSizeRangeValue("");
-        setNewSizeRangePairs("6");
-      } catch (error) {
-        console.error("Failed to add size range:", error);
-      }
-    }
-  };
 
   // Calculate total pairs from size bundles
   const totalStockPairs = useMemo(() => {
@@ -922,84 +905,11 @@ const Inventory = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          {/* Size Range Management */}
-          <Dialog open={isSizeRangeDialogOpen} onOpenChange={setIsSizeRangeDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Settings2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Size Ranges</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Default Size Ranges</DialogTitle>
-                <DialogDescription>
-                  Manage default size ranges for Men, Women, and Children
-                </DialogDescription>
-              </DialogHeader>
-              <Tabs defaultValue="men" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="men">Men</TabsTrigger>
-                  <TabsTrigger value="women">Women</TabsTrigger>
-                  <TabsTrigger value="children">Children</TabsTrigger>
-                </TabsList>
-                {(["men", "women", "children"] as ProductCategory[]).map((cat) => (
-                  <TabsContent key={cat} value={cat} className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="e.g., 7-10"
-                        value={newSizeRangeCategory === cat ? newSizeRangeValue : ""}
-                        onChange={(e) => {
-                          setNewSizeRangeCategory(cat);
-                          setNewSizeRangeValue(e.target.value);
-                        }}
-                        className="flex-1"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Pairs"
-                        value={newSizeRangeCategory === cat ? newSizeRangePairs : "6"}
-                        onChange={(e) => {
-                          setNewSizeRangeCategory(cat);
-                          setNewSizeRangePairs(e.target.value);
-                        }}
-                        className="w-20"
-                      />
-                      <Button onClick={handleAddDefaultSizeRange}>Add</Button>
-                    </div>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {getSizeRangesForCategory(cat).map((sr) => (
-                        <div
-                          key={sr.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                        >
-                          <div>
-                            <span className="font-medium">Size {sr.size_range}</span>
-                            <span className="text-sm text-muted-foreground ml-2">
-                              ({sr.pairs_per_bundle} pairs/bundle)
-                            </span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => deleteSizeRange(sr.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      {getSizeRangesForCategory(cat).length === 0 && (
-                        <p className="text-center text-muted-foreground py-4 text-sm">
-                          No size ranges configured for {cat}
-                        </p>
-                      )}
-                    </div>
-                  </TabsContent>
-                ))}
-              </Tabs>
-            </DialogContent>
-          </Dialog>
+          {/* Size Range Management - navigate to Settings */}
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate("/settings")}>
+            <Settings2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Size Ranges</span>
+          </Button>
 
           {/* Brand Management Dialog */}
           <Dialog
