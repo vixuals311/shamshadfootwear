@@ -428,7 +428,7 @@ const Inventory = () => {
       gender: product.gender,
       pairsPerDozen: product.pairsPerDozen.toString(),
       defaultPairsPerBundle: "6",
-      supplier: product.supplier || "",
+      
       sizeBundles: product.sizeBundles.map((sb: any) => ({
         sizeRange: sb.sizeRange,
         pricePerPair: sb.pricePerPair.toString(),
@@ -455,7 +455,7 @@ const Inventory = () => {
           category: newProduct.category || "General",
           gender: newProduct.gender,
           pairs_per_dozen: parseInt(newProduct.pairsPerDozen) || 12,
-          supplier: newProduct.supplier || null,
+          
         })
         .eq("id", editingProduct.id);
 
@@ -506,7 +506,6 @@ const Inventory = () => {
         gender: "unisex",
         pairsPerDozen: "12",
         defaultPairsPerBundle: "6",
-        supplier: "",
         sizeBundles: [],
       });
       fetchData();
@@ -1192,17 +1191,6 @@ const Inventory = () => {
                       placeholder="6"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="supplier">Supplier</Label>
-                    <Input
-                      id="supplier"
-                      value={newProduct.supplier}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, supplier: e.target.value })
-                      }
-                      placeholder="Enter supplier name"
-                    />
-                  </div>
                 </div>
 
                 {/* Size Bundle Pricing with Quantity */}
@@ -1731,7 +1719,7 @@ const Inventory = () => {
             gender: "unisex",
             pairsPerDozen: "12",
             defaultPairsPerBundle: "6",
-            supplier: "",
+            
             sizeBundles: [],
           });
         }
@@ -1811,15 +1799,6 @@ const Inventory = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-supplier">Supplier</Label>
-                <Input
-                  id="edit-supplier"
-                  value={newProduct.supplier}
-                  onChange={(e) => setNewProduct({ ...newProduct, supplier: e.target.value })}
-                  placeholder="Optional"
-                />
               </div>
             </div>
 
