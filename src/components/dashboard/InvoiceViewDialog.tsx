@@ -129,12 +129,12 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
         </div>
         <p style="font-size:13px;"><strong>Items (${invoice.items.length})</strong> — ${invoice.total_bundles} bundles • ${invoice.items.reduce((s, i) => s + i.total_pairs, 0)} pairs</p>
         <table><thead><tr>
-          <th>#</th><th>Product</th><th>Size</th><th>Bundles</th><th>Pairs</th><th>Rate</th><th>Discount</th><th>Total</th>
+          <th>#</th><th>Product</th><th>Size</th><th>Bundles</th><th>Pairs</th><th>Rate</th>${invoice.total_discount > 0 ? '<th>Discount</th>' : ''}<th>Total</th>
         </tr></thead><tbody>
           ${invoice.items.map((item, idx) => `<tr>
             <td>${idx + 1}</td><td>${item.product_name}<br/><small style="color:#888;">${item.article_number}</small></td>
             <td>${item.size_range}</td><td>${item.quantity}</td><td>${item.total_pairs}</td>
-            <td>Rs ${item.price_per_pair}</td><td>Rs ${item.discount_per_pair}</td><td><strong>Rs ${item.total.toLocaleString()}</strong></td>
+            <td>Rs ${item.price_per_pair}</td>${invoice.total_discount > 0 ? `<td>Rs ${item.discount_per_pair}</td>` : ''}<td><strong>Rs ${item.total.toLocaleString()}</strong></td>
           </tr>`).join('')}
         </tbody></table>
         <div class="totals">
@@ -235,7 +235,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
                   <th className="text-right py-2">Bundles</th>
                   <th className="text-right py-2">Pairs</th>
                   <th className="text-right py-2">Rate</th>
-                  <th className="text-right py-2">Discount</th>
+                  {invoice.total_discount > 0 && <th className="text-right py-2">Discount</th>}
                   <th className="text-right py-2">Total</th>
                 </tr>
               </thead>
@@ -251,7 +251,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
                     <td className="py-2 text-right">{item.quantity}</td>
                     <td className="py-2 text-right">{item.total_pairs}</td>
                     <td className="py-2 text-right">Rs {item.price_per_pair}</td>
-                    <td className="py-2 text-right">Rs {item.discount_per_pair}</td>
+                    {invoice.total_discount > 0 && <td className="py-2 text-right">Rs {item.discount_per_pair}</td>}
                     <td className="py-2 text-right font-medium">Rs {item.total.toLocaleString()}</td>
                   </tr>
                 ))}
