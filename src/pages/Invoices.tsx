@@ -584,6 +584,17 @@ const Invoices = () => {
                     <Edit className="w-3.5 h-3.5" />
                     Resume
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9 p-0"
+                    onClick={() => {
+                      setDeleteInvoiceId(draft.id);
+                      setDeleteInvoiceNumber(draft.number);
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
               </div>
             ))}
