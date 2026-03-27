@@ -323,9 +323,10 @@ const NewInvoice = () => {
             const insertAt = lastIndexOfProduct[lastIndexOfProduct.length - 1] + 1;
             newItems.splice(insertAt, 0, newItem);
             // Now sort only this product's items by size range order within their group
-            const productIndices = newItems.map((item, i) => item.productId === selectedProduct.id ? i : -1).filter(i => i !== -1);
+            const productIndices2 = newItems.map((item, i) => item.productId === selectedProduct.id ? i : -1).filter(i => i !== -1);
+            const productItems = productIndices2.map(i => newItems[i]);
             productItems.sort((a, b) => getSizeRangeSortIndex(a.sizeRange) - getSizeRangeSortIndex(b.sizeRange));
-            productIndices.forEach((idx, j) => { newItems[idx] = productItems[j]; });
+            productIndices2.forEach((idx, j) => { newItems[idx] = productItems[j]; });
           } else {
             newItems.push(newItem);
           }
