@@ -1805,13 +1805,48 @@ const Inventory = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-category">Category</Label>
-                <Input
-                  id="edit-category"
-                  value={newProduct.category}
-                  onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                  placeholder="e.g. Formal, Casual"
-                />
+                <Label>Category</Label>
+                <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={categoryComboOpen} className="w-full justify-between font-normal">
+                      {newProduct.category || "Select or type category..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search category..." value={categorySearch} onValueChange={setCategorySearch} />
+                      <CommandList>
+                        <CommandEmpty>
+                          {categorySearch.trim() ? (
+                            <button
+                              className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent"
+                              onClick={() => {
+                                setNewProduct({ ...newProduct, category: categorySearch.trim() });
+                                setCategorySearch("");
+                                setCategoryComboOpen(false);
+                              }}
+                            >
+                              Add "{categorySearch.trim()}"
+                            </button>
+                          ) : "No categories found."}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {existingCategories.map((cat) => (
+                            <CommandItem key={cat} value={cat} onSelect={() => {
+                              setNewProduct({ ...newProduct, category: cat });
+                              setCategorySearch("");
+                              setCategoryComboOpen(false);
+                            }}>
+                              <Check className={cn("mr-2 h-4 w-4", newProduct.category === cat ? "opacity-100" : "opacity-0")} />
+                              {cat}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
