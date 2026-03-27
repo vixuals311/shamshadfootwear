@@ -1138,6 +1138,41 @@ const NewInvoice = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Out of Stock Warning Dialog */}
+      <AlertDialog open={showStockWarning} onOpenChange={setShowStockWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Stock Unavailable</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-3">The following items no longer have sufficient stock. Please remove them or restock before proceeding.</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {outOfStockItems.map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{item.productName}</p>
+                        <p className="text-xs text-muted-foreground">Size: {item.sizeRange}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-destructive font-medium">
+                          {item.available === 0 ? "Out of stock" : `Only ${item.available} avail (need ${item.requested})`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction onClick={removeOutOfStockItems} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <Trash2 className="w-4 h-4 mr-2" />Remove Unavailable Items
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
