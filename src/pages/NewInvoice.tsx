@@ -324,9 +324,6 @@ const NewInvoice = () => {
             newItems.splice(insertAt, 0, newItem);
             // Now sort only this product's items by size range order within their group
             const productIndices = newItems.map((item, i) => item.productId === selectedProduct.id ? i : -1).filter(i => i !== -1);
-            const productItems = productIndices.map(i => newItems[i]);
-            productItems.sort((a, b) => sortBySizeRangeOrder([a, b])[0] === a ? -1 : 1);
-            // Use proper sort with getSizeRangeSortIndex
             productItems.sort((a, b) => getSizeRangeSortIndex(a.sizeRange) - getSizeRangeSortIndex(b.sizeRange));
             productIndices.forEach((idx, j) => { newItems[idx] = productItems[j]; });
           } else {
