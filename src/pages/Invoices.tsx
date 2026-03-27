@@ -559,21 +559,31 @@ const Invoices = () => {
             {invoices.filter(inv => inv.status === "draft").map((draft) => (
               <div
                 key={draft.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                onClick={() => handleEditDraft(draft.id)}
+                className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
                     <Edit className="w-4 h-4 text-muted-foreground" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{draft.number}</p>
-                    <p className="text-xs text-muted-foreground truncate">{draft.client} • {format(new Date(draft.date), "dd MMM yyyy")}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{draft.client}</p>
+                    <p className="text-xs text-muted-foreground truncate">{draft.number} • {format(new Date(draft.date), "dd MMM yyyy")}</p>
                   </div>
                 </div>
-                <div className="text-right shrink-0 ml-3">
-                  <p className="text-sm font-semibold text-foreground">Rs {draft.amount.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">{draft.items} items</p>
+                <div className="flex items-center gap-3 shrink-0 ml-3">
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-foreground">Rs {draft.amount.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">{draft.items} items</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => handleEditDraft(draft.id)}
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Resume
+                  </Button>
                 </div>
               </div>
             ))}
