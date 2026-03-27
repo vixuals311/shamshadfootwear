@@ -126,6 +126,7 @@ const NewInvoice = () => {
   const [clientOpen, setClientOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(true);
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [showDiscount, setShowDiscount] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "account">("cash");
   const [selectedAccount, setSelectedAccount] = useState("");
   const [amountReceived, setAmountReceived] = useState("");
@@ -860,9 +861,18 @@ const NewInvoice = () => {
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Package className="w-4 h-4 text-primary" /> Items ({items.length})
                 </h3>
-                <span className="text-xs font-semibold text-foreground">
-                  {items.reduce((sum, i) => sum + i.quantity, 0)} bundles • {items.reduce((sum, i) => sum + i.totalPairs, 0)} pairs
-                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDiscount(!showDiscount)}
+                    className={cn("text-xs px-2 py-1 rounded-md border transition-colors", showDiscount ? "bg-primary text-primary-foreground border-primary" : "bg-muted/50 text-muted-foreground border-border hover:bg-muted")}
+                  >
+                    Disc
+                  </button>
+                  <span className="text-xs font-semibold text-foreground">
+                    {items.reduce((sum, i) => sum + i.quantity, 0)} bundles • {items.reduce((sum, i) => sum + i.totalPairs, 0)} pairs
+                  </span>
+                </div>
               </div>
               <div className="bg-card rounded-lg border border-border/50 shadow-sm overflow-x-auto">
                 <table className="w-full text-sm">
@@ -875,7 +885,7 @@ const NewInvoice = () => {
                       <th className="text-center py-2 px-1 text-xs font-medium text-muted-foreground">Bdl</th>
                       <th className="text-center py-2 px-1 text-xs font-medium text-muted-foreground">Prs</th>
                       <th className="text-right py-2 px-2 text-xs font-medium text-muted-foreground">Rate</th>
-                      <th className="text-center py-2 px-1 text-xs font-medium text-muted-foreground">Disc</th>
+                      {showDiscount && <th className="text-center py-2 px-1 text-xs font-medium text-muted-foreground">Disc</th>}
                       <th className="text-right py-2 px-2 text-xs font-medium text-muted-foreground">Total</th>
                       <th className="w-8"></th>
                     </tr>
@@ -900,9 +910,11 @@ const NewInvoice = () => {
                           <Input type="number" value={item.totalPairs} onChange={(e) => updateItemTotalPairs(item.id, parseInt(e.target.value) || 0)} className="w-14 h-6 text-center text-xs p-0" />
                         </td>
                         <td className="py-1.5 px-2 text-right text-muted-foreground">Rs {item.pricePerPair}</td>
-                        <td className="py-1.5 px-1">
-                          <Input type="number" value={item.discountPerPair || ""} onChange={(e) => updateItemDiscountPerPair(item.id, parseFloat(e.target.value) || 0)} className="w-14 h-6 text-center text-xs p-0" placeholder="0" />
-                        </td>
+                        {showDiscount && (
+                          <td className="py-1.5 px-1">
+                            <Input type="number" value={item.discountPerPair || ""} onChange={(e) => updateItemDiscountPerPair(item.id, parseFloat(e.target.value) || 0)} className="w-14 h-6 text-center text-xs p-0" placeholder="0" />
+                          </td>
+                        )}
                         <td className="py-1.5 px-2 text-right font-semibold text-foreground whitespace-nowrap">Rs {item.total.toLocaleString()}</td>
                         <td className="py-1.5 px-1">
                           <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-6 w-6" onClick={() => setRemoveItemId(item.id)}>
