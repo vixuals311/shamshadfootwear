@@ -1243,10 +1243,10 @@ const Clients = () => {
             <TabsList className="w-full sm:w-auto grid grid-cols-4">
               <TabsTrigger value="all" className="gap-1 text-xs sm:text-sm">All</TabsTrigger>
               <TabsTrigger value="bills" className="gap-1 text-xs sm:text-sm">
-                <FileText className="w-3.5 h-3.5 hidden sm:block" /> Bills ({clientInvoices.length})
+                <FileText className="w-3.5 h-3.5 hidden sm:block" /> Invoices ({clientInvoices.length})
               </TabsTrigger>
               <TabsTrigger value="manual_bills" className="gap-1 text-xs sm:text-sm">
-                <ClipboardList className="w-3.5 h-3.5 hidden sm:block" /> Manual ({clientManualBills.length})
+                <ClipboardList className="w-3.5 h-3.5 hidden sm:block" /> Bills ({clientManualBills.length})
               </TabsTrigger>
               <TabsTrigger value="recoveries" className="gap-1 text-xs sm:text-sm">
                 <CreditCard className="w-3.5 h-3.5 hidden sm:block" /> Rec ({clientRecoveries.length})
@@ -1264,46 +1264,94 @@ const Clients = () => {
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {allItems.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="data-table min-w-[500px]">
-                    <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th></tr></thead>
-                    <tbody>
-                      {allItems.map((item, idx) => {
-                        if (item.type === "bill") {
-                          const inv = item.data as Invoice;
-                          return (
-                            <tr key={`bill-${inv.id}`} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewClientInvoice(inv.id)}>
-                              <td className="text-sm text-muted-foreground whitespace-nowrap">{format(inv.createdAt, "dd MMM yyyy")}</td>
-                              <td><span className="status-badge status-badge-info">Invoice</span></td>
-                              <td className="font-mono text-sm">{inv.invoiceNumber}</td>
-                              <td className="font-semibold whitespace-nowrap">Rs {inv.total.toLocaleString()}</td>
-                            </tr>
-                          );
-                        } else if (item.type === "manual") {
-                          const bill = item.data as ManualBill;
-                          return (
-                            <tr key={`manual-${bill.id}`}>
-                              <td className="text-sm text-muted-foreground whitespace-nowrap">{format(new Date(bill.date), "dd MMM yyyy")}</td>
-                              <td><span className="status-badge status-badge-warning">Manual Bill</span></td>
-                              <td className="font-mono text-sm">{bill.bill_number}</td>
-                              <td className="font-semibold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</td>
-                            </tr>
-                          );
-                        } else {
-                          const rec = item.data as RecoveryRecord;
-                          return (
-                            <tr key={`rec-${rec.id}-${idx}`}>
-                              <td className="text-sm text-muted-foreground whitespace-nowrap">{format(rec.date, "dd MMM yyyy")}</td>
-                              <td><span className={cn("status-badge", rec.isFromCity ? "status-badge-warning" : "status-badge-success")}>{rec.isFromCity ? "City Rec." : "Recovery"}</span></td>
-                              <td className="text-sm text-muted-foreground">-</td>
-                              <td className="font-semibold text-success whitespace-nowrap">Rs {rec.amount.toLocaleString()}</td>
-                            </tr>
-                          );
-                        }
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <div className="overflow-x-auto hidden sm:block">
+                    <table className="data-table min-w-[500px]">
+                      <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th></tr></thead>
+                      <tbody>
+                        {allItems.map((item, idx) => {
+                          if (item.type === "bill") {
+                            const inv = item.data as Invoice;
+                            return (
+                              <tr key={`bill-${inv.id}`} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewClientInvoice(inv.id)}>
+                                <td className="text-sm text-muted-foreground whitespace-nowrap">{format(inv.createdAt, "dd MMM yyyy")}</td>
+                                <td><span className="status-badge status-badge-info">Invoice</span></td>
+                                <td className="font-mono text-sm">{inv.invoiceNumber}</td>
+                                <td className="font-semibold whitespace-nowrap">Rs {inv.total.toLocaleString()}</td>
+                              </tr>
+                            );
+                          } else if (item.type === "manual") {
+                            const bill = item.data as ManualBill;
+                            return (
+                              <tr key={`manual-${bill.id}`}>
+                                <td className="text-sm text-muted-foreground whitespace-nowrap">{format(new Date(bill.date), "dd MMM yyyy")}</td>
+                                <td><span className="status-badge status-badge-warning">Bill</span></td>
+                                <td className="font-mono text-sm">{bill.bill_number}</td>
+                                <td className="font-semibold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</td>
+                              </tr>
+                            );
+                          } else {
+                            const rec = item.data as RecoveryRecord;
+                            return (
+                              <tr key={`rec-${rec.id}-${idx}`}>
+                                <td className="text-sm text-muted-foreground whitespace-nowrap">{format(rec.date, "dd MMM yyyy")}</td>
+                                <td><span className={cn("status-badge", rec.isFromCity ? "status-badge-warning" : "status-badge-success")}>{rec.isFromCity ? "City Rec." : "Recovery"}</span></td>
+                                <td className="text-sm text-muted-foreground">-</td>
+                                <td className="font-semibold text-success whitespace-nowrap">Rs {rec.amount.toLocaleString()}</td>
+                              </tr>
+                            );
+                          }
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="sm:hidden divide-y">
+                    {allItems.map((item, idx) => {
+                      if (item.type === "bill") {
+                        const inv = item.data as Invoice;
+                        return (
+                          <div key={`bill-${inv.id}`} className="p-4 space-y-2 cursor-pointer active:bg-muted/50" onClick={() => handleViewClientInvoice(inv.id)}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-mono font-medium text-sm">{inv.invoiceNumber}</p>
+                                <p className="text-xs text-muted-foreground">{format(inv.createdAt, "dd MMM yyyy")}</p>
+                              </div>
+                              <span className="font-bold whitespace-nowrap">Rs {inv.total.toLocaleString()}</span>
+                            </div>
+                            <span className="status-badge status-badge-info">Invoice</span>
+                          </div>
+                        );
+                      } else if (item.type === "manual") {
+                        const bill = item.data as ManualBill;
+                        return (
+                          <div key={`manual-${bill.id}`} className="p-4 space-y-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-mono font-medium text-sm">{bill.bill_number}</p>
+                                <p className="text-xs text-muted-foreground">{format(new Date(bill.date), "dd MMM yyyy")}</p>
+                              </div>
+                              <span className="font-bold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</span>
+                            </div>
+                            <span className="status-badge status-badge-warning">Bill</span>
+                          </div>
+                        );
+                      } else {
+                        const rec = item.data as RecoveryRecord;
+                        return (
+                          <div key={`rec-${rec.id}-${idx}`} className="p-4 space-y-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-xs text-muted-foreground">{format(rec.date, "dd MMM yyyy")}</p>
+                              </div>
+                              <span className="font-bold text-success whitespace-nowrap">Rs {rec.amount.toLocaleString()}</span>
+                            </div>
+                            <span className={cn("status-badge", rec.isFromCity ? "status-badge-warning" : "status-badge-success")}>{rec.isFromCity ? "City Rec." : "Recovery"}</span>
+                          </div>
+                        );
+                      }
+                    })}
+                  </div>
+                </>
               ) : (
                 <div className="p-8 text-center">
                   <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -1323,25 +1371,41 @@ const Clients = () => {
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientInvoices.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="data-table min-w-[600px]">
-                    <thead><tr><th>Invoice #</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th className="w-12"></th></tr></thead>
-                    <tbody>
-                      {clientInvoices.map((invoice) => (
-                        <tr key={invoice.id}>
-                          <td className="font-mono text-sm">{invoice.invoiceNumber}</td>
-                          <td className="text-muted-foreground text-sm whitespace-nowrap">{format(invoice.createdAt, "dd MMM yyyy")}</td>
-                          <td className="text-sm">{invoice.items.length} items</td>
-                          <td className="font-semibold whitespace-nowrap">Rs {invoice.total.toLocaleString()}</td>
-                          <td><span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span></td>
-                          <td><Button variant="ghost" size="icon" onClick={() => handleViewClientInvoice(invoice.id)}><Eye className="w-4 h-4" /></Button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <div className="overflow-x-auto hidden sm:block">
+                    <table className="data-table min-w-[600px]">
+                      <thead><tr><th>Invoice #</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th className="w-12"></th></tr></thead>
+                      <tbody>
+                        {clientInvoices.map((invoice) => (
+                          <tr key={invoice.id}>
+                            <td className="font-mono text-sm">{invoice.invoiceNumber}</td>
+                            <td className="text-muted-foreground text-sm whitespace-nowrap">{format(invoice.createdAt, "dd MMM yyyy")}</td>
+                            <td className="text-sm">{invoice.items.length} items</td>
+                            <td className="font-semibold whitespace-nowrap">Rs {invoice.total.toLocaleString()}</td>
+                            <td><span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span></td>
+                            <td><Button variant="ghost" size="icon" onClick={() => handleViewClientInvoice(invoice.id)}><Eye className="w-4 h-4" /></Button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="sm:hidden divide-y">
+                    {clientInvoices.map((invoice) => (
+                      <div key={invoice.id} className="p-4 space-y-2 cursor-pointer active:bg-muted/50" onClick={() => handleViewClientInvoice(invoice.id)}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-mono font-medium text-sm">{invoice.invoiceNumber}</p>
+                            <p className="text-xs text-muted-foreground">{format(invoice.createdAt, "dd MMM yyyy")} · {invoice.items.length} items</p>
+                          </div>
+                          <span className="font-bold whitespace-nowrap">Rs {invoice.total.toLocaleString()}</span>
+                        </div>
+                        <span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <div className="p-8 text-center"><FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-medium text-foreground mb-1">No bills yet</h3></div>
+                <div className="p-8 text-center"><FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-medium text-foreground mb-1">No invoices yet</h3></div>
               )}
             </motion.div>
           </TabsContent>
@@ -1402,21 +1466,37 @@ const Clients = () => {
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientRecoveries.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="data-table min-w-[500px]">
-                    <thead><tr><th>Date</th><th>Amount</th><th>Category</th><th>Notes</th></tr></thead>
-                    <tbody>
-                      {clientRecoveries.map((recovery) => (
-                        <tr key={recovery.id}>
-                          <td className="text-muted-foreground text-sm whitespace-nowrap">{format(recovery.date, "dd MMM yyyy")}</td>
-                          <td className="font-semibold text-success whitespace-nowrap">Rs {recovery.amount.toLocaleString()}</td>
-                          <td><span className={cn("status-badge", recovery.isFromCity ? "status-badge-warning" : "status-badge-success")}>{recovery.isFromCity ? "City Recovery" : "Individual"}</span></td>
-                          <td className="text-muted-foreground text-sm max-w-[150px] truncate">{recovery.notes || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <div className="overflow-x-auto hidden sm:block">
+                    <table className="data-table min-w-[500px]">
+                      <thead><tr><th>Date</th><th>Amount</th><th>Category</th><th>Notes</th></tr></thead>
+                      <tbody>
+                        {clientRecoveries.map((recovery) => (
+                          <tr key={recovery.id}>
+                            <td className="text-muted-foreground text-sm whitespace-nowrap">{format(recovery.date, "dd MMM yyyy")}</td>
+                            <td className="font-semibold text-success whitespace-nowrap">Rs {recovery.amount.toLocaleString()}</td>
+                            <td><span className={cn("status-badge", recovery.isFromCity ? "status-badge-warning" : "status-badge-success")}>{recovery.isFromCity ? "City Recovery" : "Individual"}</span></td>
+                            <td className="text-muted-foreground text-sm max-w-[150px] truncate">{recovery.notes || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="sm:hidden divide-y">
+                    {clientRecoveries.map((recovery) => (
+                      <div key={recovery.id} className="p-4 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">{format(recovery.date, "dd MMM yyyy")}</p>
+                            {recovery.notes && <p className="text-xs text-muted-foreground truncate max-w-[180px]">{recovery.notes}</p>}
+                          </div>
+                          <span className="font-bold text-success whitespace-nowrap">Rs {recovery.amount.toLocaleString()}</span>
+                        </div>
+                        <span className={cn("status-badge", recovery.isFromCity ? "status-badge-warning" : "status-badge-success")}>{recovery.isFromCity ? "City Recovery" : "Individual"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="p-8 text-center"><CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-medium text-foreground mb-1">No recoveries yet</h3></div>
               )}
