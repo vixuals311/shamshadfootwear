@@ -111,7 +111,7 @@ const NewInvoice = () => {
   const isEditMode = !!invoiceId;
   const { toast } = useToast();
   const { log } = useAuditLog();
-  const { sortBySizeRangeOrder } = useDefaultSizeRanges();
+  const { sortBySizeRangeOrder, getSizeRangeSortIndex } = useDefaultSizeRanges();
   const sortBySizeRangeOrderRef = useRef(sortBySizeRangeOrder);
   sortBySizeRangeOrderRef.current = sortBySizeRangeOrder;
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -310,12 +310,26 @@ const NewInvoice = () => {
         } else {
           const itemId = `${selectedProduct.id}-${selection.sizeRange}-${Date.now()}`;
           const total = totalPairs * selection.pricePerPair;
-          newItems.push({
+          const newItem: InvoiceItem = {
             id: itemId, productId: selectedProduct.id, productName: selectedProduct.name,
             articleNumber: selectedProduct.article_number, brandName: selectedProduct.brand_name,
             sizeRange: selection.sizeRange, quantity: selection.bundles, totalPairs,
             pricePerPair: selection.pricePerPair, discountPerPair: 0, total,
-          });
+          };
+          // Insert next to other bundles of the same product, sorted by size range order
+          const lastIndexOfProduct = newItems.map((item, i) => item.productId === selectedProduct.id ? i : -1).filter(i => i !== -1);
+          if (lastIndexOfProduct.length > 0) {
+            // Insert after the last item of this product, then re-sort this product's group by size range
+            const insertAt = lastIndexOfProduct[lastIndexOfProduct.length - 1] + 1;
+            newItems.splice(insertAt, 0, newItem);
+            // Now sort only this product's items by size range order within their group
+            const productIndices2 = newItems.map((item, i) => item.productId === selectedProduct.id ? i : -1).filter(i => i !== -1);
+            const productItems = productIndices2.map(i => newItems[i]);
+            productItems.sort((a, b) => getSizeRangeSortIndex(a.sizeRange) - getSizeRangeSortIndex(b.sizeRange));
+            productIndices2.forEach((idx, j) => { newItems[idx] = productItems[j]; });
+          } else {
+            newItems.push(newItem);
+          }
         }
       });
       return newItems;
