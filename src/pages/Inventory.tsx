@@ -221,6 +221,18 @@ const Inventory = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sizeRanges]);
 
+  // Fetch existing categories for combobox
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase.from("products").select("category");
+      if (data) {
+        const unique = [...new Set(data.map((p) => p.category).filter(Boolean))].sort();
+        setExistingCategories(unique);
+      }
+    };
+    fetchCategories();
+  }, [products]);
+
   // Get unique categories
   const categories = useMemo(() => {
     return [...new Set(products.map((p) => p.category))];
