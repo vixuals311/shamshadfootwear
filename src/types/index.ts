@@ -16,6 +16,7 @@ export interface User {
 export type PageKey = 
   | "dashboard"
   | "inventory" 
+  | "add_product"
   | "price_check"
   | "clients"
   | "invoices"
@@ -37,9 +38,9 @@ export interface PagePermission {
 
 // Default page access per role
 export const ROLE_DEFAULT_PAGES: Record<UserRole, PageKey[]> = {
-  admin: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "users", "audit_logs", "settings", "bulk_clients"],
-  manager: ["dashboard", "inventory", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "audit_logs", "settings", "bulk_clients"],
-  biller: ["dashboard", "inventory", "price_check", "clients", "invoices", "returns"],
+  admin: ["dashboard", "inventory", "add_product", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "users", "audit_logs", "settings", "bulk_clients"],
+  manager: ["dashboard", "inventory", "add_product", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "audit_logs", "settings", "bulk_clients"],
+  biller: ["dashboard", "inventory", "add_product", "price_check", "clients", "invoices", "returns"],
   cashier: ["dashboard", "payments", "cheques", "recovery", "city_recovery"],
 };
 
@@ -47,6 +48,7 @@ export const ROLE_DEFAULT_PAGES: Record<UserRole, PageKey[]> = {
 export const PAGE_METADATA: Record<PageKey, { label: string; description: string }> = {
   dashboard: { label: "Dashboard", description: "Overview & analytics" },
   inventory: { label: "Inventory", description: "Products & stock management" },
+  add_product: { label: "Add Product", description: "Add new products to inventory" },
   price_check: { label: "Price Check", description: "Quick price lookup" },
   clients: { label: "Clients", description: "Customer management" },
   invoices: { label: "Invoices", description: "Create & manage invoices" },

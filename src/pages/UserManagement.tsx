@@ -52,7 +52,7 @@ const roleLabels: Record<UserRole, { label: string; color: string }> = {
 
 // All assignable pages (excluding 'users' which is admin-only)
 const ASSIGNABLE_PAGES: PageKey[] = [
-  "dashboard", "inventory", "price_check", "clients", "bulk_clients", "invoices", 
+  "dashboard", "inventory", "add_product", "price_check", "clients", "bulk_clients", "invoices", 
   "payments", "cheques", "recovery", "city_recovery", "returns", "reports", 
   "audit_logs", "settings",
 ];
