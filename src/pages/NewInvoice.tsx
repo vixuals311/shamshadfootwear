@@ -1003,7 +1003,7 @@ const NewInvoice = () => {
               </div>
 
               {/* Save Bill Button */}
-              <Button className="w-full h-12 text-sm font-semibold gap-2 mt-4" onClick={() => setShowReviewDialog(true)} disabled={saving || items.length === 0 || !selectedClient}>
+              <Button className="w-full h-12 text-sm font-semibold gap-2 mt-4" onClick={validateStockAndReview} disabled={saving || stockCheckLoading || items.length === 0 || !selectedClient}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
                 Save Bill
               </Button>
@@ -1020,7 +1020,7 @@ const NewInvoice = () => {
             <p className="text-lg font-bold text-primary">Rs {calculations.total.toLocaleString()}</p>
             {calculations.balance > 0 && <p className="text-[10px] text-destructive">Due: Rs {calculations.balance.toLocaleString()}</p>}
           </div>
-          <Button className="h-12 px-6 text-sm font-semibold gap-2" onClick={() => setShowReviewDialog(true)} disabled={saving || items.length === 0 || !selectedClient}>
+          <Button className="h-12 px-6 text-sm font-semibold gap-2" onClick={validateStockAndReview} disabled={saving || stockCheckLoading || items.length === 0 || !selectedClient}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
             Save Bill
           </Button>
