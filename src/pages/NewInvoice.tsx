@@ -138,6 +138,9 @@ const NewInvoice = () => {
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showDraftConfirm, setShowDraftConfirm] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showStockWarning, setShowStockWarning] = useState(false);
+  const [outOfStockItems, setOutOfStockItems] = useState<{ id: string; productName: string; sizeRange: string; requested: number; available: number }[]>([]);
+  const [stockCheckLoading, setStockCheckLoading] = useState(false);
 
   // Multi-size selection with individual bundle counts
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
