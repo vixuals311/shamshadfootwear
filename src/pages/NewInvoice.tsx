@@ -662,8 +662,8 @@ const NewInvoice = () => {
       </style></head><body>
         <div class="header"><div><h1>INVOICE</h1><p><strong>${invoiceNumber}</strong></p><p>Date: ${format(new Date(), "dd MMM yyyy")}</p></div></div>
         <div class="client-info"><h3>Bill To:</h3><p><strong>${selectedClient?.name || "N/A"}</strong></p><p>${selectedClient?.city || ""}</p></div>
-        <table><thead><tr><th>#</th><th>Product</th><th>Article</th><th>Size</th><th>Qty</th><th>Pairs</th><th>Rate</th><th>Discount</th><th>Total</th></tr></thead>
-        <tbody>${items.map((item, idx) => `<tr><td>${idx + 1}</td><td>${item.productName}</td><td>${item.articleNumber}</td><td>${item.sizeRange}</td><td>${item.quantity}</td><td>${item.totalPairs}</td><td>Rs ${item.pricePerPair}</td><td>Rs ${item.discountPerPair}</td><td>Rs ${item.total.toLocaleString()}</td></tr>`).join("")}</tbody></table>
+        <table><thead><tr><th>#</th><th>Product</th><th>Article</th><th>Size</th><th>Qty</th><th>Pairs</th><th>Rate</th>${calculations.totalDiscount > 0 ? '<th>Discount</th>' : ''}<th>Total</th></tr></thead>
+        <tbody>${items.map((item, idx) => `<tr><td>${idx + 1}</td><td>${item.productName}</td><td>${item.articleNumber}</td><td>${item.sizeRange}</td><td>${item.quantity}</td><td>${item.totalPairs}</td><td>Rs ${item.pricePerPair}</td>${calculations.totalDiscount > 0 ? `<td>Rs ${item.discountPerPair}</td>` : ''}<td>Rs ${item.total.toLocaleString()}</td></tr>`).join("")}</tbody></table>
         <div class="totals">
           <p>Subtotal: Rs ${calculations.subtotal.toLocaleString()}</p>
           ${calculations.totalDiscount > 0 ? `<p>Discount: - Rs ${calculations.totalDiscount.toLocaleString()}</p>` : ""}
@@ -1095,7 +1095,7 @@ const NewInvoice = () => {
                       <th className="text-right py-1.5 px-2">Bdl</th>
                       <th className="text-right py-1.5 px-2">Prs</th>
                       <th className="text-right py-1.5 px-2">Rate</th>
-                      <th className="text-right py-1.5 px-2">Disc</th>
+                      {calculations.totalDiscount > 0 && <th className="text-right py-1.5 px-2">Disc</th>}
                       <th className="text-right py-1.5 px-2">Total</th>
                     </tr>
                   </thead>
@@ -1108,7 +1108,7 @@ const NewInvoice = () => {
                         <td className="py-1 px-2 text-right">{item.quantity}</td>
                         <td className="py-1 px-2 text-right">{item.totalPairs}</td>
                         <td className="py-1 px-2 text-right">Rs {item.pricePerPair}</td>
-                        <td className="py-1 px-2 text-right">{item.discountPerPair > 0 ? `Rs ${item.discountPerPair}` : '-'}</td>
+                        {calculations.totalDiscount > 0 && <td className="py-1 px-2 text-right">{item.discountPerPair > 0 ? `Rs ${item.discountPerPair}` : '-'}</td>}
                         <td className="py-1 px-2 text-right font-semibold">Rs {item.total.toLocaleString()}</td>
                       </tr>
                     ))}
