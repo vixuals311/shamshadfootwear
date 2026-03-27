@@ -55,6 +55,9 @@ export default function AddProduct() {
   const { getSizeRangesForCategory } = useDefaultSizeRanges();
 
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [customSizeRange, setCustomSizeRange] = useState("");
@@ -67,7 +70,6 @@ export default function AddProduct() {
     gender: "unisex" as GenderCategory,
     pairsPerDozen: "12",
     defaultPairsPerBundle: "6",
-    supplier: "",
     sizeBundles: [] as SizeBundleInput[],
   });
 
@@ -79,6 +81,24 @@ export default function AddProduct() {
       .then(({ data }) => {
         if (data) setBrands(data.map((b) => ({ id: b.id, name: b.name })));
       });
+    supabase
+      .from("products")
+      .select("category")
+      .then(({ data }) => {
+        if (data) {
+          const unique = [...new Set(data.map((p) => p.category).filter(Boolean))].sort();
+          setCategories(unique);
+        }
+      });
+  }, []);
+
+  // When defaultPairsPerBundle changes, propagate to all existing size bundles
+  const handleDefaultPairsChange = useCallback((value: string) => {
+    setProduct((prev) => ({
+      ...prev,
+      defaultPairsPerBundle: value,
+      sizeBundles: prev.sizeBundles.map((sb) => ({ ...sb, pairsPerBundle: value })),
+    }));
   }, []);
 
   const totalStockPairs = useMemo(() => {
