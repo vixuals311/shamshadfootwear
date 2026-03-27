@@ -146,7 +146,6 @@ const Inventory = () => {
     gender: "unisex" as GenderCategory,
     pairsPerDozen: "12",
     defaultPairsPerBundle: "6",
-    supplier: "",
     sizeBundles: [] as SizeBundleInput[],
   });
 
@@ -296,8 +295,8 @@ const Inventory = () => {
             gender: newProduct.gender,
             stock_dozens: totalDozens,
             pairs_per_dozen: parseInt(newProduct.pairsPerDozen) || 12,
-            supplier: newProduct.supplier || null,
           })
+
           .select()
           .single();
 
@@ -344,7 +343,6 @@ const Inventory = () => {
           gender: "unisex",
           pairsPerDozen: "12",
           defaultPairsPerBundle: "6",
-          supplier: "",
           sizeBundles: [],
         });
         setShowAddProductConfirm(false);
