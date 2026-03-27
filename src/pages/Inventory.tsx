@@ -1175,23 +1175,23 @@ const Inventory = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                <div className="space-y-2">
                     <Label htmlFor="pairsPerBundle">Default Pairs per Bundle</Label>
                     <Input
                       id="pairsPerBundle"
                       type="number"
                       value={newProduct.defaultPairsPerBundle}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          defaultPairsPerBundle: e.target.value,
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewProduct((prev) => ({
+                          ...prev,
+                          defaultPairsPerBundle: val,
+                          sizeBundles: prev.sizeBundles.map((sb) => ({ ...sb, pairsPerBundle: val })),
+                        }));
+                      }}
                       placeholder="6"
                     />
                   </div>
-                </div>
 
                 {/* Size Bundle Pricing with Quantity */}
                 <div className="space-y-3">
