@@ -138,6 +138,9 @@ const NewInvoice = () => {
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showDraftConfirm, setShowDraftConfirm] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showStockWarning, setShowStockWarning] = useState(false);
+  const [outOfStockItems, setOutOfStockItems] = useState<{ id: string; productName: string; sizeRange: string; requested: number; available: number }[]>([]);
+  const [stockCheckLoading, setStockCheckLoading] = useState(false);
 
   // Multi-size selection with individual bundle counts
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -380,6 +383,55 @@ const NewInvoice = () => {
 
   const confirmRemoveItem = () => {
     if (removeItemId) { setItems(items.filter((item) => item.id !== removeItemId)); setRemoveItemId(null); }
+  };
+
+  // Stock validation before opening review dialog
+  const validateStockAndReview = async () => {
+    setStockCheckLoading(true);
+    try {
+      const productIds = [...new Set(items.map(i => i.productId))];
+      const { data: bundles } = await supabase
+        .from("product_size_bundles")
+        .select("product_id, size_range, quantity, pairs_per_bundle")
+        .in("product_id", productIds);
+
+      const stockMap = new Map<string, number>();
+      (bundles || []).forEach(b => {
+        stockMap.set(`${b.product_id}-${b.size_range}`, b.quantity);
+      });
+
+      const oos = items.filter(item => {
+        const available = stockMap.get(`${item.productId}-${item.sizeRange}`) ?? 0;
+        return available < item.quantity;
+      }).map(item => ({
+        id: item.id,
+        productName: item.productName,
+        sizeRange: item.sizeRange,
+        requested: item.quantity,
+        available: stockMap.get(`${item.productId}-${item.sizeRange}`) ?? 0,
+      }));
+
+      if (oos.length > 0) {
+        setOutOfStockItems(oos);
+        setShowStockWarning(true);
+      } else {
+        setShowReviewDialog(true);
+      }
+    } catch (error) {
+      console.error("Stock check error:", error);
+      // Fallback: open review anyway
+      setShowReviewDialog(true);
+    } finally {
+      setStockCheckLoading(false);
+    }
+  };
+
+  const removeOutOfStockItems = () => {
+    const oosIds = new Set(outOfStockItems.map(i => i.id));
+    setItems(prev => prev.filter(item => !oosIds.has(item.id)));
+    setShowStockWarning(false);
+    setOutOfStockItems([]);
+    toast({ title: "Removed out-of-stock items", description: `${oosIds.size} item(s) removed from the invoice.` });
   };
 
   const calculations = useMemo(() => {
@@ -951,7 +1003,7 @@ const NewInvoice = () => {
               </div>
 
               {/* Save Bill Button */}
-              <Button className="w-full h-12 text-sm font-semibold gap-2 mt-4" onClick={() => setShowReviewDialog(true)} disabled={saving || items.length === 0 || !selectedClient}>
+              <Button className="w-full h-12 text-sm font-semibold gap-2 mt-4" onClick={validateStockAndReview} disabled={saving || stockCheckLoading || items.length === 0 || !selectedClient}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
                 Save Bill
               </Button>
@@ -968,7 +1020,7 @@ const NewInvoice = () => {
             <p className="text-lg font-bold text-primary">Rs {calculations.total.toLocaleString()}</p>
             {calculations.balance > 0 && <p className="text-[10px] text-destructive">Due: Rs {calculations.balance.toLocaleString()}</p>}
           </div>
-          <Button className="h-12 px-6 text-sm font-semibold gap-2" onClick={() => setShowReviewDialog(true)} disabled={saving || items.length === 0 || !selectedClient}>
+          <Button className="h-12 px-6 text-sm font-semibold gap-2" onClick={validateStockAndReview} disabled={saving || stockCheckLoading || items.length === 0 || !selectedClient}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
             Save Bill
           </Button>
@@ -1086,6 +1138,41 @@ const NewInvoice = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Out of Stock Warning Dialog */}
+      <AlertDialog open={showStockWarning} onOpenChange={setShowStockWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Stock Unavailable</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-3">The following items no longer have sufficient stock. Please remove them or restock before proceeding.</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {outOfStockItems.map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{item.productName}</p>
+                        <p className="text-xs text-muted-foreground">Size: {item.sizeRange}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-destructive font-medium">
+                          {item.available === 0 ? "Out of stock" : `Only ${item.available} avail (need ${item.requested})`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction onClick={removeOutOfStockItems} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <Trash2 className="w-4 h-4 mr-2" />Remove Unavailable Items
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
