@@ -111,7 +111,7 @@ const NewInvoice = () => {
   const isEditMode = !!invoiceId;
   const { toast } = useToast();
   const { log } = useAuditLog();
-  const { sortBySizeRangeOrder } = useDefaultSizeRanges();
+  const { sortBySizeRangeOrder, getSizeRangeSortIndex } = useDefaultSizeRanges();
   const sortBySizeRangeOrderRef = useRef(sortBySizeRangeOrder);
   sortBySizeRangeOrderRef.current = sortBySizeRangeOrder;
   const searchInputRef = useRef<HTMLInputElement>(null);
