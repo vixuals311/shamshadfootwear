@@ -1,7 +1,9 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
+  Check,
+  ChevronsUpDown,
   Plus,
   Filter,
   Download,
@@ -59,6 +61,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { exportToCSV } from "@/utils/exportUtils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 
 interface SizeBundleInput {
@@ -103,6 +107,9 @@ const Inventory = () => {
   const [isSizeRangeDialogOpen, setIsSizeRangeDialogOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [customSizeRange, setCustomSizeRange] = useState("");
+  const [existingCategories, setExistingCategories] = useState<string[]>([]);
+  const [categoryComboOpen, setCategoryComboOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
 
   const { sizeRanges, getSizeRangesForCategory, sortBySizeRangeOrder, addSizeRange, deleteSizeRange } = useDefaultSizeRanges();
 
@@ -139,7 +146,6 @@ const Inventory = () => {
     gender: "unisex" as GenderCategory,
     pairsPerDozen: "12",
     defaultPairsPerBundle: "6",
-    supplier: "",
     sizeBundles: [] as SizeBundleInput[],
   });
 
@@ -214,6 +220,18 @@ const Inventory = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sizeRanges]);
 
+  // Fetch existing categories for combobox
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase.from("products").select("category");
+      if (data) {
+        const unique = [...new Set(data.map((p) => p.category).filter(Boolean))].sort();
+        setExistingCategories(unique);
+      }
+    };
+    fetchCategories();
+  }, [products]);
+
   // Get unique categories
   const categories = useMemo(() => {
     return [...new Set(products.map((p) => p.category))];
@@ -277,8 +295,8 @@ const Inventory = () => {
             gender: newProduct.gender,
             stock_dozens: totalDozens,
             pairs_per_dozen: parseInt(newProduct.pairsPerDozen) || 12,
-            supplier: newProduct.supplier || null,
           })
+
           .select()
           .single();
 
@@ -325,7 +343,6 @@ const Inventory = () => {
           gender: "unisex",
           pairsPerDozen: "12",
           defaultPairsPerBundle: "6",
-          supplier: "",
           sizeBundles: [],
         });
         setShowAddProductConfirm(false);
@@ -411,7 +428,7 @@ const Inventory = () => {
       gender: product.gender,
       pairsPerDozen: product.pairsPerDozen.toString(),
       defaultPairsPerBundle: "6",
-      supplier: product.supplier || "",
+      
       sizeBundles: product.sizeBundles.map((sb: any) => ({
         sizeRange: sb.sizeRange,
         pricePerPair: sb.pricePerPair.toString(),
@@ -438,7 +455,7 @@ const Inventory = () => {
           category: newProduct.category || "General",
           gender: newProduct.gender,
           pairs_per_dozen: parseInt(newProduct.pairsPerDozen) || 12,
-          supplier: newProduct.supplier || null,
+          
         })
         .eq("id", editingProduct.id);
 
@@ -489,7 +506,6 @@ const Inventory = () => {
         gender: "unisex",
         pairsPerDozen: "12",
         defaultPairsPerBundle: "6",
-        supplier: "",
         sizeBundles: [],
       });
       fetchData();
@@ -1127,15 +1143,48 @@ const Inventory = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Input
-                      id="category"
-                      value={newProduct.category}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, category: e.target.value })
-                      }
-                      placeholder="e.g., Shoes, Sandals"
-                    />
+                    <Label>Category</Label>
+                    <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" aria-expanded={categoryComboOpen} className="w-full justify-between font-normal">
+                          {newProduct.category || "Select or type category..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[200px] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search category..." value={categorySearch} onValueChange={setCategorySearch} />
+                          <CommandList>
+                            <CommandEmpty>
+                              {categorySearch.trim() ? (
+                                <button
+                                  className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent"
+                                  onClick={() => {
+                                    setNewProduct({ ...newProduct, category: categorySearch.trim() });
+                                    setCategorySearch("");
+                                    setCategoryComboOpen(false);
+                                  }}
+                                >
+                                  Add "{categorySearch.trim()}"
+                                </button>
+                              ) : "No categories found."}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {existingCategories.map((cat) => (
+                                <CommandItem key={cat} value={cat} onSelect={() => {
+                                  setNewProduct({ ...newProduct, category: cat });
+                                  setCategorySearch("");
+                                  setCategoryComboOpen(false);
+                                }}>
+                                  <Check className={cn("mr-2 h-4 w-4", newProduct.category === cat ? "opacity-100" : "opacity-0")} />
+                                  {cat}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label>Gender/Type</Label>
@@ -1159,34 +1208,23 @@ const Inventory = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                <div className="space-y-2">
                     <Label htmlFor="pairsPerBundle">Default Pairs per Bundle</Label>
                     <Input
                       id="pairsPerBundle"
                       type="number"
                       value={newProduct.defaultPairsPerBundle}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          defaultPairsPerBundle: e.target.value,
-                        })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewProduct((prev) => ({
+                          ...prev,
+                          defaultPairsPerBundle: val,
+                          sizeBundles: prev.sizeBundles.map((sb) => ({ ...sb, pairsPerBundle: val })),
+                        }));
+                      }}
                       placeholder="6"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="supplier">Supplier</Label>
-                    <Input
-                      id="supplier"
-                      value={newProduct.supplier}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, supplier: e.target.value })
-                      }
-                      placeholder="Enter supplier name"
-                    />
-                  </div>
-                </div>
 
                 {/* Size Bundle Pricing with Quantity */}
                 <div className="space-y-3">
@@ -1714,7 +1752,7 @@ const Inventory = () => {
             gender: "unisex",
             pairsPerDozen: "12",
             defaultPairsPerBundle: "6",
-            supplier: "",
+            
             sizeBundles: [],
           });
         }
@@ -1767,13 +1805,48 @@ const Inventory = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-category">Category</Label>
-                <Input
-                  id="edit-category"
-                  value={newProduct.category}
-                  onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                  placeholder="e.g. Formal, Casual"
-                />
+                <Label>Category</Label>
+                <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={categoryComboOpen} className="w-full justify-between font-normal">
+                      {newProduct.category || "Select or type category..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search category..." value={categorySearch} onValueChange={setCategorySearch} />
+                      <CommandList>
+                        <CommandEmpty>
+                          {categorySearch.trim() ? (
+                            <button
+                              className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent"
+                              onClick={() => {
+                                setNewProduct({ ...newProduct, category: categorySearch.trim() });
+                                setCategorySearch("");
+                                setCategoryComboOpen(false);
+                              }}
+                            >
+                              Add "{categorySearch.trim()}"
+                            </button>
+                          ) : "No categories found."}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {existingCategories.map((cat) => (
+                            <CommandItem key={cat} value={cat} onSelect={() => {
+                              setNewProduct({ ...newProduct, category: cat });
+                              setCategorySearch("");
+                              setCategoryComboOpen(false);
+                            }}>
+                              <Check className={cn("mr-2 h-4 w-4", newProduct.category === cat ? "opacity-100" : "opacity-0")} />
+                              {cat}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1794,15 +1867,6 @@ const Inventory = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-supplier">Supplier</Label>
-                <Input
-                  id="edit-supplier"
-                  value={newProduct.supplier}
-                  onChange={(e) => setNewProduct({ ...newProduct, supplier: e.target.value })}
-                  placeholder="Optional"
-                />
               </div>
             </div>
 
