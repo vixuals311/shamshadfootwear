@@ -1,7 +1,9 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
+  Check,
+  ChevronsUpDown,
   Plus,
   Filter,
   Download,
@@ -59,6 +61,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { exportToCSV } from "@/utils/exportUtils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 
 interface SizeBundleInput {
@@ -103,6 +107,9 @@ const Inventory = () => {
   const [isSizeRangeDialogOpen, setIsSizeRangeDialogOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [customSizeRange, setCustomSizeRange] = useState("");
+  const [existingCategories, setExistingCategories] = useState<string[]>([]);
+  const [categoryComboOpen, setCategoryComboOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
 
   const { sizeRanges, getSizeRangesForCategory, sortBySizeRangeOrder, addSizeRange, deleteSizeRange } = useDefaultSizeRanges();
 
