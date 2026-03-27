@@ -182,7 +182,7 @@ export default function AddProduct() {
           gender: product.gender,
           stock_dozens: totalDozens,
           pairs_per_dozen: parseInt(product.pairsPerDozen) || 12,
-          supplier: product.supplier || null,
+          supplier: null,
         })
         .select()
         .single();
@@ -282,11 +282,55 @@ export default function AddProduct() {
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
-              <Input
-                value={product.category}
-                onChange={(e) => setProduct({ ...product, category: e.target.value })}
-                placeholder="e.g., Shoes, Sandals"
-              />
+              <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={categoryOpen} className="w-full justify-between font-normal">
+                    {product.category || "Select or type category"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search or add category..." value={categorySearch} onValueChange={setCategorySearch} />
+                    <CommandList>
+                      <CommandEmpty>
+                        {categorySearch.trim() ? (
+                          <button
+                            className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded cursor-pointer"
+                            onClick={() => {
+                              const val = categorySearch.trim();
+                              setProduct((prev) => ({ ...prev, category: val }));
+                              if (!categories.includes(val)) setCategories((prev) => [...prev, val].sort());
+                              setCategorySearch("");
+                              setCategoryOpen(false);
+                            }}
+                          >
+                            Add "{categorySearch.trim()}"
+                          </button>
+                        ) : (
+                          "No categories found"
+                        )}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {categories.map((cat) => (
+                          <CommandItem
+                            key={cat}
+                            value={cat}
+                            onSelect={() => {
+                              setProduct((prev) => ({ ...prev, category: cat }));
+                              setCategorySearch("");
+                              setCategoryOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", product.category === cat ? "opacity-100" : "opacity-0")} />
+                            {cat}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label>Gender / Type</Label>
@@ -303,23 +347,15 @@ export default function AddProduct() {
             </div>
           </div>
 
-          {/* Row 3: Pairs per Bundle + Supplier */}
+          {/* Row 3: Pairs per Bundle */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Default Pairs per Bundle</Label>
               <Input
                 type="number"
                 value={product.defaultPairsPerBundle}
-                onChange={(e) => setProduct({ ...product, defaultPairsPerBundle: e.target.value })}
+                onChange={(e) => handleDefaultPairsChange(e.target.value)}
                 placeholder="6"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Supplier</Label>
-              <Input
-                value={product.supplier}
-                onChange={(e) => setProduct({ ...product, supplier: e.target.value })}
-                placeholder="Enter supplier name"
               />
             </div>
           </div>
