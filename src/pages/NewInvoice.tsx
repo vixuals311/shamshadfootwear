@@ -385,6 +385,55 @@ const NewInvoice = () => {
     if (removeItemId) { setItems(items.filter((item) => item.id !== removeItemId)); setRemoveItemId(null); }
   };
 
+  // Stock validation before opening review dialog
+  const validateStockAndReview = async () => {
+    setStockCheckLoading(true);
+    try {
+      const productIds = [...new Set(items.map(i => i.productId))];
+      const { data: bundles } = await supabase
+        .from("product_size_bundles")
+        .select("product_id, size_range, quantity, pairs_per_bundle")
+        .in("product_id", productIds);
+
+      const stockMap = new Map<string, number>();
+      (bundles || []).forEach(b => {
+        stockMap.set(`${b.product_id}-${b.size_range}`, b.quantity);
+      });
+
+      const oos = items.filter(item => {
+        const available = stockMap.get(`${item.productId}-${item.sizeRange}`) ?? 0;
+        return available < item.quantity;
+      }).map(item => ({
+        id: item.id,
+        productName: item.productName,
+        sizeRange: item.sizeRange,
+        requested: item.quantity,
+        available: stockMap.get(`${item.productId}-${item.sizeRange}`) ?? 0,
+      }));
+
+      if (oos.length > 0) {
+        setOutOfStockItems(oos);
+        setShowStockWarning(true);
+      } else {
+        setShowReviewDialog(true);
+      }
+    } catch (error) {
+      console.error("Stock check error:", error);
+      // Fallback: open review anyway
+      setShowReviewDialog(true);
+    } finally {
+      setStockCheckLoading(false);
+    }
+  };
+
+  const removeOutOfStockItems = () => {
+    const oosIds = new Set(outOfStockItems.map(i => i.id));
+    setItems(prev => prev.filter(item => !oosIds.has(item.id)));
+    setShowStockWarning(false);
+    setOutOfStockItems([]);
+    toast({ title: "Removed out-of-stock items", description: `${oosIds.size} item(s) removed from the invoice.` });
+  };
+
   const calculations = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + item.totalPairs * item.pricePerPair, 0);
     const totalDiscount = items.reduce((sum, item) => sum + item.totalPairs * item.discountPerPair, 0);
