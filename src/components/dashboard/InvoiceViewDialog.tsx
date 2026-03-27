@@ -148,10 +148,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
         </div>
         ${returnsHtml}
         <div class="brand-footer">
-          <p>Thank you for your business!</p>
-          <p class="company">Shamshad Footwear — Wholesale Supplier</p>
-          <p>0315-7162093 | 0305-5388093 | Faisalabad Road, Chowk Azam, Layyah</p>
-          <p>Goods once sold will not be returned without prior agreement. All disputes subject to local jurisdiction.</p>
+          <p>Goods once sold will not be returned without prior agreement.</p>
         </div>
       </body></html>`;
 
@@ -340,6 +337,10 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
             </div>
           )}
 
+          {/* Footer */}
+          <p className="text-xs text-muted-foreground text-center mt-6 italic">
+            Goods once sold will not be returned without prior agreement.
+          </p>
         </div>
       </DialogContent>
     </Dialog>
