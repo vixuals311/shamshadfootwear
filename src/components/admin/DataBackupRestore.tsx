@@ -33,6 +33,8 @@ const BACKUP_TABLES = [
   "returns",
   "return_items",
   "manual_bills",
+  "cheques",
+  "notifications",
   "audit_logs",
   "application_settings",
 ] as const;
