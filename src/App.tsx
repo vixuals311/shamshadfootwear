@@ -55,7 +55,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/portal" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (deviceLimitReached) {
