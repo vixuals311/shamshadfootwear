@@ -249,6 +249,8 @@ export function DataBackupRestore() {
         "returns",
         "return_items",
         "manual_bills",
+        "cheques",
+        "notifications",
         "audit_logs",
       ];
 
