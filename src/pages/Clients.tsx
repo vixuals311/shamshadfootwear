@@ -1404,7 +1404,7 @@ const Clients = () => {
 
           <TabsContent value="bills">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("bills")}>
+              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("bills", invoiceBalanceMap, recoveryBalanceMap)}>
                 <Printer className="w-4 h-4" />
                 <span className="hidden sm:inline">Print</span>
               </Button>
