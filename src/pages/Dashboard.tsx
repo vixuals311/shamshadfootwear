@@ -1,5 +1,5 @@
 import { DollarSign, FileText, Package, Users, TrendingUp, TrendingDown, Loader2, FileCheck, Calendar } from "lucide-react";
-import { MetricCard, SalesChart, RecentInvoices, LowStockAlert } from "@/components/dashboard";
+import { MetricCard, SalesChart, RecentInvoices, LowStockAlert, QuickActions } from "@/components/dashboard";
 import { motion } from "framer-motion";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -78,6 +78,9 @@ const Dashboard = () => {
           })}
         </div>
       </motion.div>
+
+      {/* Quick Action Shortcuts */}
+      <QuickActions />
 
       {/* Upcoming Cheques Reminder */}
       {upcomingCheques.length > 0 && (

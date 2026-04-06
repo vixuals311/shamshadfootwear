@@ -1,6 +1,5 @@
-import { Menu, Search, Plus } from "lucide-react";
+import { Menu, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +11,7 @@ import { useLocation, Link } from "react-router-dom";
 import { UserMenu } from "./UserMenu";
 import { useOnlineBilling } from "@/hooks/useOnlineBilling";
 import { OfflineIndicator } from "./OfflineIndicator";
+import { GlobalSearch } from "./GlobalSearch";
 
 const pageTitle: Record<string, string> = {
   "/": "Dashboard",
@@ -51,14 +51,8 @@ export function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Search - Desktop Only */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search..."
-            className="pl-9 w-48 lg:w-64 bg-muted/50 border-0 focus-visible:ring-1"
-          />
-        </div>
+        {/* Global Search */}
+        <GlobalSearch />
 
         {/* Quick Actions */}
         <DropdownMenu>
