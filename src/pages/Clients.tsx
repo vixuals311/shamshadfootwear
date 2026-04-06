@@ -262,6 +262,7 @@ const Clients = () => {
         .from("invoices")
         .select(`
           id, invoice_number, created_at, total, subtotal, total_discount, status,
+          amount_received, balance_due,
           invoice_items (*)
         `)
         .eq("client_id", clientId)
@@ -276,6 +277,8 @@ const Clients = () => {
         total: inv.total,
         subtotal: inv.subtotal,
         totalDiscount: inv.total_discount,
+        amountReceived: inv.amount_received || 0,
+        balanceDue: inv.balance_due || 0,
         status: inv.status,
         items: (inv.invoice_items || []).map((item: any) => ({
           id: item.id,
