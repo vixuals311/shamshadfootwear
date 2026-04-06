@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -118,6 +119,7 @@ interface ManualBill {
 const Clients = () => {
   const { toast } = useToast();
   const { log } = useAuditLog();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -229,6 +231,19 @@ const Clients = () => {
     fetchClients();
     fetchPaymentAccounts();
   }, []);
+
+  // Auto-select client from URL query param
+  useEffect(() => {
+    const selectedId = searchParams.get("selected");
+    if (selectedId && clients.length > 0 && !selectedClient) {
+      const client = clients.find((c) => c.id === selectedId);
+      if (client) {
+        setSelectedClient(client);
+        // Clear the query param
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [clients, searchParams]);
 
   // Fetch client details when selected
   useEffect(() => {
