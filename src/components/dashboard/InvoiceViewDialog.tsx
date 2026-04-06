@@ -44,6 +44,8 @@ interface InvoiceViewDialogProps {
     total_bundles: number;
     credit_applied?: number;
     status: string;
+    payment_method?: string;
+    account_name?: string;
     items: InvoiceItem[];
     returns?: ReturnInfo[];
   } | null;
@@ -56,30 +58,21 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
   const hasReturns = invoice.returns && invoice.returns.length > 0;
   const totalReturned = invoice.returns?.reduce((sum, r) => sum + r.total_amount, 0) || 0;
   const isFullyReturned = totalReturned >= invoice.total;
+  const paymentMethodLabel = invoice.payment_method === "account"
+    ? `Account (${invoice.account_name || "N/A"})`
+    : "Cash";
 
   const handlePrint = () => {
-    const logoUrl = window.location.origin + '/favicon.png';
+    const hasDiscount = invoice.items.some(i => i.discount_per_pair > 0);
     const returnsHtml = hasReturns ? `
-      <div style="margin-top:24px;border-top:1px solid #ddd;padding-top:16px;">
-        <h4 style="font-size:14px;margin:0 0 12px;">Returns (${invoice.returns!.length})</h4>
+      <div style="margin-top:8px;border-top:1px solid #ddd;padding-top:6px;">
+        <h4 style="font-size:11px;margin:0 0 4px;">Returns (${invoice.returns!.length})</h4>
         ${invoice.returns!.map(ret => `
-          <div style="background:#f9f9f9;border-radius:8px;padding:12px;margin-bottom:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <span style="font-weight:600;font-size:13px;">${ret.return_number}</span>
-                <span style="margin-left:8px;padding:2px 8px;background:#eee;border-radius:12px;font-size:11px;">${ret.adjustment_type.replace('_',' ')}</span>
-              </div>
-              <div style="text-align:right;">
-                <span style="font-weight:600;color:#dc2626;font-size:13px;">Rs ${ret.total_amount.toLocaleString()}</span>
-                <br/><span style="font-size:11px;color:#888;">${format(new Date(ret.created_at), "dd MMM yyyy")}</span>
-              </div>
+          <div style="background:#f9f9f9;border-radius:4px;padding:4px 6px;margin-bottom:4px;font-size:10px;">
+            <div style="display:flex;justify-content:space-between;">
+              <span><strong>${ret.return_number}</strong> <small style="background:#eee;padding:1px 4px;border-radius:8px">${ret.adjustment_type.replace('_',' ')}</small></span>
+              <span style="color:#dc2626;font-weight:600">Rs ${ret.total_amount.toLocaleString()} — ${format(new Date(ret.created_at), "dd MMM yyyy")}</span>
             </div>
-            ${ret.items.length > 0 ? `<div style="margin-top:6px;">${ret.items.map(item => `
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-top:2px;">
-                <span>${item.product_name} (${item.size_range}) × ${item.pairs_returned} pairs</span>
-                <span>Rs ${item.total.toLocaleString()}</span>
-              </div>
-            `).join('')}</div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -87,69 +80,65 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
 
     const printContent = `<!DOCTYPE html><html><head><title>Invoice ${invoice.invoice_number}</title>
       <style>
-        *{box-sizing:border-box;}
-        body{font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:0 auto;color:#3D3D3D;}
-        .brand-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:20px;background:#F0E8D8;border-radius:12px;}
-        .brand-left{display:flex;align-items:center;gap:14px;}
-        .brand-left img{width:56px;height:56px;object-fit:contain;}
-        .brand-left h2{margin:0;font-size:18px;}
-        .brand-left p{margin:2px 0 0;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#888;}
-        .brand-left .contact{font-size:11px;letter-spacing:0;text-transform:none;color:#666;margin-top:4px;}
-        .brand-right{text-align:right;font-size:13px;color:#666;}
-        .brand-right p{margin:2px 0;}
-        table{width:100%;border-collapse:collapse;margin:20px 0;page-break-inside:auto;}
-        tr{page-break-inside:avoid;page-break-after:auto;}
-        th,td{border:1px solid #ddd;padding:10px;text-align:left;font-size:13px;}
-        th{background:#F0E8D8;color:#3D3D3D;}
-        .totals{text-align:right;margin-top:20px;}
-        .totals p{margin:5px 0;font-size:14px;}
-        .total-final{font-size:1.2em;font-weight:bold;border-top:2px solid #3D3D3D;padding-top:10px;margin-top:10px;}
-        .brand-footer{margin-top:40px;padding:16px;background:#F0E8D8;border-radius:12px;text-align:center;page-break-inside:avoid;}
-        .brand-footer p{margin:4px 0;font-size:11px;color:#666;}
-        .brand-footer .company{font-weight:bold;color:#3D3D3D;font-size:12px;}
-        @page{size:A4;margin:15mm;}
-        @media print{body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+        @page { size: A4; margin: 10mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 8px; color: #1a1a1a; font-size: 11px; }
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #F0E8D8; border-radius: 6px; margin-bottom: 6px; }
+        .header h2 { font-size: 16px; margin: 0; color: #3D3D3D; }
+        .header .tagline { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-top: 1px; }
+        .header .contact { font-size: 9px; color: #666; margin-top: 2px; }
+        .header .right { text-align: right; font-size: 11px; color: #666; }
+        .header .right p { margin: 1px 0; }
+        .client-row { display: flex; justify-content: space-between; margin-bottom: 6px; padding: 4px 0; }
+        .client-row .label { font-size: 9px; color: #888; }
+        table { width: 100%; border-collapse: collapse; margin: 4px 0; page-break-inside: auto; }
+        tr { page-break-inside: avoid; }
+        th { background: #f5f0eb; color: #4a3728; font-weight: 600; padding: 3px 4px; text-align: left; border: 1px solid #d4c4b0; font-size: 10px; }
+        td { padding: 2px 4px; border: 1px solid #e0d6cc; font-size: 10px; }
+        tbody tr:nth-child(even) { background: #faf8f5; }
+        .totals { text-align: right; margin-top: 4px; font-size: 11px; }
+        .totals p { margin: 2px 0; }
+        .total-final { font-size: 13px; font-weight: bold; border-top: 2px solid #3D3D3D; padding-top: 4px; margin-top: 4px; }
+        .footer { margin-top: 10px; padding: 6px; background: #F0E8D8; border-radius: 6px; text-align: center; font-size: 9px; color: #666; page-break-inside: avoid; }
+        @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
       </style></head><body>
-        <div class="brand-header">
-          <div class="brand-left">
-            <img src="${logoUrl}" alt="Shamshad Footwear"/>
-            <div><h2>Shamshad Footwear</h2><p>Wholesale Supplier</p>
-            <p class="contact">0315-7162093 | 0305-5388093</p>
-            <p class="contact">Faisalabad Road, Chowk Azam, Layyah</p></div>
+        <div class="header">
+          <div>
+            <h2>Shamshad Footwear</h2>
+            <div class="tagline">Wholesale Supplier</div>
+            <div class="contact">0315-7162093 | 0305-5388093</div>
+            <div class="contact">Faisalabad Road, Chowk Azam, Layyah</div>
           </div>
-          <div class="brand-right">
+          <div class="right">
             <p><strong>${invoice.invoice_number}</strong></p>
-            <p>${format(new Date(invoice.created_at), "dd MMM yyyy")}</p>
+            <p>${format(new Date(invoice.created_at), "dd MMM yyyy, hh:mm a")}</p>
           </div>
         </div>
-        <div style="margin-bottom:20px;">
-          <p style="font-size:11px;color:#888;margin-bottom:2px;">Bill To:</p>
-          <p style="margin:0;"><strong>${invoice.client_name}</strong></p>
-          <p style="margin:0;color:#666;">${invoice.client_city}</p>
+        <div class="client-row">
+          <div><span class="label">Bill To:</span><br/><strong>${invoice.client_name}</strong> ${invoice.client_city ? `— ${invoice.client_city}` : ""}</div>
+          <div style="text-align:right"><span class="label">Payment:</span><br/>${paymentMethodLabel}</div>
         </div>
-        <p style="font-size:13px;"><strong>Items (${invoice.items.length})</strong> — ${invoice.total_bundles} bundles • ${invoice.items.reduce((s, i) => s + i.total_pairs, 0)} pairs</p>
+        <p style="font-size:10px;margin-bottom:2px"><strong>Items (${invoice.items.length})</strong> — ${invoice.total_bundles} bundles • ${invoice.items.reduce((s, i) => s + i.total_pairs, 0)} pairs</p>
         <table><thead><tr>
-          <th>#</th><th>Product</th><th>Size</th><th>Bundles</th><th>Pairs</th><th>Rate (Rs)</th>${invoice.total_discount > 0 ? '<th>Discount (Rs)</th>' : ''}<th>Total (Rs)</th>
+          <th>#</th><th>Product / Article</th><th>Size</th><th>Qty</th><th>Pairs</th><th>Rate</th>${hasDiscount ? '<th>Disc</th>' : ''}<th>Total</th>
         </tr></thead><tbody>
           ${invoice.items.map((item, idx) => `<tr>
-            <td>${idx + 1}</td><td>${item.product_name}<br/><small style="color:#888;">${item.article_number}</small></td>
+            <td>${idx + 1}</td><td>${item.product_name}<br/><small style="color:#888">${item.article_number}</small></td>
             <td>${item.size_range}</td><td>${item.quantity}</td><td>${item.total_pairs}</td>
-            <td>${item.price_per_pair}</td>${invoice.total_discount > 0 ? `<td>${item.discount_per_pair}</td>` : ''}<td><strong>${item.total.toLocaleString()}</strong></td>
+            <td>${item.price_per_pair}</td>${hasDiscount ? `<td>${item.discount_per_pair}</td>` : ''}<td><strong>${item.total.toLocaleString()}</strong></td>
           </tr>`).join('')}
         </tbody></table>
         <div class="totals">
           <p>Subtotal: Rs ${invoice.subtotal.toLocaleString()}</p>
           ${invoice.total_discount > 0 ? `<p>Discount: - Rs ${invoice.total_discount.toLocaleString()}</p>` : ''}
           ${invoice.tax > 0 ? `<p>Tax: Rs ${invoice.tax.toLocaleString()}</p>` : ''}
-           <p class="total-final">Total: Rs ${invoice.total.toLocaleString()}</p>
-          ${(invoice.credit_applied ?? 0) <= 0 && invoice.amount_received > 0 ? `<p style="color:green;">Received: Rs ${invoice.amount_received.toLocaleString()}</p>` : ''}
+          <p class="total-final">Total: Rs ${invoice.total.toLocaleString()}</p>
+          ${(invoice.credit_applied ?? 0) <= 0 && invoice.amount_received > 0 ? `<p style="color:green">Received: Rs ${invoice.amount_received.toLocaleString()} (${paymentMethodLabel})</p>` : ''}
           ${(invoice.credit_applied ?? 0) > 0 ? `<p>Credit Applied: Rs ${(invoice.credit_applied ?? 0).toLocaleString()}</p>` : ''}
-          ${invoice.balance_due > 0 ? `<p style="color:#d97706;font-weight:600;">Balance Due: Rs ${invoice.balance_due.toLocaleString()}</p>` : ''}
+          ${invoice.balance_due > 0 ? `<p style="color:#d97706;font-weight:600">Balance Due: Rs ${invoice.balance_due.toLocaleString()}</p>` : ''}
         </div>
         ${returnsHtml}
-        <div class="brand-footer">
-          <p>Goods once sold will not be returned without prior agreement.</p>
-        </div>
+        <div class="footer">Goods once sold will not be returned without prior agreement.</div>
       </body></html>`;
 
     const printWindow = window.open("", "_blank");
@@ -198,7 +187,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
               </div>
               <div className="text-right text-sm text-muted-foreground">
                 <p>Invoice #{invoice.invoice_number}</p>
-                <p>{format(new Date(invoice.created_at), "dd MMM yyyy")}</p>
+                <p>{format(new Date(invoice.created_at), "dd MMM yyyy, hh:mm a")}</p>
               </div>
             </div>
             <div className="border-t border-border pt-3 flex justify-between">
@@ -207,16 +196,17 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
                 <p className="font-semibold">{invoice.client_name}</p>
                 <p className="text-sm text-muted-foreground">{invoice.client_city}</p>
               </div>
-              <div className="text-right">
-              <span className={`inline-block px-2 py-1 text-xs rounded-full capitalize ${
-                invoice.status === 'paid' ? 'bg-success/10 text-success' :
-                invoice.status === 'pending' ? 'bg-warning/10 text-warning' :
-                invoice.status === 'overdue' ? 'bg-destructive/10 text-destructive' :
-                'bg-muted text-muted-foreground'
-              }`}>
-                {invoice.status}
-              </span>
-            </div>
+              <div className="text-right space-y-1">
+                <span className={`inline-block px-2 py-1 text-xs rounded-full capitalize ${
+                  invoice.status === 'paid' ? 'bg-success/10 text-success' :
+                  invoice.status === 'pending' ? 'bg-warning/10 text-warning' :
+                  invoice.status === 'overdue' ? 'bg-destructive/10 text-destructive' :
+                  'bg-muted text-muted-foreground'
+                }`}>
+                  {invoice.status}
+                </span>
+                <p className="text-xs text-muted-foreground capitalize">Via: {paymentMethodLabel}</p>
+              </div>
             </div>
           </div>
 
@@ -283,7 +273,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
             </div>
             {(invoice.credit_applied ?? 0) <= 0 && invoice.amount_received > 0 && (
               <div className="flex justify-between text-success">
-                <span>Received:</span>
+                <span>Received ({paymentMethodLabel}):</span>
                 <span>Rs {invoice.amount_received.toLocaleString()}</span>
               </div>
             )}
