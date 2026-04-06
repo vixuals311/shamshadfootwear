@@ -232,6 +232,19 @@ const Clients = () => {
     fetchPaymentAccounts();
   }, []);
 
+  // Auto-select client from URL query param
+  useEffect(() => {
+    const selectedId = searchParams.get("selected");
+    if (selectedId && clients.length > 0 && !selectedClient) {
+      const client = clients.find((c) => c.id === selectedId);
+      if (client) {
+        setSelectedClient(client);
+        // Clear the query param
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [clients, searchParams]);
+
   // Fetch client details when selected
   useEffect(() => {
     if (selectedClient) {
