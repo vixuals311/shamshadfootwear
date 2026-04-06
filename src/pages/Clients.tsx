@@ -1313,10 +1313,14 @@ const Clients = () => {
                             const inv = item.data as Invoice;
                             return (
                               <tr key={`bill-${inv.id}`} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewClientInvoice(inv.id)}>
-                                <td className="text-sm text-muted-foreground whitespace-nowrap">{format(inv.createdAt, "dd MMM yyyy")}</td>
+                                <td className="text-sm text-muted-foreground whitespace-nowrap">
+                                  <div>{format(inv.createdAt, "dd MMM yyyy")}</div>
+                                  <div className="text-xs">{format(inv.createdAt, "hh:mm a")}</div>
+                                </td>
                                 <td><span className="status-badge status-badge-info">Invoice</span></td>
                                 <td className="font-mono text-sm">{inv.invoiceNumber}</td>
                                 <td className="font-semibold whitespace-nowrap">Rs {inv.total.toLocaleString()}</td>
+                                <td className="text-xs text-muted-foreground capitalize">{inv.paymentMethod === "account" ? inv.accountName || "Account" : "Cash"}</td>
                                 <td className="font-semibold text-destructive whitespace-nowrap">Rs {item.runningBalance.toLocaleString()}</td>
                               </tr>
                             );
@@ -1328,6 +1332,7 @@ const Clients = () => {
                                 <td><span className="status-badge status-badge-warning">Bill</span></td>
                                 <td className="font-mono text-sm">{bill.bill_number}</td>
                                 <td className="font-semibold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</td>
+                                <td className="text-xs text-muted-foreground">-</td>
                                 <td className="font-semibold text-destructive whitespace-nowrap">Rs {item.runningBalance.toLocaleString()}</td>
                               </tr>
                             );
@@ -1339,6 +1344,7 @@ const Clients = () => {
                                 <td><span className={cn("status-badge", rec.isFromCity ? "status-badge-warning" : "status-badge-success")}>{rec.isFromCity ? "City Rec." : "Recovery"}</span></td>
                                 <td className="text-sm text-muted-foreground">-</td>
                                 <td className="font-semibold text-success whitespace-nowrap">Rs {rec.amount.toLocaleString()}</td>
+                                <td className="text-xs text-muted-foreground">-</td>
                                 <td className="font-semibold text-destructive whitespace-nowrap">Rs {item.runningBalance.toLocaleString()}</td>
                               </tr>
                             );
