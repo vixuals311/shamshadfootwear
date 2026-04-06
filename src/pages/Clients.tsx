@@ -95,6 +95,8 @@ interface Invoice {
   total: number;
   subtotal: number;
   totalDiscount: number;
+  amountReceived: number;
+  balanceDue: number;
   status: string;
   items: any[];
 }
