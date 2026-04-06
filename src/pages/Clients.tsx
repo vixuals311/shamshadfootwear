@@ -796,14 +796,18 @@ const Clients = () => {
     let totalsHtml = "";
     if (type === "bills") {
       const totalAmount = data.reduce((sum: number, inv: any) => sum + (inv.total || 0), 0);
+      const totalPaid = data.reduce((sum: number, inv: any) => sum + (inv.amountReceived || 0), 0);
+      const totalDue = data.reduce((sum: number, inv: any) => sum + (inv.balanceDue || 0), 0);
       tableHtml = `
         <table>
           <thead>
             <tr>
               <th>Invoice #</th>
-              <th>Date & Time</th>
+              <th>Date</th>
               <th>Items</th>
               <th>Total</th>
+              <th>Paid</th>
+              <th>Balance</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -811,13 +815,15 @@ const Clients = () => {
             ${data.map((invoice: Invoice) => `
               <tr>
                 <td>${invoice.invoiceNumber}</td>
-                <td>${format(invoice.createdAt, "dd MMM yyyy, hh:mm a")}</td>
-                <td>${invoice.items.length} items</td>
+                <td>${format(invoice.createdAt, "dd MMM yyyy")}</td>
+                <td>${invoice.items.length}</td>
                 <td>Rs ${invoice.total.toLocaleString()}</td>
+                <td class="paid-col">Rs ${(invoice.amountReceived || 0).toLocaleString()}</td>
+                <td class="${invoice.balanceDue > 0 ? 'due-col' : ''}">${invoice.balanceDue > 0 ? 'Rs ' + invoice.balanceDue.toLocaleString() : '-'}</td>
                 <td>${invoice.status}</td>
               </tr>
             `).join("")}
-            <tr class="totals-row"><td colspan="3" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td></td></tr>
+            <tr class="totals-row"><td colspan="3" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td class="paid-col">Rs ${totalPaid.toLocaleString()}</td><td class="due-col">Rs ${totalDue.toLocaleString()}</td><td></td></tr>
           </tbody>
         </table>
       `;
@@ -1123,17 +1129,17 @@ const Clients = () => {
 
     const handlePrintAll = () => {
       if (!selectedClient) return;
-      const tableHtml = `<table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Notes</th></tr></thead><tbody>
+      const tableHtml = `<table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Notes</th></tr></thead><tbody>
         ${allItems.map(item => {
           if (item.type === "bill") {
             const inv = item.data as Invoice;
-            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yyyy")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td>${inv.status}</td></tr>`;
+            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yyyy")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td class="paid-col">Rs ${(inv.amountReceived || 0).toLocaleString()}</td><td class="${inv.balanceDue > 0 ? 'due-col' : ''}">${inv.balanceDue > 0 ? 'Rs ' + inv.balanceDue.toLocaleString() : '-'}</td><td>${inv.status}</td></tr>`;
           } else if (item.type === "manual") {
             const bill = item.data as ManualBill;
-            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yyyy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td>${bill.notes || "-"}</td></tr>`;
+            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yyyy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td>-</td><td>-</td><td>${bill.notes || "-"}</td></tr>`;
           } else {
             const rec = item.data as RecoveryRecord;
-            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yyyy")}</td><td>${rec.isFromCity ? "City Recovery" : "Recovery"}</td><td>-</td><td style="color:green">Rs ${rec.amount.toLocaleString()}</td><td>${rec.notes || "-"}</td></tr>`;
+            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yyyy")}</td><td>${rec.isFromCity ? "City Recovery" : "Recovery"}</td><td>-</td><td style="color:green">Rs ${rec.amount.toLocaleString()}</td><td>-</td><td>-</td><td>${rec.notes || "-"}</td></tr>`;
           }
         }).join("")}
         </tbody></table>`;
