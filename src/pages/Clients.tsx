@@ -812,10 +812,11 @@ const Clients = () => {
           <thead>
             <tr>
               <th>Invoice #</th>
-              <th>Date</th>
+              <th>Date & Time</th>
               <th>Total</th>
               <th>Paid</th>
               <th>Due</th>
+              <th>Via</th>
               <th>Balance</th>
             </tr>
           </thead>
@@ -823,14 +824,15 @@ const Clients = () => {
             ${data.map((invoice: Invoice) => `
               <tr>
                 <td>${invoice.invoiceNumber}</td>
-                <td>${format(invoice.createdAt, "dd MMM yyyy")}</td>
+                <td>${format(invoice.createdAt, "dd MMM yy, hh:mm a")}</td>
                 <td>Rs ${invoice.total.toLocaleString()}</td>
                 <td class="paid-col">Rs ${(invoice.amountReceived || 0).toLocaleString()}</td>
                 <td class="${invoice.balanceDue > 0 ? 'due-col' : ''}">${invoice.balanceDue > 0 ? 'Rs ' + invoice.balanceDue.toLocaleString() : '-'}</td>
+                <td>${invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}</td>
                 <td class="due-col">Rs ${(balanceMap?.get(invoice.id) || 0).toLocaleString()}</td>
               </tr>
             `).join("")}
-            <tr class="totals-row"><td colspan="2" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td class="paid-col">Rs ${totalPaid.toLocaleString()}</td><td class="due-col">Rs ${totalDue.toLocaleString()}</td><td></td></tr>
+            <tr class="totals-row"><td colspan="2" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td class="paid-col">Rs ${totalPaid.toLocaleString()}</td><td class="due-col">Rs ${totalDue.toLocaleString()}</td><td colspan="2"></td></tr>
           </tbody>
         </table>
       `;
