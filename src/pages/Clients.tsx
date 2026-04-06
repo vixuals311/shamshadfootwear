@@ -850,11 +850,7 @@ const Clients = () => {
     if (!selectedClient) return;
     const data = type === "bills" ? clientInvoices : clientRecoveries;
     const content = generatePrintContent(type, selectedClient.name, data);
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(content);
-      printWindow.document.close();
-    }
+    openPrintWindow(content);
   };
 
   // Export clients to CSV
