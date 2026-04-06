@@ -1306,7 +1306,7 @@ const Clients = () => {
                 <>
                   <div className="overflow-x-auto hidden sm:block">
                     <table className="data-table min-w-[600px]">
-                      <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Balance</th></tr></thead>
+                      <thead><tr><th>Date & Time</th><th>Type</th><th>Reference</th><th>Amount</th><th>Via</th><th>Balance</th></tr></thead>
                       <tbody>
                         {allItems.map((item, idx) => {
                           if (item.type === "bill") {
