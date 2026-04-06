@@ -48,6 +48,7 @@ const roleLabels: Record<UserRole, { label: string; color: string }> = {
   manager: { label: "Manager", color: "status-badge-default" },
   biller: { label: "Biller", color: "status-badge-success" },
   cashier: { label: "Cashier", color: "status-badge-warning" },
+  biller_cashier: { label: "Biller/Cashier", color: "status-badge-warning" },
 };
 
 // All assignable pages (excluding 'users' which is admin-only)

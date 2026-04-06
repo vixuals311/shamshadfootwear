@@ -42,6 +42,7 @@ export const ROLE_DEFAULT_PAGES: Record<UserRole, PageKey[]> = {
   manager: ["dashboard", "inventory", "add_product", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns", "reports", "audit_logs", "settings", "bulk_clients"],
   biller: ["dashboard", "inventory", "add_product", "price_check", "clients", "invoices", "returns"],
   cashier: ["dashboard", "payments", "cheques", "recovery", "city_recovery"],
+  biller_cashier: ["dashboard", "inventory", "add_product", "price_check", "clients", "invoices", "payments", "cheques", "recovery", "city_recovery", "returns"],
 };
 
 // Page metadata for UI display
@@ -123,6 +124,18 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManageClients: false,
     canCreateInvoices: false,
     canEditInvoices: false,
+    canDeleteInvoices: false,
+    canRecordPayments: true,
+    canManageRecoveries: true,
+  },
+  biller_cashier: {
+    canManageUsers: false,
+    canManageSettings: false,
+    canViewReports: false,
+    canManageInventory: true,
+    canManageClients: true,
+    canCreateInvoices: true,
+    canEditInvoices: true,
     canDeleteInvoices: false,
     canRecordPayments: true,
     canManageRecoveries: true,
