@@ -59,6 +59,8 @@ interface Invoice {
   date: string;
   dueDate: string;
   items: number;
+  paymentMethod: string;
+  accountName: string;
 }
 
 interface ReturnInfo {
@@ -85,6 +87,8 @@ interface InvoiceDetails {
   total_bundles: number;
   credit_applied?: number;
   status: string;
+  payment_method: string;
+  account_name: string;
   items: any[];
   returns?: ReturnInfo[];
 }
@@ -129,8 +133,11 @@ const Invoices = () => {
           balance_due,
           status,
           created_at,
+          payment_method,
+          account_id,
           clients (name, email),
-          invoice_items (id)
+          invoice_items (id),
+          payment_accounts (name)
         `)
         .order("created_at", { ascending: false });
 
@@ -148,6 +155,8 @@ const Invoices = () => {
         date: inv.created_at,
         dueDate: inv.created_at,
         items: inv.invoice_items?.length || 0,
+        paymentMethod: inv.payment_method || "cash",
+        accountName: inv.payment_accounts?.name || "",
       }));
 
       setInvoices(formattedInvoices);
@@ -235,8 +244,11 @@ const Invoices = () => {
           total_bundles,
           credit_applied,
           status,
+          payment_method,
+          account_id,
           clients (name, city),
-          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total)
+          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total),
+          payment_accounts (name)
         `)
         .eq("id", invoiceId)
         .single();
@@ -268,6 +280,8 @@ const Invoices = () => {
         total_bundles: data.total_bundles || 0,
         credit_applied: data.credit_applied || 0,
         status: data.status,
+        payment_method: data.payment_method || "cash",
+        account_name: (data as any).payment_accounts?.name || "",
         items: data.invoice_items || [],
         returns: (returnsData || []).map((r: any) => ({
           id: r.id,
@@ -308,8 +322,11 @@ const Invoices = () => {
           amount_received,
           balance_due,
           status,
+          payment_method,
+          account_id,
           clients (name, city),
-          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total)
+          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total),
+          payment_accounts (name)
         `)
         .eq("id", invoiceId)
         .single();
@@ -339,109 +356,72 @@ const Invoices = () => {
     }
   };
 
-  // Generate print content
+  // Generate print content - optimized for paper saving
   const generatePrintContent = (invoice: any) => {
-    const logoUrl = window.location.origin + '/favicon.png';
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Invoice ${invoice.invoice_number}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; color: #3D3D3D; }
-          .brand-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 20px; background: #F0E8D8; border-radius: 12px; }
-          .brand-left { display: flex; align-items: center; gap: 14px; }
-          .brand-left img { width: 56px; height: 56px; object-fit: contain; }
-          .brand-left h2 { margin: 0; font-size: 18px; color: #3D3D3D; }
-          .brand-left p { margin: 2px 0 0; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #888; }
-          .brand-left .contact { font-size: 11px; letter-spacing: 0; text-transform: none; color: #666; margin-top: 4px; }
-          .brand-right { text-align: right; font-size: 13px; color: #666; }
-          .brand-right p { margin: 2px 0; }
-          .client-info { margin-bottom: 20px; }
-          .client-info .label { font-size: 11px; color: #888; margin-bottom: 2px; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
-          th { background: #F0E8D8; color: #3D3D3D; }
-          .totals { text-align: right; margin-top: 20px; }
-          .totals p { margin: 5px 0; font-size: 14px; }
-          .total-final { font-size: 1.2em; font-weight: bold; border-top: 2px solid #3D3D3D; padding-top: 10px; margin-top: 10px; }
-          .brand-footer { margin-top: 40px; padding: 16px; background: #F0E8D8; border-radius: 12px; text-align: center; }
-          .brand-footer p { margin: 4px 0; font-size: 11px; color: #666; }
-          .brand-footer .company { font-weight: bold; color: #3D3D3D; font-size: 12px; }
-          @media print { body { padding: 0; } }
-        </style>
-      </head>
-      <body>
-        <div class="brand-header">
-          <div class="brand-left">
-            <img src="${logoUrl}" alt="Shamshad Footwear" />
-            <div>
-              <h2>Shamshad Footwear</h2>
-              <p>Wholesale Supplier</p>
-              <p class="contact">0315-7162093 | 0305-5388093</p>
-              <p class="contact">Faisalabad Road, Chowk Azam, Layyah</p>
-            </div>
+    const hasDiscount = (invoice.invoice_items || []).some((i: any) => i.discount_per_pair > 0);
+    const paymentMethodLabel = invoice.payment_method === "account"
+      ? `Account (${(invoice as any).payment_accounts?.name || "N/A"})`
+      : "Cash";
+    return `<!DOCTYPE html><html><head><title>Invoice ${invoice.invoice_number}</title>
+      <style>
+        @page { size: A4; margin: 10mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 8px; color: #1a1a1a; font-size: 11px; }
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #F0E8D8; border-radius: 6px; margin-bottom: 6px; }
+        .header h2 { font-size: 16px; margin: 0; color: #3D3D3D; }
+        .header .tagline { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-top: 1px; }
+        .header .contact { font-size: 9px; color: #666; margin-top: 2px; }
+        .header .right { text-align: right; font-size: 11px; color: #666; }
+        .header .right p { margin: 1px 0; }
+        .client-row { display: flex; justify-content: space-between; margin-bottom: 6px; padding: 4px 0; }
+        .client-row .label { font-size: 9px; color: #888; }
+        table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+        th { background: #f5f0eb; color: #4a3728; font-weight: 600; padding: 3px 4px; text-align: left; border: 1px solid #d4c4b0; font-size: 10px; }
+        td { padding: 2px 4px; border: 1px solid #e0d6cc; font-size: 10px; }
+        tbody tr:nth-child(even) { background: #faf8f5; }
+        .totals { text-align: right; margin-top: 4px; font-size: 11px; }
+        .totals p { margin: 2px 0; }
+        .total-final { font-size: 13px; font-weight: bold; border-top: 2px solid #3D3D3D; padding-top: 4px; margin-top: 4px; }
+        .payment-info { margin-top: 4px; font-size: 10px; color: #666; text-align: right; }
+        .footer { margin-top: 10px; padding: 6px; background: #F0E8D8; border-radius: 6px; text-align: center; font-size: 9px; color: #666; }
+        @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style></head><body>
+        <div class="header">
+          <div>
+            <h2>Shamshad Footwear</h2>
+            <div class="tagline">Wholesale Supplier</div>
+            <div class="contact">0315-7162093 | 0305-5388093</div>
+            <div class="contact">Faisalabad Road, Chowk Azam, Layyah</div>
           </div>
-          <div class="brand-right">
+          <div class="right">
             <p><strong>${invoice.invoice_number}</strong></p>
-            <p>${format(new Date(invoice.created_at), "dd MMM yyyy")}</p>
+            <p>${format(new Date(invoice.created_at), "dd MMM yyyy, hh:mm a")}</p>
           </div>
         </div>
-        
-        <div class="client-info">
-          <p class="label">Bill To:</p>
-          <p><strong>${invoice.clients?.name || "N/A"}</strong></p>
-          <p>${invoice.clients?.city || ""}</p>
+        <div class="client-row">
+          <div><span class="label">Bill To:</span><br/><strong>${invoice.clients?.name || "N/A"}</strong> ${invoice.clients?.city ? `— ${invoice.clients.city}` : ""}</div>
+          <div style="text-align:right"><span class="label">Payment:</span><br/>${paymentMethodLabel}</div>
         </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Product</th>
-              <th>Article</th>
-              <th>Size</th>
-              <th>Qty</th>
-              <th>Pairs</th>
-              <th>Rate</th>
-              <th>Discount</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(invoice.invoice_items || []).map((item: any, idx: number) => `
-              <tr>
-                <td>${idx + 1}</td>
-                <td>${item.product_name}</td>
-                <td>${item.article_number}</td>
-                <td>${item.size_range}</td>
-                <td>${item.quantity}</td>
-                <td>${item.total_pairs}</td>
-                <td>Rs ${item.price_per_pair}</td>
-                <td>Rs ${item.discount_per_pair}</td>
-                <td>Rs ${item.total.toLocaleString()}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-
+        <table><thead><tr>
+          <th>#</th><th>Product / Article</th><th>Size</th><th>Qty</th><th>Pairs</th><th>Rate</th>${hasDiscount ? '<th>Disc</th>' : ''}<th>Total</th>
+        </tr></thead><tbody>
+          ${(invoice.invoice_items || []).map((item: any, idx: number) => `<tr>
+            <td>${idx + 1}</td><td>${item.product_name}<br/><small style="color:#888">${item.article_number}</small></td>
+            <td>${item.size_range}</td><td>${item.quantity}</td><td>${item.total_pairs}</td>
+            <td>${item.price_per_pair}</td>${hasDiscount ? `<td>${item.discount_per_pair}</td>` : ''}<td><strong>${item.total.toLocaleString()}</strong></td>
+          </tr>`).join("")}
+        </tbody></table>
         <div class="totals">
           <p>Subtotal: Rs ${invoice.subtotal.toLocaleString()}</p>
           ${invoice.total_discount > 0 ? `<p>Discount: - Rs ${invoice.total_discount.toLocaleString()}</p>` : ""}
           ${invoice.tax > 0 ? `<p>Tax: Rs ${invoice.tax.toLocaleString()}</p>` : ""}
           <p class="total-final">Total: Rs ${invoice.total.toLocaleString()}</p>
-          ${invoice.amount_received > 0 ? `<p>Received: Rs ${invoice.amount_received.toLocaleString()}</p>` : ""}
-          ${invoice.balance_due > 0 ? `<p>Balance Due: Rs ${invoice.balance_due.toLocaleString()}</p>` : ""}
+          ${invoice.amount_received > 0 ? `<p style="color:green">Received: Rs ${invoice.amount_received.toLocaleString()} (${paymentMethodLabel})</p>` : ""}
+          ${invoice.balance_due > 0 ? `<p style="color:#d97706;font-weight:600">Balance Due: Rs ${invoice.balance_due.toLocaleString()}</p>` : ""}
         </div>
-
-        <div class="brand-footer">
-          <p>Goods once sold will not be returned without prior agreement.</p>
-        </div>
-        
+        <div class="footer">Goods once sold will not be returned without prior agreement.</div>
         <script>window.print();</script>
-      </body>
-      </html>
-    `;
+      </body></html>`;
   };
 
   // Send to client (via WhatsApp or share)
@@ -762,8 +742,12 @@ const Invoices = () => {
                 </div>
               )}
               <div className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-muted-foreground">Via</span>
+                <span className="text-sm text-foreground capitalize">{invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
                 <span className="text-sm text-muted-foreground">Date</span>
-                <span className="text-sm text-foreground">{format(new Date(invoice.date), "dd MMM yyyy")}</span>
+                <span className="text-sm text-foreground">{format(new Date(invoice.date), "dd MMM yyyy, hh:mm a")}</span>
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-sm text-muted-foreground">Status</span>
@@ -792,8 +776,9 @@ const Invoices = () => {
                 <th>Amount</th>
                 <th>Paid</th>
                 <th>Balance</th>
+                <th>Via</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th>Date & Time</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
@@ -828,12 +813,18 @@ const Invoices = () => {
                   <td className={cn("font-medium", invoice.balanceDue > 0 ? "text-destructive" : "text-muted-foreground")}>
                     Rs {invoice.balanceDue.toLocaleString()}
                   </td>
+                  <td className="text-xs text-muted-foreground capitalize">
+                    {invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}
+                  </td>
                   <td>
                     <span className={cn("status-badge capitalize", statusStyles[invoice.status])}>
                       {invoice.status}
                     </span>
                   </td>
-                  <td className="text-muted-foreground">{format(new Date(invoice.date), "dd MMM yyyy")}</td>
+                  <td className="text-muted-foreground">
+                    <div>{format(new Date(invoice.date), "dd MMM yyyy")}</div>
+                    <div className="text-xs">{format(new Date(invoice.date), "hh:mm a")}</div>
+                  </td>
                   <td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

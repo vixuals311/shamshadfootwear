@@ -98,6 +98,8 @@ interface Invoice {
   amountReceived: number;
   balanceDue: number;
   status: string;
+  paymentMethod: string;
+  accountName: string;
   items: any[];
 }
 
@@ -262,15 +264,16 @@ const Clients = () => {
         .from("invoices")
         .select(`
           id, invoice_number, created_at, total, subtotal, total_discount, status,
-          amount_received, balance_due,
-          invoice_items (*)
+          amount_received, balance_due, payment_method, account_id,
+          invoice_items (*),
+          payment_accounts (name)
         `)
         .eq("client_id", clientId)
         .order("created_at", { ascending: false });
 
       if (invoicesError) throw invoicesError;
 
-      const formattedInvoices: Invoice[] = (invoicesData || []).map((inv) => ({
+      const formattedInvoices: Invoice[] = (invoicesData || []).map((inv: any) => ({
         id: inv.id,
         invoiceNumber: inv.invoice_number,
         createdAt: new Date(inv.created_at),
@@ -280,6 +283,8 @@ const Clients = () => {
         amountReceived: inv.amount_received || 0,
         balanceDue: inv.balance_due || 0,
         status: inv.status,
+        paymentMethod: inv.payment_method || "cash",
+        accountName: inv.payment_accounts?.name || "",
         items: (inv.invoice_items || []).map((item: any) => ({
           id: item.id,
           productName: item.product_name,
@@ -358,8 +363,10 @@ const Clients = () => {
         .select(`
           id, invoice_number, created_at, subtotal, total_discount, tax, total,
           amount_received, balance_due, total_bundles, credit_applied, status,
+          payment_method, account_id,
           clients (name, city),
-          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total)
+          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total),
+          payment_accounts (name)
         `)
         .eq("id", invoiceId)
         .single();
@@ -390,6 +397,8 @@ const Clients = () => {
         total_bundles: data.total_bundles || 0,
         credit_applied: data.credit_applied || 0,
         status: data.status,
+        payment_method: data.payment_method || "cash",
+        account_name: (data as any).payment_accounts?.name || "",
         items: data.invoice_items || [],
         returns: (returnsData || []).map((r: any) => ({
           id: r.id,
@@ -803,10 +812,11 @@ const Clients = () => {
           <thead>
             <tr>
               <th>Invoice #</th>
-              <th>Date</th>
+              <th>Date & Time</th>
               <th>Total</th>
               <th>Paid</th>
               <th>Due</th>
+              <th>Via</th>
               <th>Balance</th>
             </tr>
           </thead>
@@ -814,14 +824,15 @@ const Clients = () => {
             ${data.map((invoice: Invoice) => `
               <tr>
                 <td>${invoice.invoiceNumber}</td>
-                <td>${format(invoice.createdAt, "dd MMM yyyy")}</td>
+                <td>${format(invoice.createdAt, "dd MMM yy, hh:mm a")}</td>
                 <td>Rs ${invoice.total.toLocaleString()}</td>
                 <td class="paid-col">Rs ${(invoice.amountReceived || 0).toLocaleString()}</td>
                 <td class="${invoice.balanceDue > 0 ? 'due-col' : ''}">${invoice.balanceDue > 0 ? 'Rs ' + invoice.balanceDue.toLocaleString() : '-'}</td>
+                <td>${invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}</td>
                 <td class="due-col">Rs ${(balanceMap?.get(invoice.id) || 0).toLocaleString()}</td>
               </tr>
             `).join("")}
-            <tr class="totals-row"><td colspan="2" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td class="paid-col">Rs ${totalPaid.toLocaleString()}</td><td class="due-col">Rs ${totalDue.toLocaleString()}</td><td></td></tr>
+            <tr class="totals-row"><td colspan="2" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td class="paid-col">Rs ${totalPaid.toLocaleString()}</td><td class="due-col">Rs ${totalDue.toLocaleString()}</td><td colspan="2"></td></tr>
           </tbody>
         </table>
       `;
@@ -1156,18 +1167,18 @@ const Clients = () => {
 
     const handlePrintAll = () => {
       if (!selectedClient) return;
-      const tableHtml = `<table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th>Amount</th><th>Balance</th></tr></thead><tbody>
-        <tr style="background:#f5f0eb"><td colspan="3" style="text-align:right;font-weight:600">Opening Balance</td><td></td><td class="due-col">Rs ${selectedClient.openingBalance.toLocaleString()}</td></tr>
+      const tableHtml = `<table><thead><tr><th>Date & Time</th><th>Type</th><th>Ref</th><th>Amount</th><th>Via</th><th>Balance</th></tr></thead><tbody>
+        <tr style="background:#f5f0eb"><td colspan="4" style="text-align:right;font-weight:600">Opening Balance</td><td></td><td class="due-col">Rs ${selectedClient.openingBalance.toLocaleString()}</td></tr>
         ${[...allItems].reverse().map(item => {
           if (item.type === "bill") {
             const inv = item.data as Invoice;
-            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yyyy")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
+            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yy, hh:mm a")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td>${inv.paymentMethod === "account" ? inv.accountName || "Acc" : "Cash"}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
           } else if (item.type === "manual") {
             const bill = item.data as ManualBill;
-            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yyyy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
+            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td>-</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
           } else {
             const rec = item.data as RecoveryRecord;
-            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yyyy")}</td><td>${rec.isFromCity ? "City Rec." : "Recovery"}</td><td>-</td><td style="color:green">- Rs ${rec.amount.toLocaleString()}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
+            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yy")}</td><td>${rec.isFromCity ? "City Rec." : "Recovery"}</td><td>-</td><td style="color:green">- Rs ${rec.amount.toLocaleString()}</td><td>-</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
           }
         }).join("")}
         </tbody></table>`;
@@ -1295,17 +1306,21 @@ const Clients = () => {
                 <>
                   <div className="overflow-x-auto hidden sm:block">
                     <table className="data-table min-w-[600px]">
-                      <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Balance</th></tr></thead>
+                      <thead><tr><th>Date & Time</th><th>Type</th><th>Reference</th><th>Amount</th><th>Via</th><th>Balance</th></tr></thead>
                       <tbody>
                         {allItems.map((item, idx) => {
                           if (item.type === "bill") {
                             const inv = item.data as Invoice;
                             return (
                               <tr key={`bill-${inv.id}`} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewClientInvoice(inv.id)}>
-                                <td className="text-sm text-muted-foreground whitespace-nowrap">{format(inv.createdAt, "dd MMM yyyy")}</td>
+                                <td className="text-sm text-muted-foreground whitespace-nowrap">
+                                  <div>{format(inv.createdAt, "dd MMM yyyy")}</div>
+                                  <div className="text-xs">{format(inv.createdAt, "hh:mm a")}</div>
+                                </td>
                                 <td><span className="status-badge status-badge-info">Invoice</span></td>
                                 <td className="font-mono text-sm">{inv.invoiceNumber}</td>
                                 <td className="font-semibold whitespace-nowrap">Rs {inv.total.toLocaleString()}</td>
+                                <td className="text-xs text-muted-foreground capitalize">{inv.paymentMethod === "account" ? inv.accountName || "Account" : "Cash"}</td>
                                 <td className="font-semibold text-destructive whitespace-nowrap">Rs {item.runningBalance.toLocaleString()}</td>
                               </tr>
                             );
@@ -1317,6 +1332,7 @@ const Clients = () => {
                                 <td><span className="status-badge status-badge-warning">Bill</span></td>
                                 <td className="font-mono text-sm">{bill.bill_number}</td>
                                 <td className="font-semibold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</td>
+                                <td className="text-xs text-muted-foreground">-</td>
                                 <td className="font-semibold text-destructive whitespace-nowrap">Rs {item.runningBalance.toLocaleString()}</td>
                               </tr>
                             );
@@ -1328,6 +1344,7 @@ const Clients = () => {
                                 <td><span className={cn("status-badge", rec.isFromCity ? "status-badge-warning" : "status-badge-success")}>{rec.isFromCity ? "City Rec." : "Recovery"}</span></td>
                                 <td className="text-sm text-muted-foreground">-</td>
                                 <td className="font-semibold text-success whitespace-nowrap">Rs {rec.amount.toLocaleString()}</td>
+                                <td className="text-xs text-muted-foreground">-</td>
                                 <td className="font-semibold text-destructive whitespace-nowrap">Rs {item.runningBalance.toLocaleString()}</td>
                               </tr>
                             );
@@ -1412,16 +1429,20 @@ const Clients = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientInvoices.length > 0 ? (
                 <>
-                  <div className="overflow-x-auto hidden sm:block">
+                   <div className="overflow-x-auto hidden sm:block">
                     <table className="data-table min-w-[700px]">
-                      <thead><tr><th>Invoice #</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Balance</th><th className="w-12"></th></tr></thead>
+                      <thead><tr><th>Invoice #</th><th>Date & Time</th><th>Items</th><th>Total</th><th>Via</th><th>Status</th><th>Balance</th><th className="w-12"></th></tr></thead>
                       <tbody>
                         {clientInvoices.map((invoice) => (
                           <tr key={invoice.id}>
                             <td className="font-mono text-sm">{invoice.invoiceNumber}</td>
-                            <td className="text-muted-foreground text-sm whitespace-nowrap">{format(invoice.createdAt, "dd MMM yyyy")}</td>
+                            <td className="text-muted-foreground text-sm whitespace-nowrap">
+                              <div>{format(invoice.createdAt, "dd MMM yyyy")}</div>
+                              <div className="text-xs">{format(invoice.createdAt, "hh:mm a")}</div>
+                            </td>
                             <td className="text-sm">{invoice.items.length} items</td>
                             <td className="font-semibold whitespace-nowrap">Rs {invoice.total.toLocaleString()}</td>
+                            <td className="text-xs text-muted-foreground capitalize">{invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}</td>
                             <td><span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span></td>
                             <td className="font-semibold text-destructive whitespace-nowrap">Rs {(invoiceBalanceMap.get(invoice.id) || 0).toLocaleString()}</td>
                             <td><Button variant="ghost" size="icon" onClick={() => handleViewClientInvoice(invoice.id)}><Eye className="w-4 h-4" /></Button></td>
@@ -1436,14 +1457,17 @@ const Clients = () => {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="font-mono font-medium text-sm">{invoice.invoiceNumber}</p>
-                            <p className="text-xs text-muted-foreground">{format(invoice.createdAt, "dd MMM yyyy")} · {invoice.items.length} items</p>
+                            <p className="text-xs text-muted-foreground">{format(invoice.createdAt, "dd MMM yyyy, hh:mm a")} · {invoice.items.length} items</p>
                           </div>
                           <div className="text-right">
                             <span className="font-bold whitespace-nowrap block">Rs {invoice.total.toLocaleString()}</span>
                             <span className="text-xs text-destructive font-medium">Bal: Rs {(invoiceBalanceMap.get(invoice.id) || 0).toLocaleString()}</span>
                           </div>
                         </div>
-                        <span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span>
+                          <span className="text-xs text-muted-foreground capitalize">· {invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
