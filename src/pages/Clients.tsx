@@ -1525,15 +1525,15 @@ const Clients = () => {
               {clientRecoveries.length > 0 ? (
                 <>
                   <div className="overflow-x-auto hidden sm:block">
-                    <table className="data-table min-w-[500px]">
-                      <thead><tr><th>Date</th><th>Amount</th><th>Category</th><th>Notes</th></tr></thead>
+                    <table className="data-table min-w-[600px]">
+                      <thead><tr><th>Date</th><th>Amount</th><th>Category</th><th>Balance</th></tr></thead>
                       <tbody>
                         {clientRecoveries.map((recovery) => (
                           <tr key={recovery.id}>
                             <td className="text-muted-foreground text-sm whitespace-nowrap">{format(recovery.date, "dd MMM yyyy")}</td>
                             <td className="font-semibold text-success whitespace-nowrap">Rs {recovery.amount.toLocaleString()}</td>
                             <td><span className={cn("status-badge", recovery.isFromCity ? "status-badge-warning" : "status-badge-success")}>{recovery.isFromCity ? "City Recovery" : "Individual"}</span></td>
-                            <td className="text-muted-foreground text-sm max-w-[150px] truncate">{recovery.notes || "-"}</td>
+                            <td className="font-semibold text-destructive whitespace-nowrap">Rs {(recoveryBalanceMap.get(recovery.id + '-' + recovery.date.getTime()) || 0).toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1547,7 +1547,10 @@ const Clients = () => {
                             <p className="text-xs text-muted-foreground">{format(recovery.date, "dd MMM yyyy")}</p>
                             {recovery.notes && <p className="text-xs text-muted-foreground truncate max-w-[180px]">{recovery.notes}</p>}
                           </div>
-                          <span className="font-bold text-success whitespace-nowrap">Rs {recovery.amount.toLocaleString()}</span>
+                          <div className="text-right">
+                            <span className="font-bold text-success whitespace-nowrap block">Rs {recovery.amount.toLocaleString()}</span>
+                            <span className="text-xs text-destructive font-medium">Bal: Rs {(recoveryBalanceMap.get(recovery.id + '-' + recovery.date.getTime()) || 0).toLocaleString()}</span>
+                          </div>
                         </div>
                         <span className={cn("status-badge", recovery.isFromCity ? "status-badge-warning" : "status-badge-success")}>{recovery.isFromCity ? "City Recovery" : "Individual"}</span>
                       </div>
