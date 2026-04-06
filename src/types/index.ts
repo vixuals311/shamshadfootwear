@@ -1,6 +1,6 @@
 // Shared types for the application
 
-export type UserRole = "admin" | "manager" | "biller" | "cashier";
+export type UserRole = "admin" | "manager" | "biller" | "cashier" | "biller_cashier";
 
 export interface User {
   id: string;
