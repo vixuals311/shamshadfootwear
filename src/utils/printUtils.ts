@@ -20,33 +20,35 @@ export function generateBrandedPrintPage({
 
   return `<!DOCTYPE html><html><head><title>${title}</title>
 <style>
-  @page { size: A4; margin: 15mm; }
+  @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; color: #1a1a1a; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; padding: 10px; color: #1a1a1a; }
 
-  .header { text-align: center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 2px solid #d4a574; }
-  .company-name { font-size: 26px; font-weight: 700; color: #4a3728; letter-spacing: 1px; margin-bottom: 2px; }
-  .company-tagline { font-size: 11px; color: #8b7355; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
-  .company-address { font-size: 11px; color: #666; }
-  .company-phone { font-size: 11px; color: #666; margin-top: 2px; }
+  .header { text-align: center; padding-bottom: 6px; margin-bottom: 8px; border-bottom: 2px solid #d4a574; }
+  .company-name { font-size: 18px; font-weight: 700; color: #4a3728; letter-spacing: 1px; margin-bottom: 1px; }
+  .company-tagline { font-size: 9px; color: #8b7355; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+  .company-address { font-size: 9px; color: #666; }
+  .company-phone { font-size: 9px; color: #666; margin-top: 1px; }
 
-  .doc-title { text-align: center; font-size: 18px; font-weight: 600; margin: 14px 0 2px; color: #333; }
-  .subtitle { text-align: center; font-size: 12px; color: #777; margin-bottom: 14px; }
+  .doc-title { text-align: center; font-size: 14px; font-weight: 600; margin: 6px 0 1px; color: #333; }
+  .subtitle { text-align: center; font-size: 10px; color: #777; margin-bottom: 6px; }
 
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-  th { background-color: #f5f0eb; color: #4a3728; font-weight: 600; padding: 8px 6px; text-align: left; border: 1px solid #d4c4b0; }
-  td { padding: 7px 6px; border: 1px solid #e0d6cc; text-align: left; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }
+  th { background-color: #f5f0eb; color: #4a3728; font-weight: 600; padding: 4px 3px; text-align: left; border: 1px solid #d4c4b0; }
+  td { padding: 3px 3px; border: 1px solid #e0d6cc; text-align: left; }
   tbody tr:nth-child(even) { background-color: #faf8f5; }
 
   .totals-row { font-weight: 700; background-color: #f5f0eb !important; }
-  .totals-section { margin-top: 12px; text-align: right; font-size: 13px; }
+  .totals-section { margin-top: 6px; text-align: right; font-size: 11px; }
   .totals-section span { font-weight: 700; color: #4a3728; }
 
   .pending { color: #dc2626; font-weight: 700; }
-  .recovery-input { width: 100%; border: none; border-bottom: 1px solid #999; padding: 5px 0; min-height: 20px; }
-  .amount-col { width: 140px; }
+  .recovery-input { width: 100%; border: none; border-bottom: 1px solid #999; padding: 3px 0; min-height: 16px; }
+  .amount-col { width: 120px; }
   .recovery { color: #16a34a; }
   .bill { color: #333; }
+  .paid-col { color: #16a34a; }
+  .due-col { color: #dc2626; font-weight: 600; }
 
   @media print { button, .no-print { display: none; } }
   ${extraStyles}
