@@ -1,4 +1,4 @@
-import { FileText, CreditCard, FileCheck, DollarSign } from "lucide-react";
+import { FileText, FileCheck, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useOnlineBilling } from "@/hooks/useOnlineBilling";
@@ -23,13 +23,6 @@ const actions = [
     icon: FileCheck,
     to: "/cheques",
     color: "bg-warning/10 text-warning border-warning/20",
-    requiresBilling: false,
-  },
-  {
-    label: "Quick Payment",
-    icon: CreditCard,
-    to: "/payments",
-    color: "bg-accent/10 text-accent-foreground border-accent/20",
     requiresBilling: false,
   },
 ];
