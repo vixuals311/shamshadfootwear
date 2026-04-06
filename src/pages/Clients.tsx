@@ -1295,8 +1295,8 @@ const Clients = () => {
               {allItems.length > 0 ? (
                 <>
                   <div className="overflow-x-auto hidden sm:block">
-                    <table className="data-table min-w-[500px]">
-                      <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th></tr></thead>
+                    <table className="data-table min-w-[600px]">
+                      <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Balance</th></tr></thead>
                       <tbody>
                         {allItems.map((item, idx) => {
                           if (item.type === "bill") {
@@ -1307,6 +1307,7 @@ const Clients = () => {
                                 <td><span className="status-badge status-badge-info">Invoice</span></td>
                                 <td className="font-mono text-sm">{inv.invoiceNumber}</td>
                                 <td className="font-semibold whitespace-nowrap">Rs {inv.total.toLocaleString()}</td>
+                                <td className="font-semibold text-destructive whitespace-nowrap">Rs {item.runningBalance.toLocaleString()}</td>
                               </tr>
                             );
                           } else if (item.type === "manual") {
@@ -1317,6 +1318,7 @@ const Clients = () => {
                                 <td><span className="status-badge status-badge-warning">Bill</span></td>
                                 <td className="font-mono text-sm">{bill.bill_number}</td>
                                 <td className="font-semibold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</td>
+                                <td className="font-semibold text-destructive whitespace-nowrap">Rs {item.runningBalance.toLocaleString()}</td>
                               </tr>
                             );
                           } else {
@@ -1327,6 +1329,7 @@ const Clients = () => {
                                 <td><span className={cn("status-badge", rec.isFromCity ? "status-badge-warning" : "status-badge-success")}>{rec.isFromCity ? "City Rec." : "Recovery"}</span></td>
                                 <td className="text-sm text-muted-foreground">-</td>
                                 <td className="font-semibold text-success whitespace-nowrap">Rs {rec.amount.toLocaleString()}</td>
+                                <td className="font-semibold text-destructive whitespace-nowrap">Rs {item.runningBalance.toLocaleString()}</td>
                               </tr>
                             );
                           }
