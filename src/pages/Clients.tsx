@@ -1167,18 +1167,18 @@ const Clients = () => {
 
     const handlePrintAll = () => {
       if (!selectedClient) return;
-      const tableHtml = `<table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th>Amount</th><th>Balance</th></tr></thead><tbody>
-        <tr style="background:#f5f0eb"><td colspan="3" style="text-align:right;font-weight:600">Opening Balance</td><td></td><td class="due-col">Rs ${selectedClient.openingBalance.toLocaleString()}</td></tr>
+      const tableHtml = `<table><thead><tr><th>Date & Time</th><th>Type</th><th>Ref</th><th>Amount</th><th>Via</th><th>Balance</th></tr></thead><tbody>
+        <tr style="background:#f5f0eb"><td colspan="4" style="text-align:right;font-weight:600">Opening Balance</td><td></td><td class="due-col">Rs ${selectedClient.openingBalance.toLocaleString()}</td></tr>
         ${[...allItems].reverse().map(item => {
           if (item.type === "bill") {
             const inv = item.data as Invoice;
-            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yyyy")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
+            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yy, hh:mm a")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td>${inv.paymentMethod === "account" ? inv.accountName || "Acc" : "Cash"}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
           } else if (item.type === "manual") {
             const bill = item.data as ManualBill;
-            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yyyy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
+            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td>-</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
           } else {
             const rec = item.data as RecoveryRecord;
-            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yyyy")}</td><td>${rec.isFromCity ? "City Rec." : "Recovery"}</td><td>-</td><td style="color:green">- Rs ${rec.amount.toLocaleString()}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
+            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yy")}</td><td>${rec.isFromCity ? "City Rec." : "Recovery"}</td><td>-</td><td style="color:green">- Rs ${rec.amount.toLocaleString()}</td><td>-</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
           }
         }).join("")}
         </tbody></table>`;
