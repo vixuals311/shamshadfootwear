@@ -53,6 +53,8 @@ interface Invoice {
   client: string;
   clientEmail: string;
   amount: number;
+  amountReceived: number;
+  balanceDue: number;
   status: "paid" | "pending" | "overdue" | "draft" | "partial";
   date: string;
   dueDate: string;
@@ -123,6 +125,8 @@ const Invoices = () => {
           id,
           invoice_number,
           total,
+          amount_received,
+          balance_due,
           status,
           created_at,
           clients (name, email),
@@ -138,6 +142,8 @@ const Invoices = () => {
         client: inv.clients?.name || "Unknown Client",
         clientEmail: inv.clients?.email || "",
         amount: inv.total,
+        amountReceived: inv.amount_received || 0,
+        balanceDue: inv.balance_due || 0,
         status: inv.status as Invoice["status"],
         date: inv.created_at,
         dueDate: inv.created_at,
@@ -746,6 +752,16 @@ const Invoices = () => {
                 <span className="text-sm font-semibold text-foreground">Rs {invoice.amount.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-muted-foreground">Paid</span>
+                <span className="text-sm font-medium text-success">Rs {invoice.amountReceived.toLocaleString()}</span>
+              </div>
+              {invoice.balanceDue > 0 && (
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-muted-foreground">Balance</span>
+                  <span className="text-sm font-medium text-destructive">Rs {invoice.balanceDue.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between py-1.5">
                 <span className="text-sm text-muted-foreground">Date</span>
                 <span className="text-sm text-foreground">{format(new Date(invoice.date), "dd MMM yyyy")}</span>
               </div>
@@ -774,6 +790,8 @@ const Invoices = () => {
                 <th>Invoice</th>
                 <th>Client</th>
                 <th>Amount</th>
+                <th>Paid</th>
+                <th>Balance</th>
                 <th>Status</th>
                 <th>Date</th>
                 <th className="w-12"></th>
@@ -806,6 +824,10 @@ const Invoices = () => {
                     </div>
                   </td>
                   <td className="font-semibold text-foreground">Rs {invoice.amount.toLocaleString()}</td>
+                  <td className="font-medium text-success">Rs {invoice.amountReceived.toLocaleString()}</td>
+                  <td className={cn("font-medium", invoice.balanceDue > 0 ? "text-destructive" : "text-muted-foreground")}>
+                    Rs {invoice.balanceDue.toLocaleString()}
+                  </td>
                   <td>
                     <span className={cn("status-badge capitalize", statusStyles[invoice.status])}>
                       {invoice.status}
