@@ -264,15 +264,16 @@ const Clients = () => {
         .from("invoices")
         .select(`
           id, invoice_number, created_at, total, subtotal, total_discount, status,
-          amount_received, balance_due,
-          invoice_items (*)
+          amount_received, balance_due, payment_method, account_id,
+          invoice_items (*),
+          payment_accounts (name)
         `)
         .eq("client_id", clientId)
         .order("created_at", { ascending: false });
 
       if (invoicesError) throw invoicesError;
 
-      const formattedInvoices: Invoice[] = (invoicesData || []).map((inv) => ({
+      const formattedInvoices: Invoice[] = (invoicesData || []).map((inv: any) => ({
         id: inv.id,
         invoiceNumber: inv.invoice_number,
         createdAt: new Date(inv.created_at),
@@ -282,6 +283,8 @@ const Clients = () => {
         amountReceived: inv.amount_received || 0,
         balanceDue: inv.balance_due || 0,
         status: inv.status,
+        paymentMethod: inv.payment_method || "cash",
+        accountName: inv.payment_accounts?.name || "",
         items: (inv.invoice_items || []).map((item: any) => ({
           id: item.id,
           productName: item.product_name,
