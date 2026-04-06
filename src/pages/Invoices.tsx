@@ -87,6 +87,8 @@ interface InvoiceDetails {
   total_bundles: number;
   credit_applied?: number;
   status: string;
+  payment_method: string;
+  account_name: string;
   items: any[];
   returns?: ReturnInfo[];
 }
