@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { generateBrandedPrintPage, openPrintWindow } from "@/utils/printUtils";
 import { motion } from "framer-motion";
 import {
   Search,
