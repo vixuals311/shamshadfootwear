@@ -1421,16 +1421,20 @@ const Clients = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientInvoices.length > 0 ? (
                 <>
-                  <div className="overflow-x-auto hidden sm:block">
+                   <div className="overflow-x-auto hidden sm:block">
                     <table className="data-table min-w-[700px]">
-                      <thead><tr><th>Invoice #</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Balance</th><th className="w-12"></th></tr></thead>
+                      <thead><tr><th>Invoice #</th><th>Date & Time</th><th>Items</th><th>Total</th><th>Via</th><th>Status</th><th>Balance</th><th className="w-12"></th></tr></thead>
                       <tbody>
                         {clientInvoices.map((invoice) => (
                           <tr key={invoice.id}>
                             <td className="font-mono text-sm">{invoice.invoiceNumber}</td>
-                            <td className="text-muted-foreground text-sm whitespace-nowrap">{format(invoice.createdAt, "dd MMM yyyy")}</td>
+                            <td className="text-muted-foreground text-sm whitespace-nowrap">
+                              <div>{format(invoice.createdAt, "dd MMM yyyy")}</div>
+                              <div className="text-xs">{format(invoice.createdAt, "hh:mm a")}</div>
+                            </td>
                             <td className="text-sm">{invoice.items.length} items</td>
                             <td className="font-semibold whitespace-nowrap">Rs {invoice.total.toLocaleString()}</td>
+                            <td className="text-xs text-muted-foreground capitalize">{invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}</td>
                             <td><span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span></td>
                             <td className="font-semibold text-destructive whitespace-nowrap">Rs {(invoiceBalanceMap.get(invoice.id) || 0).toLocaleString()}</td>
                             <td><Button variant="ghost" size="icon" onClick={() => handleViewClientInvoice(invoice.id)}><Eye className="w-4 h-4" /></Button></td>
