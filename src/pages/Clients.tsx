@@ -1414,8 +1414,8 @@ const Clients = () => {
               {clientInvoices.length > 0 ? (
                 <>
                   <div className="overflow-x-auto hidden sm:block">
-                    <table className="data-table min-w-[600px]">
-                      <thead><tr><th>Invoice #</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th className="w-12"></th></tr></thead>
+                    <table className="data-table min-w-[700px]">
+                      <thead><tr><th>Invoice #</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Balance</th><th className="w-12"></th></tr></thead>
                       <tbody>
                         {clientInvoices.map((invoice) => (
                           <tr key={invoice.id}>
@@ -1424,6 +1424,7 @@ const Clients = () => {
                             <td className="text-sm">{invoice.items.length} items</td>
                             <td className="font-semibold whitespace-nowrap">Rs {invoice.total.toLocaleString()}</td>
                             <td><span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span></td>
+                            <td className="font-semibold text-destructive whitespace-nowrap">Rs {(invoiceBalanceMap.get(invoice.id) || 0).toLocaleString()}</td>
                             <td><Button variant="ghost" size="icon" onClick={() => handleViewClientInvoice(invoice.id)}><Eye className="w-4 h-4" /></Button></td>
                           </tr>
                         ))}
@@ -1438,7 +1439,10 @@ const Clients = () => {
                             <p className="font-mono font-medium text-sm">{invoice.invoiceNumber}</p>
                             <p className="text-xs text-muted-foreground">{format(invoice.createdAt, "dd MMM yyyy")} · {invoice.items.length} items</p>
                           </div>
-                          <span className="font-bold whitespace-nowrap">Rs {invoice.total.toLocaleString()}</span>
+                          <div className="text-right">
+                            <span className="font-bold whitespace-nowrap block">Rs {invoice.total.toLocaleString()}</span>
+                            <span className="text-xs text-destructive font-medium">Bal: Rs {(invoiceBalanceMap.get(invoice.id) || 0).toLocaleString()}</span>
+                          </div>
                         </div>
                         <span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span>
                       </div>
