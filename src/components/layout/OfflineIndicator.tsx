@@ -16,8 +16,19 @@ import { cn } from "@/lib/utils";
 import { PendingSyncsPanel } from "./PendingSyncsPanel";
 import { useState } from "react";
 
+function formatCacheAge(isoString: string | null): string {
+  if (!isoString) return "Never synced";
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHrs = Math.floor(diffMin / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  return `${Math.floor(diffHrs / 24)}d ago`;
+}
+
 export function OfflineIndicator() {
-  const { isOnline, pendingCount, isSyncing, syncPendingChanges, refreshEntries } =
+  const { isOnline, pendingCount, isSyncing, syncPendingChanges, refreshEntries, lastCacheTime } =
     useOfflineSyncContext();
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -25,6 +36,8 @@ export function OfflineIndicator() {
     refreshEntries();
     setSheetOpen(true);
   };
+
+  const cacheAgeText = formatCacheAge(lastCacheTime);
 
   return (
     <div className="flex items-center gap-1.5">
@@ -82,7 +95,7 @@ export function OfflineIndicator() {
         </Tooltip>
       )}
 
-      {/* Online/Offline status */}
+      {/* Online/Offline status with cache freshness */}
       <Tooltip>
         <TooltipTrigger asChild>
           <div
@@ -104,11 +117,16 @@ export function OfflineIndicator() {
           </div>
         </TooltipTrigger>
         <TooltipContent>
-          {isOnline
-            ? pendingCount > 0
-              ? `Online — ${pendingCount} changes waiting to sync`
-              : "Connected — all data synced"
-            : "Offline — changes will sync when connected"}
+          <div className="space-y-1">
+            <p>
+              {isOnline
+                ? pendingCount > 0
+                  ? `Online — ${pendingCount} changes waiting to sync`
+                  : "Connected — all data synced"
+                : "Offline — changes will sync when connected"}
+            </p>
+            <p className="text-xs opacity-75">Cache updated: {cacheAgeText}</p>
+          </div>
         </TooltipContent>
       </Tooltip>
     </div>

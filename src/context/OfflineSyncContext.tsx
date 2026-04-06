@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState, useCallback } from "react";
-import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useOfflineSync, processSyncEntry } from "@/hooks/useOfflineSync";
 import { getPendingSyncEntries, removeSyncEntry, markSyncEntryFailed, type SyncQueueEntry } from "@/lib/offlineDb";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ interface OfflineSyncContextType {
   pendingCount: number;
   isSyncing: boolean;
   lastSyncTime: string | null;
+  lastCacheTime: string | null;
   cacheAllData: () => Promise<void>;
   syncPendingChanges: () => Promise<void>;
   entries: SyncEntryWithStatus[];
@@ -56,101 +57,23 @@ export function OfflineSyncProvider({ children }: { children: React.ReactNode })
       const entry = entries.find(e => e.id === entryId);
       if (!entry) return;
 
-      // Process single entry using inline logic
-      const { table, operation, data, recordId } = entry;
-      let error: any = null;
-
-      // Handle consolidated city_recovery specially
-      if (table === "city_recovery") {
-        const { recovery, clientAmounts, clientBalanceUpdates } = data as any;
-        
-        // Insert recovery (without the offline ID)
-        const { id: _, ...recoveryWithoutId } = recovery;
-        const { data: recoveryResult, error: recoveryError } = await supabase
-          .from("recoveries")
-          .insert(recoveryWithoutId)
-          .select()
-          .single();
-        
-        if (recoveryError) {
-          error = recoveryError;
-        } else {
-          // Insert client amounts with the real recovery ID
-          const amountInserts = clientAmounts.map((ca: any) => ({
-            recovery_id: recoveryResult.id,
-            client_id: ca.client_id,
-            amount: ca.amount,
-          }));
-          
-          const { error: amountsError } = await supabase
-            .from("recovery_client_amounts")
-            .insert(amountInserts);
-          
-          if (amountsError) {
-            error = amountsError;
-          } else {
-            // Update client balances
-            for (const update of clientBalanceUpdates) {
-              await supabase
-                .from("clients")
-                .update({ current_balance: update.new_balance })
-                .eq("id", update.client_id);
-            }
-            
-            // Log audit
-            try {
-              await supabase.from("audit_logs").insert({
-                action: "create",
-                entity_type: "recovery",
-                entity_id: recoveryResult.id,
-                details: { type: "city", city: recovery.city, amount: recovery.amount, clients: clientAmounts.length, synced_from_offline: true },
-              });
-            } catch { /* ignore audit error */ }
-          }
-        }
-      } else {
-        switch (operation) {
-          case "insert": {
-            const res = await supabase.from(table as any).insert(data as any);
-            error = res.error;
-            break;
-          }
-          case "update": {
-            if (!recordId) throw new Error("recordId required");
-            const res = await supabase.from(table as any).update(data as any).eq("id", recordId);
-            error = res.error;
-            break;
-          }
-          case "delete": {
-            if (!recordId) throw new Error("recordId required");
-            const res = await supabase.from(table as any).delete().eq("id", recordId);
-            error = res.error;
-            break;
-          }
-          case "upsert": {
-            const res = await supabase.from(table as any).upsert(data as any);
-            error = res.error;
-            break;
-          }
-        }
-      }
-
-      if (error) {
-        // If duplicate key, still consider it synced (already exists)
-        if (error.code === "23505") {
-          await removeSyncEntry(entryId);
-          setEntries(prev => prev.map(e => e.id === entryId ? { ...e, status: "synced" } : e));
-          toast.success("Entry already exists — marked as synced.");
-          return;
-        }
-        throw error;
-      }
+      // Use shared processSyncEntry
+      await processSyncEntry(entry);
 
       await removeSyncEntry(entryId);
       setEntries(prev => prev.map(e => e.id === entryId ? { ...e, status: "synced" } : e));
       toast.success("Entry synced successfully.");
     } catch (err: any) {
       console.error(`[OfflineSync] Single sync failed for ${entryId}:`, err);
+
+      // If duplicate key, still consider it synced
+      if (err?.code === "23505") {
+        await removeSyncEntry(entryId);
+        setEntries(prev => prev.map(e => e.id === entryId ? { ...e, status: "synced" } : e));
+        toast.success("Entry already exists — marked as synced.");
+        return;
+      }
+
       await markSyncEntryFailed(entryId, err.message || "Unknown error");
       setEntries(prev => prev.map(e => e.id === entryId ? { ...e, status: "failed", lastError: err.message } : e));
       toast.error(`Sync failed: ${err.message || "Unknown error"}`);
@@ -173,13 +96,14 @@ export function OfflineSyncProvider({ children }: { children: React.ReactNode })
     pendingCount: sync.pendingCount,
     isSyncing: sync.isSyncing,
     lastSyncTime: sync.lastSyncTime,
+    lastCacheTime: sync.lastCacheTime,
     cacheAllData: sync.cacheAllData,
     syncPendingChanges: sync.syncPendingChanges,
     entries,
     refreshEntries,
     syncSingleEntry,
     deleteSyncEntry,
-  }), [sync.isOnline, sync.pendingCount, sync.isSyncing, sync.lastSyncTime, sync.cacheAllData, sync.syncPendingChanges, entries, refreshEntries, syncSingleEntry, deleteSyncEntry]);
+  }), [sync.isOnline, sync.pendingCount, sync.isSyncing, sync.lastSyncTime, sync.lastCacheTime, sync.cacheAllData, sync.syncPendingChanges, entries, refreshEntries, syncSingleEntry, deleteSyncEntry]);
 
   return (
     <OfflineSyncContext.Provider value={value}>

@@ -11,6 +11,7 @@ import {
   getCachedData,
   updateCachedRecord,
   removeCachedRecord,
+  getLastCacheTime,
   type SyncQueueEntry,
 } from "@/lib/offlineDb";
 
@@ -26,18 +27,40 @@ const CACHEABLE_TABLES = [
   "recovery_client_amounts",
   "payment_accounts",
   "manual_bills",
+  "cheques",
+  "returns",
+  "return_items",
+  "notifications",
 ] as const;
+
+// Cache refresh interval: 5 minutes
+const CACHE_REFRESH_INTERVAL = 5 * 60 * 1000;
+// Auto-retry interval after reconnect: 30 seconds
+const AUTO_RETRY_INTERVAL = 30 * 1000;
+// Max auto-retries after reconnect
+const MAX_AUTO_RETRIES = 10;
+// Queue size warning threshold
+const QUEUE_SIZE_WARNING = 50;
 
 export function useOfflineSync() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [lastCacheTime, setLastCacheTime] = useState<string | null>(null);
   const syncInProgress = useRef(false);
   const hasCachedInitially = useRef(false);
+  const autoRetryCount = useRef(0);
+  const autoRetryTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cacheRefreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Track online/offline status
   const syncRef = useRef<() => Promise<void>>();
+
+  // Load last cache time on mount
+  useEffect(() => {
+    getLastCacheTime().then(setLastCacheTime);
+  }, []);
 
   useEffect(() => {
     const handleOnline = async () => {
@@ -55,6 +78,10 @@ export function useOfflineSync() {
         console.warn("[OfflineSync] Auth refresh error:", e);
       }
 
+      // Start auto-retry loop
+      autoRetryCount.current = 0;
+      startAutoRetry();
+
       setTimeout(() => {
         console.log("[OfflineSync] Starting sync of pending changes...");
         syncRef.current?.();
@@ -63,6 +90,7 @@ export function useOfflineSync() {
     const handleOffline = () => {
       console.log("[OfflineSync] Went offline");
       setIsOnline(false);
+      stopAutoRetry();
     };
 
     window.addEventListener("online", handleOnline);
@@ -74,11 +102,65 @@ export function useOfflineSync() {
     };
   }, []);
 
+  // Auto-retry loop: retry failed entries every 30s after reconnect (up to MAX_AUTO_RETRIES)
+  const startAutoRetry = useCallback(() => {
+    stopAutoRetry();
+    autoRetryTimer.current = setInterval(async () => {
+      if (!navigator.onLine || syncInProgress.current) return;
+      
+      const count = await getPendingSyncCount();
+      if (count === 0) {
+        stopAutoRetry();
+        return;
+      }
+
+      autoRetryCount.current++;
+      if (autoRetryCount.current > MAX_AUTO_RETRIES) {
+        console.log("[OfflineSync] Max auto-retries reached, stopping auto-retry");
+        stopAutoRetry();
+        return;
+      }
+
+      console.log(`[OfflineSync] Auto-retry attempt ${autoRetryCount.current}/${MAX_AUTO_RETRIES}`);
+      syncRef.current?.();
+    }, AUTO_RETRY_INTERVAL);
+  }, []);
+
+  const stopAutoRetry = () => {
+    if (autoRetryTimer.current) {
+      clearInterval(autoRetryTimer.current);
+      autoRetryTimer.current = null;
+    }
+  };
+
+  // Periodic cache refresh when online (every 5 minutes)
+  useEffect(() => {
+    if (cacheRefreshTimer.current) clearInterval(cacheRefreshTimer.current);
+
+    if (navigator.onLine) {
+      cacheRefreshTimer.current = setInterval(() => {
+        if (navigator.onLine && !syncInProgress.current) {
+          console.log("[OfflineSync] Periodic cache refresh...");
+          cacheAllData();
+        }
+      }, CACHE_REFRESH_INTERVAL);
+    }
+
+    return () => {
+      if (cacheRefreshTimer.current) clearInterval(cacheRefreshTimer.current);
+    };
+  }, [isOnline]);
+
   // Update pending count periodically
   useEffect(() => {
     const updateCount = async () => {
       const count = await getPendingSyncCount();
       setPendingCount(count);
+
+      // Queue size warning
+      if (count >= QUEUE_SIZE_WARNING) {
+        toast.warning(`You have ${count} pending offline changes. Connect to sync them soon.`);
+      }
     };
     updateCount();
     const interval = setInterval(updateCount, 10000);
@@ -102,7 +184,9 @@ export function useOfflineSync() {
       });
 
       await Promise.all(promises);
-      setLastSyncTime(new Date().toISOString());
+      const now = new Date().toISOString();
+      setLastSyncTime(now);
+      setLastCacheTime(now);
     } catch (error) {
       console.error("Error caching data:", error);
     }
@@ -202,13 +286,16 @@ export function useOfflineSync() {
       const count = await getPendingSyncCount();
       setPendingCount(count);
 
+      // Stop auto-retry if everything synced
+      if (count === 0) stopAutoRetry();
+
       // Show result toast
       if (failed === 0 && synced > 0) {
         toast.success(`Successfully synced ${synced} change${synced !== 1 ? "s" : ""}.`);
       } else if (synced > 0 && failed > 0) {
-        toast.warning(`Synced ${synced} change${synced !== 1 ? "s" : ""}, ${failed} failed. Will retry later.`);
+        toast.warning(`Synced ${synced} change${synced !== 1 ? "s" : ""}, ${failed} failed. Will retry automatically.`);
       } else if (failed > 0 && synced === 0) {
-        toast.error(`Sync failed for ${failed} change${failed !== 1 ? "s" : ""}. Will retry later.`);
+        toast.error(`Sync failed for ${failed} change${failed !== 1 ? "s" : ""}. Will retry automatically.`);
       }
 
       console.log(`[OfflineSync] Sync complete. Synced: ${synced}, Failed: ${failed}, Remaining: ${count}`);
@@ -224,21 +311,28 @@ export function useOfflineSync() {
   // Keep ref updated for event handlers
   syncRef.current = syncPendingChanges;
 
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      stopAutoRetry();
+      if (cacheRefreshTimer.current) clearInterval(cacheRefreshTimer.current);
+    };
+  }, []);
+
   return {
     isOnline,
     pendingCount,
     isSyncing,
     lastSyncTime,
+    lastCacheTime,
     cacheAllData,
     syncPendingChanges,
   };
 }
 
-// Process a single sync queue entry — smart conflict resolution:
-// - Same user duplicate → skip/update existing
-// - Different users, same data → keep both
-// - Different users, same time → dedupe (avoid exact duplicates)
-async function processSyncEntry(entry: SyncQueueEntry) {
+// Process a single sync queue entry — shared by both bulk sync and single-entry sync
+// Exported so OfflineSyncContext can use it too
+export async function processSyncEntry(entry: SyncQueueEntry) {
   const { table, operation, data, recordId } = entry;
 
   // Handle consolidated city_recovery
@@ -293,7 +387,6 @@ async function processSyncEntry(entry: SyncQueueEntry) {
       if (error) {
         // Duplicate key conflict
         if (error.code === "23505") {
-          // Check if same user made this entry
           const { data: existing } = await supabase
             .from(table as any)
             .select("*")
@@ -305,23 +398,20 @@ async function processSyncEntry(entry: SyncQueueEntry) {
             const existingUserId = existingRecord.created_by || existingRecord.recorded_by;
             
             if (existingUserId === offlineUserId) {
-              // Same user → skip duplicate
               console.log(`[OfflineSync] Same user duplicate on insert — skipping`);
               return;
             }
             
-            // Check for exact duplicate (same data at same time from different users)
             const existingCreatedAt = new Date(existingRecord.created_at).getTime();
             const offlineCreatedAt = new Date(entry.createdAt).getTime();
             const timeDiff = Math.abs(existingCreatedAt - offlineCreatedAt);
             
-            if (timeDiff < 5000) { // Within 5 seconds = likely exact duplicate
+            if (timeDiff < 5000) {
               console.log(`[OfflineSync] Exact duplicate from different users at same time — skipping`);
               return;
             }
           }
 
-          // Different user, different time → keep both
           console.log(`[OfflineSync] Different user conflict on insert — keeping both`);
           const newData = { ...data, id: crypto.randomUUID() };
           const { error: retryError } = await supabase.from(table as any).insert(newData as any);
@@ -344,7 +434,6 @@ async function processSyncEntry(entry: SyncQueueEntry) {
       if (fetchError) throw fetchError;
 
       if (!existing) {
-        // Record was deleted — insert our version as new (keep both)
         console.log(`[OfflineSync] Record ${recordId} deleted remotely — inserting as new record`);
         const newData = { ...data, id: crypto.randomUUID() } as any;
         const { error: insertError } = await supabase.from(table as any).insert(newData);
@@ -356,10 +445,7 @@ async function processSyncEntry(entry: SyncQueueEntry) {
         const serverUserId = existingRecord.created_by || existingRecord.recorded_by || existingRecord.updated_by;
         
         if (serverUpdatedAt && offlineCreatedAt && new Date(serverUpdatedAt) > new Date(offlineCreatedAt)) {
-          // Server was modified AFTER our offline change
-          
           if (serverUserId === offlineUserId) {
-            // Same user made both changes → apply our update (latest wins for same user)
             console.log(`[OfflineSync] Same user updated — applying latest`);
             const { error: updateError } = await supabase
               .from(table as any)
@@ -367,7 +453,6 @@ async function processSyncEntry(entry: SyncQueueEntry) {
               .eq("id", recordId);
             if (updateError) throw updateError;
           } else {
-            // Different users → keep both versions
             console.log(`[OfflineSync] Different user conflict on ${table}/${recordId} — keeping both`);
             const newData: Record<string, any> = { ...data, id: crypto.randomUUID() };
             delete newData.updated_at;
@@ -383,7 +468,6 @@ async function processSyncEntry(entry: SyncQueueEntry) {
             }
           }
         } else {
-          // No conflict or our change is newer
           const { error: updateError } = await supabase
             .from(table as any)
             .update(data as any)
@@ -406,7 +490,6 @@ async function processSyncEntry(entry: SyncQueueEntry) {
       const { error } = await supabase.from(table as any).upsert(data as any);
       if (error) {
         if (error.code === "23505") {
-          // Check existing record for user comparison
           const { data: existing } = await supabase
             .from(table as any)
             .select("*")
