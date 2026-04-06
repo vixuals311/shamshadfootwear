@@ -1471,8 +1471,8 @@ const Clients = () => {
               {clientManualBills.length > 0 ? (
                 <>
                   <div className="overflow-x-auto hidden sm:block">
-                    <table className="data-table min-w-[500px]">
-                      <thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Notes</th><th className="w-12"></th></tr></thead>
+                    <table className="data-table min-w-[600px]">
+                      <thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Balance</th><th className="w-12"></th></tr></thead>
                       <tbody>
                         {clientManualBills.map((bill) => (
                           <tr key={bill.id}>
@@ -1480,7 +1480,7 @@ const Clients = () => {
                             <td className="text-muted-foreground text-sm whitespace-nowrap">{format(new Date(bill.date), "dd MMM yyyy")}</td>
                             <td className="font-semibold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</td>
                             <td><button onClick={() => handleToggleManualBillStatus(bill)} className={cn("status-badge cursor-pointer", bill.status === "paid" ? "status-badge-success" : "status-badge-danger")}>{bill.status}</button></td>
-                            <td className="text-muted-foreground text-sm max-w-[150px] truncate">{bill.notes || "-"}</td>
+                            <td className="font-semibold text-destructive whitespace-nowrap">Rs {(manualBillBalanceMap.get(bill.id) || 0).toLocaleString()}</td>
                             <td><button onClick={() => handleToggleManualBillStatus(bill)} className="text-xs text-primary hover:underline">{bill.status === "paid" ? "Mark Unpaid" : "Mark Paid"}</button></td>
                           </tr>
                         ))}
@@ -1490,8 +1490,20 @@ const Clients = () => {
                   <div className="sm:hidden divide-y">
                     {clientManualBills.map((bill) => (
                       <div key={bill.id} className="p-4 space-y-2">
-                        <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono font-medium text-sm">{bill.bill_number}</p><p className="text-xs text-muted-foreground">{format(new Date(bill.date), "dd MMM yyyy")}</p></div><span className="font-bold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</span></div>
-                        <div className="flex items-center justify-between"><button onClick={() => handleToggleManualBillStatus(bill)} className={cn("status-badge cursor-pointer", bill.status === "paid" ? "status-badge-success" : "status-badge-danger")}>{bill.status}</button>{bill.notes && <p className="text-xs text-muted-foreground truncate max-w-[150px]">{bill.notes}</p>}</div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-mono font-medium text-sm">{bill.bill_number}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(bill.date), "dd MMM yyyy")}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-bold whitespace-nowrap block">Rs {bill.amount.toLocaleString()}</span>
+                            <span className="text-xs text-destructive font-medium">Bal: Rs {(manualBillBalanceMap.get(bill.id) || 0).toLocaleString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <button onClick={() => handleToggleManualBillStatus(bill)} className={cn("status-badge cursor-pointer", bill.status === "paid" ? "status-badge-success" : "status-badge-danger")}>{bill.status}</button>
+                          {bill.notes && <p className="text-xs text-muted-foreground truncate max-w-[150px]">{bill.notes}</p>}
+                        </div>
                       </div>
                     ))}
                   </div>
