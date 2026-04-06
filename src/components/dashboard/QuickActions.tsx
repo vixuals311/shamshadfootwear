@@ -1,4 +1,4 @@
-import { FileText, CreditCard, FileCheck, DollarSign } from "lucide-react";
+import { FileText, FileCheck, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useOnlineBilling } from "@/hooks/useOnlineBilling";
