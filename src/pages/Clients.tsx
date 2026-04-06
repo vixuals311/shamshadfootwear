@@ -1449,14 +1449,17 @@ const Clients = () => {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="font-mono font-medium text-sm">{invoice.invoiceNumber}</p>
-                            <p className="text-xs text-muted-foreground">{format(invoice.createdAt, "dd MMM yyyy")} · {invoice.items.length} items</p>
+                            <p className="text-xs text-muted-foreground">{format(invoice.createdAt, "dd MMM yyyy, hh:mm a")} · {invoice.items.length} items</p>
                           </div>
                           <div className="text-right">
                             <span className="font-bold whitespace-nowrap block">Rs {invoice.total.toLocaleString()}</span>
                             <span className="text-xs text-destructive font-medium">Bal: Rs {(invoiceBalanceMap.get(invoice.id) || 0).toLocaleString()}</span>
                           </div>
                         </div>
-                        <span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("status-badge", invoice.status === "paid" && "status-badge-success", invoice.status === "partial" && "status-badge-warning", invoice.status === "overdue" && "status-badge-danger")}>{invoice.status}</span>
+                          <span className="text-xs text-muted-foreground capitalize">· {invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
