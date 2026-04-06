@@ -80,6 +80,24 @@ export async function getCachedData(tableName: string): Promise<any[]> {
   return (await get<any[]>(cacheKey(tableName), dataStore)) || [];
 }
 
+export async function getCacheMeta(tableName: string): Promise<{ lastSynced: string; count: number } | null> {
+  return (await get<{ lastSynced: string; count: number }>(`meta_${tableName}`, dataStore)) || null;
+}
+
+export async function getLastCacheTime(): Promise<string | null> {
+  // Get the oldest "lastSynced" across all cached tables to represent overall freshness
+  const allKeys = await keys(dataStore);
+  const metaKeys = (allKeys as string[]).filter((k) => typeof k === "string" && k.startsWith("meta_"));
+  let oldest: string | null = null;
+  for (const key of metaKeys) {
+    const meta = await get<{ lastSynced: string }>(key, dataStore);
+    if (meta?.lastSynced) {
+      if (!oldest || meta.lastSynced < oldest) oldest = meta.lastSynced;
+    }
+  }
+  return oldest;
+}
+
 export async function updateCachedRecord(
   tableName: string,
   recordId: string,
