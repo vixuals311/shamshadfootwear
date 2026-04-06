@@ -119,6 +119,7 @@ interface ManualBill {
 const Clients = () => {
   const { toast } = useToast();
   const { log } = useAuditLog();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
