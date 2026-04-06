@@ -1110,12 +1110,40 @@ const Clients = () => {
 
   // Client Detail View
   if (selectedClient) {
-    // Build "All" combined list
-    const allItems: { type: "bill" | "manual" | "recovery"; date: Date; data: any }[] = [
-      ...clientInvoices.map((inv) => ({ type: "bill" as const, date: inv.createdAt, data: inv })),
-      ...clientManualBills.map((bill) => ({ type: "manual" as const, date: new Date(bill.date), data: bill })),
-      ...clientRecoveries.map((rec) => ({ type: "recovery" as const, date: rec.date, data: rec })),
-    ].sort((a, b) => b.date.getTime() - a.date.getTime());
+    // Build "All" combined list with running balance
+    const allItemsRaw: { type: "bill" | "manual" | "recovery"; date: Date; data: any; runningBalance: number }[] = [
+      ...clientInvoices.map((inv) => ({ type: "bill" as const, date: inv.createdAt, data: inv, runningBalance: 0 })),
+      ...clientManualBills.map((bill) => ({ type: "manual" as const, date: new Date(bill.date), data: bill, runningBalance: 0 })),
+      ...clientRecoveries.map((rec) => ({ type: "recovery" as const, date: rec.date, data: rec, runningBalance: 0 })),
+    ].sort((a, b) => a.date.getTime() - b.date.getTime()); // oldest first for balance calc
+
+    // Calculate running balance starting from opening balance
+    let runBal = selectedClient.openingBalance;
+    for (const item of allItemsRaw) {
+      if (item.type === "bill") {
+        runBal += (item.data as Invoice).balanceDue;
+      } else if (item.type === "manual") {
+        runBal += (item.data as ManualBill).amount;
+      } else {
+        runBal -= (item.data as RecoveryRecord).amount;
+      }
+      item.runningBalance = runBal;
+    }
+    const allItems = [...allItemsRaw].reverse(); // newest first for display
+
+    // Also compute per-tab running balances
+    const invoicesWithBalance = [...clientInvoices].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    let invBal = selectedClient.openingBalance;
+    // For invoices-only view, we still accumulate all types but only show invoice rows
+    // Better approach: use allItems filtered
+    const invoiceBalanceMap = new Map<string, number>();
+    const manualBillBalanceMap = new Map<string, number>();
+    const recoveryBalanceMap = new Map<string, number>();
+    for (const item of allItemsRaw) {
+      if (item.type === "bill") invoiceBalanceMap.set((item.data as Invoice).id, item.runningBalance);
+      else if (item.type === "manual") manualBillBalanceMap.set((item.data as ManualBill).id, item.runningBalance);
+      else recoveryBalanceMap.set(item.data.id + '-' + item.date.getTime(), item.runningBalance);
+    }
 
     const handlePrintManualBills = () => {
       if (!selectedClient) return;
