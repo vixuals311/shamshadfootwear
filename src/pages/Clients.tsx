@@ -98,6 +98,8 @@ interface Invoice {
   amountReceived: number;
   balanceDue: number;
   status: string;
+  paymentMethod: string;
+  accountName: string;
   items: any[];
 }
 
