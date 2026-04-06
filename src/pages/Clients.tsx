@@ -789,7 +789,7 @@ const Clients = () => {
     }
   };
 
-  const generatePrintContent = (type: "bills" | "recoveries", clientName: string, data: any[]) => {
+  const generatePrintContent = (type: "bills" | "recoveries", clientName: string, data: any[], balanceMap?: Map<string, number>) => {
     const title = type === "bills" ? "Bills History" : "Recoveries History";
     
     let tableHtml = "";
@@ -804,11 +804,10 @@ const Clients = () => {
             <tr>
               <th>Invoice #</th>
               <th>Date</th>
-              <th>Items</th>
               <th>Total</th>
               <th>Paid</th>
+              <th>Due</th>
               <th>Balance</th>
-              <th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -816,14 +815,13 @@ const Clients = () => {
               <tr>
                 <td>${invoice.invoiceNumber}</td>
                 <td>${format(invoice.createdAt, "dd MMM yyyy")}</td>
-                <td>${invoice.items.length}</td>
                 <td>Rs ${invoice.total.toLocaleString()}</td>
                 <td class="paid-col">Rs ${(invoice.amountReceived || 0).toLocaleString()}</td>
                 <td class="${invoice.balanceDue > 0 ? 'due-col' : ''}">${invoice.balanceDue > 0 ? 'Rs ' + invoice.balanceDue.toLocaleString() : '-'}</td>
-                <td>${invoice.status}</td>
+                <td class="due-col">Rs ${(balanceMap?.get(invoice.id) || 0).toLocaleString()}</td>
               </tr>
             `).join("")}
-            <tr class="totals-row"><td colspan="3" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td class="paid-col">Rs ${totalPaid.toLocaleString()}</td><td class="due-col">Rs ${totalDue.toLocaleString()}</td><td></td></tr>
+            <tr class="totals-row"><td colspan="2" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td class="paid-col">Rs ${totalPaid.toLocaleString()}</td><td class="due-col">Rs ${totalDue.toLocaleString()}</td><td></td></tr>
           </tbody>
         </table>
       `;
@@ -833,19 +831,19 @@ const Clients = () => {
         <table>
           <thead>
             <tr>
-              <th>Date & Time</th>
+              <th>Date</th>
               <th>Amount</th>
               <th>Category</th>
-              <th>Notes</th>
+              <th>Balance</th>
             </tr>
           </thead>
           <tbody>
             ${data.map((recovery: RecoveryRecord) => `
               <tr>
-                <td>${format(recovery.date, "dd MMM yyyy, hh:mm a")}</td>
+                <td>${format(recovery.date, "dd MMM yyyy")}</td>
                 <td>Rs ${recovery.amount.toLocaleString()}</td>
                 <td>${recovery.isFromCity ? "City Recovery" : "Individual"}</td>
-                <td>${recovery.notes || "-"}</td>
+                <td class="due-col">Rs ${(balanceMap?.get(recovery.id + '-' + recovery.date.getTime()) || 0).toLocaleString()}</td>
               </tr>
             `).join("")}
             <tr class="totals-row"><td style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td colspan="2"></td></tr>
@@ -857,10 +855,11 @@ const Clients = () => {
     return generateBrandedPrintPage({ title, subtitle: clientName, tableHtml, totalsHtml });
   };
 
-  const handlePrint = (type: "bills" | "recoveries") => {
+  const handlePrint = (type: "bills" | "recoveries", invoiceBalMap?: Map<string, number>, recoveryBalMap?: Map<string, number>) => {
     if (!selectedClient) return;
     const data = type === "bills" ? clientInvoices : clientRecoveries;
-    const content = generatePrintContent(type, selectedClient.name, data);
+    const balMap = type === "bills" ? invoiceBalMap : recoveryBalMap;
+    const content = generatePrintContent(type, selectedClient.name, data, balMap);
     openPrintWindow(content);
   };
 
