@@ -363,8 +363,10 @@ const Clients = () => {
         .select(`
           id, invoice_number, created_at, subtotal, total_discount, tax, total,
           amount_received, balance_due, total_bundles, credit_applied, status,
+          payment_method, account_id,
           clients (name, city),
-          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total)
+          invoice_items (id, product_name, article_number, size_range, quantity, total_pairs, price_per_pair, discount_per_pair, total),
+          payment_accounts (name)
         `)
         .eq("id", invoiceId)
         .single();
@@ -395,6 +397,8 @@ const Clients = () => {
         total_bundles: data.total_bundles || 0,
         credit_applied: data.credit_applied || 0,
         status: data.status,
+        payment_method: data.payment_method || "cash",
+        account_name: (data as any).payment_accounts?.name || "",
         items: data.invoice_items || [],
         returns: (returnsData || []).map((r: any) => ({
           id: r.id,
