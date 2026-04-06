@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,24 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AuditProvider } from "@/context/AuditContext";
 import { OfflineSyncProvider } from "@/context/OfflineSyncContext";
 import { AppLayout } from "@/components/layout";
-import Dashboard from "./pages/Dashboard";
-import Inventory from "./pages/Inventory";
-import Clients from "./pages/Clients";
-import Invoices from "./pages/Invoices";
-import NewInvoice from "./pages/NewInvoice";
-import Payments from "./pages/Payments";
-import Recovery from "./pages/Recovery";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
-import UserManagement from "./pages/UserManagement";
-import AuditLogs from "./pages/AuditLogs";
-import Returns from "./pages/Returns";
-import ClientPortal from "./pages/ClientPortal";
-import PriceCheck from "./pages/PriceCheck";
-import Cheques from "./pages/Cheques";
-import CityRecovery from "./pages/CityRecovery";
-import BulkClients from "./pages/BulkClients";
-import AddProduct from "./pages/AddProduct";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -34,7 +17,44 @@ import { Loader2 } from "lucide-react";
 import { DeviceLimitDialog } from "@/components/auth/DeviceLimitDialog";
 import { PwaUpdatePrompt } from "@/components/layout/PwaUpdatePrompt";
 
-const queryClient = new QueryClient();
+// Lazy-loaded routes
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Inventory = lazy(() => import("./pages/Inventory"));
+const Clients = lazy(() => import("./pages/Clients"));
+const Invoices = lazy(() => import("./pages/Invoices"));
+const NewInvoice = lazy(() => import("./pages/NewInvoice"));
+const Payments = lazy(() => import("./pages/Payments"));
+const Recovery = lazy(() => import("./pages/Recovery"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Settings = lazy(() => import("./pages/Settings"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
+const AuditLogs = lazy(() => import("./pages/AuditLogs"));
+const Returns = lazy(() => import("./pages/Returns"));
+const ClientPortal = lazy(() => import("./pages/ClientPortal"));
+const PriceCheck = lazy(() => import("./pages/PriceCheck"));
+const Cheques = lazy(() => import("./pages/Cheques"));
+const CityRecovery = lazy(() => import("./pages/CityRecovery"));
+const BulkClients = lazy(() => import("./pages/BulkClients"));
+const AddProduct = lazy(() => import("./pages/AddProduct"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000,   // 10 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { 
@@ -129,7 +149,11 @@ function AppRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Client Portal - separate from main app */}
-      <Route path="/portal" element={<ClientPortal />} />
+      <Route path="/portal" element={
+        <Suspense fallback={<PageLoader />}>
+          <ClientPortal />
+        </Suspense>
+      } />
 
       {/* Protected Routes with Layout */}
       <Route
@@ -139,24 +163,24 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/add-product" element={<AddProduct />} />
-        <Route path="/clients" element={<Clients />} />
-        <Route path="/invoices" element={<Invoices />} />
-        <Route path="/invoices/new" element={<NewInvoice />} />
-        <Route path="/invoices/edit/:invoiceId" element={<NewInvoice />} />
-        <Route path="/payments" element={<Payments />} />
-        <Route path="/recovery" element={<Recovery />} />
-        <Route path="/city-recovery" element={<CityRecovery />} />
-        <Route path="/bulk-clients" element={<BulkClients />} />
-        <Route path="/returns" element={<Returns />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/price-check" element={<PriceCheck />} />
-        <Route path="/cheques" element={<Cheques />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/users" element={<UserManagement />} />
-        <Route path="/audit-logs" element={<AuditLogs />} />
+        <Route path="/" element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
+        <Route path="/inventory" element={<Suspense fallback={<PageLoader />}><Inventory /></Suspense>} />
+        <Route path="/add-product" element={<Suspense fallback={<PageLoader />}><AddProduct /></Suspense>} />
+        <Route path="/clients" element={<Suspense fallback={<PageLoader />}><Clients /></Suspense>} />
+        <Route path="/invoices" element={<Suspense fallback={<PageLoader />}><Invoices /></Suspense>} />
+        <Route path="/invoices/new" element={<Suspense fallback={<PageLoader />}><NewInvoice /></Suspense>} />
+        <Route path="/invoices/edit/:invoiceId" element={<Suspense fallback={<PageLoader />}><NewInvoice /></Suspense>} />
+        <Route path="/payments" element={<Suspense fallback={<PageLoader />}><Payments /></Suspense>} />
+        <Route path="/recovery" element={<Suspense fallback={<PageLoader />}><Recovery /></Suspense>} />
+        <Route path="/city-recovery" element={<Suspense fallback={<PageLoader />}><CityRecovery /></Suspense>} />
+        <Route path="/bulk-clients" element={<Suspense fallback={<PageLoader />}><BulkClients /></Suspense>} />
+        <Route path="/returns" element={<Suspense fallback={<PageLoader />}><Returns /></Suspense>} />
+        <Route path="/reports" element={<Suspense fallback={<PageLoader />}><Reports /></Suspense>} />
+        <Route path="/price-check" element={<Suspense fallback={<PageLoader />}><PriceCheck /></Suspense>} />
+        <Route path="/cheques" element={<Suspense fallback={<PageLoader />}><Cheques /></Suspense>} />
+        <Route path="/settings" element={<Suspense fallback={<PageLoader />}><Settings /></Suspense>} />
+        <Route path="/users" element={<Suspense fallback={<PageLoader />}><UserManagement /></Suspense>} />
+        <Route path="/audit-logs" element={<Suspense fallback={<PageLoader />}><AuditLogs /></Suspense>} />
       </Route>
 
       {/* Catch-all */}
@@ -171,12 +195,14 @@ const App = () => (
       <AuditProvider>
         <OfflineSyncProvider>
           <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <PwaUpdatePrompt />
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
+            <ErrorBoundary>
+              <Toaster />
+              <Sonner />
+              <PwaUpdatePrompt />
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </ErrorBoundary>
           </TooltipProvider>
         </OfflineSyncProvider>
       </AuditProvider>
