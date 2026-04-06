@@ -786,9 +786,11 @@ const Clients = () => {
   const generatePrintContent = (type: "bills" | "recoveries", clientName: string, data: any[]) => {
     const title = type === "bills" ? "Bills History" : "Recoveries History";
     
-    let tableContent = "";
+    let tableHtml = "";
+    let totalsHtml = "";
     if (type === "bills") {
-      tableContent = `
+      const totalAmount = data.reduce((sum: number, inv: any) => sum + (inv.total || 0), 0);
+      tableHtml = `
         <table>
           <thead>
             <tr>
@@ -809,11 +811,13 @@ const Clients = () => {
                 <td>${invoice.status}</td>
               </tr>
             `).join("")}
+            <tr class="totals-row"><td colspan="3" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td></td></tr>
           </tbody>
         </table>
       `;
     } else {
-      tableContent = `
+      const totalAmount = data.reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
+      tableHtml = `
         <table>
           <thead>
             <tr>
@@ -832,34 +836,13 @@ const Clients = () => {
                 <td>${recovery.notes || "-"}</td>
               </tr>
             `).join("")}
+            <tr class="totals-row"><td style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td colspan="2"></td></tr>
           </tbody>
         </table>
       `;
     }
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${title} - ${clientName}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h1 { text-align: center; margin-bottom: 5px; }
-          h3 { text-align: center; color: #666; margin-top: 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: left; }
-          th { background-color: #f5f5f5; font-weight: bold; }
-          @media print { button { display: none; } }
-        </style>
-      </head>
-      <body>
-        <h1>${title}</h1>
-        <h3>${clientName} - ${format(new Date(), "dd MMM yyyy")}</h3>
-        ${tableContent}
-        <script>window.print();</script>
-      </body>
-      </html>
-    `;
+    return generateBrandedPrintPage({ title, subtitle: clientName, tableHtml, totalsHtml });
   };
 
   const handlePrint = (type: "bills" | "recoveries") => {
@@ -1128,22 +1111,17 @@ const Clients = () => {
 
     const handlePrintManualBills = () => {
       if (!selectedClient) return;
-      const content = `<!DOCTYPE html><html><head><title>Manual Bills - ${selectedClient.name}</title>
-        <style>body{font-family:Arial,sans-serif;padding:20px;}h1{text-align:center;margin-bottom:5px;}h3{text-align:center;color:#666;margin-top:0;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px 8px;text-align:left;}th{background-color:#f5f5f5;font-weight:bold;}@media print{button{display:none;}}</style></head><body>
-        <h1>Manual Bills History</h1><h3>${selectedClient.name} - ${format(new Date(), "dd MMM yyyy")}</h3>
-        <table><thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+      const totalAmount = clientManualBills.reduce((s, b) => s + b.amount, 0);
+      const tableHtml = `<table><thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Notes</th></tr></thead><tbody>
         ${clientManualBills.map(b => `<tr><td>${b.bill_number}</td><td>${format(new Date(b.date), "dd MMM yyyy")}</td><td>Rs ${b.amount.toLocaleString()}</td><td>${b.status}</td><td>${b.notes || "-"}</td></tr>`).join("")}
-        </tbody></table><script>window.print();</script></body></html>`;
-      const w = window.open("", "_blank");
-      if (w) { w.document.write(content); w.document.close(); }
+        <tr class="totals-row"><td colspan="2" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td colspan="2"></td></tr>
+        </tbody></table>`;
+      openPrintWindow(generateBrandedPrintPage({ title: "Manual Bills History", subtitle: selectedClient.name, tableHtml }));
     };
 
     const handlePrintAll = () => {
       if (!selectedClient) return;
-      const content = `<!DOCTYPE html><html><head><title>All History - ${selectedClient.name}</title>
-        <style>body{font-family:Arial,sans-serif;padding:20px;}h1{text-align:center;margin-bottom:5px;}h3{text-align:center;color:#666;margin-top:0;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #ddd;padding:12px 8px;text-align:left;}th{background-color:#f5f5f5;font-weight:bold;}.recovery{color:green;}.bill{color:#333;}@media print{button{display:none;}}</style></head><body>
-        <h1>Complete History</h1><h3>${selectedClient.name} - ${format(new Date(), "dd MMM yyyy")}</h3>
-        <table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Notes</th></tr></thead><tbody>
+      const tableHtml = `<table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Notes</th></tr></thead><tbody>
         ${allItems.map(item => {
           if (item.type === "bill") {
             const inv = item.data as Invoice;
@@ -1156,9 +1134,8 @@ const Clients = () => {
             return `<tr class="recovery"><td>${format(rec.date, "dd MMM yyyy")}</td><td>${rec.isFromCity ? "City Recovery" : "Recovery"}</td><td>-</td><td style="color:green">Rs ${rec.amount.toLocaleString()}</td><td>${rec.notes || "-"}</td></tr>`;
           }
         }).join("")}
-        </tbody></table><script>window.print();</script></body></html>`;
-      const w = window.open("", "_blank");
-      if (w) { w.document.write(content); w.document.close(); }
+        </tbody></table>`;
+      openPrintWindow(generateBrandedPrintPage({ title: "Complete History", subtitle: selectedClient.name, tableHtml }));
     };
 
     return (

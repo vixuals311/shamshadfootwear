@@ -784,65 +784,33 @@ const RecoveryPage = () => {
     const cityOrder = sortedCities.map((sc) => sc.city);
     const citiesTitle = cityOrder.join(", ");
 
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Recovery List - ${citiesTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h1 { text-align: center; margin-bottom: 5px; }
-          h3 { text-align: center; color: #666; margin-top: 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: left; }
-          th { background-color: #f5f5f5; font-weight: bold; }
-          .amount-col { width: 150px; }
-          .recovery-input { width: 100%; border: none; border-bottom: 1px solid #999; padding: 5px 0; min-height: 20px; }
-          .pending { color: #dc2626; font-weight: bold; }
-          @media print { button { display: none; } }
-        </style>
-      </head>
-      <body>
-        <h1>Recovery List</h1>
-        <h3>${citiesTitle} - ${format(new Date(), "dd MMM yyyy")}</h3>
-        <table>
-          <thead>
+    const tableHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>City</th>
+            <th>Client Name</th>
+            <th>Phone</th>
+            ${includePreviousBalance ? '<th>Pending Balance</th>' : ''}
+            <th class="amount-col">Recovery Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${clientsByCities.map((client, index) => `
             <tr>
-              <th>#</th>
-              <th>City</th>
-              <th>Client Name</th>
-              <th>Phone</th>
-              ${includePreviousBalance ? '<th>Pending Balance</th>' : ''}
-              <th class="amount-col">Recovery Amount</th>
+              <td>${index + 1}</td>
+              <td>${client.city}</td>
+              <td>${client.name}</td>
+              <td>${client.phone}</td>
+              ${includePreviousBalance ? `<td class="pending">Rs ${client.currentBalance.toLocaleString()}</td>` : ''}
+              <td><div class="recovery-input"></div></td>
             </tr>
-          </thead>
-          <tbody>
-            ${clientsByCities
-              .map(
-                (client, index) => `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${client.city}</td>
-                <td>${client.name}</td>
-                <td>${client.phone}</td>
-                ${includePreviousBalance ? `<td class="pending">Rs ${client.currentBalance.toLocaleString()}</td>` : ''}
-                <td><div class="recovery-input"></div></td>
-              </tr>
-            `
-              )
-              .join("")}
-          </tbody>
-        </table>
-        <script>window.print();</script>
-      </body>
-      </html>
-    `;
+          `).join("")}
+        </tbody>
+      </table>`;
 
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-    }
+    openPrintWindow(generateBrandedPrintPage({ title: "Recovery List", subtitle: citiesTitle, tableHtml }));
     setIsPrintDialogOpen(false);
     setSelectedCities([]);
     setSortedCities([]);
