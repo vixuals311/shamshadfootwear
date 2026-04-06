@@ -45,7 +45,15 @@ interface Cheque {
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-warning/10 text-warning border-warning/30",
   cleared: "bg-success/10 text-success border-success/30",
-  bounced: "bg-destructive/10 text-destructive border-destructive/30",
+  cancelled: "bg-muted text-muted-foreground border-muted-foreground/30",
+  paid_in_cash: "bg-primary/10 text-primary border-primary/30",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  cleared: "Cleared",
+  cancelled: "Cancelled",
+  paid_in_cash: "Paid in Cash",
 };
 
 const Cheques = () => {
@@ -55,6 +63,7 @@ const Cheques = () => {
   const canEdit = role === "admin" || role === "manager";
 
   const [cheques, setCheques] = useState<Cheque[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -69,6 +78,10 @@ const Cheques = () => {
     bank_name: "",
     notes: "",
   });
+
+  // For cleared status - transaction ID dialog
+  const [statusConfirm, setStatusConfirm] = useState<{ id: string; newStatus: string } | null>(null);
+  const [transactionId, setTransactionId] = useState("");
 
   const fetchCheques = async () => {
     try {
@@ -86,7 +99,15 @@ const Cheques = () => {
     }
   };
 
-  useEffect(() => { fetchCheques(); }, []);
+  const fetchClients = async () => {
+    const { data } = await supabase.from("clients").select("id, name").order("name");
+    setClients(data || []);
+  };
+
+  useEffect(() => {
+    fetchCheques();
+    fetchClients();
+  }, []);
 
   const filtered = useMemo(() => {
     return cheques.filter((c) => {
@@ -130,21 +151,31 @@ const Cheques = () => {
     }
   };
 
-  // Status change confirmation
-  const [statusConfirm, setStatusConfirm] = useState<{ id: string; newStatus: string } | null>(null);
-
-  const handleStatusChange = async (id: string, newStatus: string) => {
+  const handleStatusChange = (id: string, newStatus: string) => {
+    setTransactionId("");
     setStatusConfirm({ id, newStatus });
   };
 
   const confirmStatusChange = async () => {
     if (!statusConfirm) return;
+    if (statusConfirm.newStatus === "cleared" && !transactionId.trim()) {
+      toast({ title: "Required", description: "Please enter the Transaction ID", variant: "destructive" });
+      return;
+    }
     try {
-      const { error } = await supabase.from("cheques").update({ status: statusConfirm.newStatus, updated_at: new Date().toISOString() }).eq("id", statusConfirm.id);
+      const updateData: any = { status: statusConfirm.newStatus, updated_at: new Date().toISOString() };
+      if (statusConfirm.newStatus === "cleared") {
+        updateData.notes = [
+          cheques.find(c => c.id === statusConfirm.id)?.notes,
+          `Transaction ID: ${transactionId.trim()}`
+        ].filter(Boolean).join(" | ");
+      }
+      const { error } = await supabase.from("cheques").update(updateData).eq("id", statusConfirm.id);
       if (error) throw error;
-      await log({ action: "update", entityType: "cheque", entityId: statusConfirm.id, details: { status: statusConfirm.newStatus } });
-      toast({ title: "Updated", description: `Cheque marked as ${statusConfirm.newStatus}` });
+      await log({ action: "update", entityType: "cheque", entityId: statusConfirm.id, details: { status: statusConfirm.newStatus, ...(transactionId ? { transaction_id: transactionId.trim() } : {}) } });
+      toast({ title: "Updated", description: `Cheque marked as ${STATUS_LABELS[statusConfirm.newStatus] || statusConfirm.newStatus}` });
       setStatusConfirm(null);
+      setTransactionId("");
       fetchCheques();
     } catch (err: any) {
       toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
@@ -205,7 +236,18 @@ const Cheques = () => {
                 </div>
                 <div>
                   <Label>Given To <span className="text-destructive">*</span></Label>
-                  <Input value={form.given_to} onChange={(e) => setForm({ ...form, given_to: e.target.value })} placeholder="Party name" />
+                  <Select value={form.given_to} onValueChange={(val) => setForm({ ...form, given_to: val })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.name}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -258,7 +300,8 @@ const Cheques = () => {
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="cleared">Cleared</SelectItem>
-            <SelectItem value="bounced">Bounced</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="paid_in_cash">Paid in Cash</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -274,7 +317,7 @@ const Cheques = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-foreground">#{cheque.cheque_number}</h3>
                     <Badge variant="outline" className={cn("text-xs", STATUS_COLORS[cheque.status] || "")}>
-                      {cheque.status}
+                      {STATUS_LABELS[cheque.status] || cheque.status}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-0.5">
@@ -289,11 +332,13 @@ const Cheques = () => {
                 <div className="text-right shrink-0">
                   <p className="text-lg font-bold text-foreground">Rs {cheque.amount.toLocaleString()}</p>
                   {canEdit && cheque.status === "pending" && (
-                    <div className="flex gap-1 mt-1">
+                    <div className="flex gap-1 mt-1 flex-wrap justify-end">
                       <Button size="sm" variant="outline" className="h-7 text-xs text-success border-success/30"
                         onClick={() => handleStatusChange(cheque.id, "cleared")}>Cleared</Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs text-destructive border-destructive/30"
-                        onClick={() => handleStatusChange(cheque.id, "bounced")}>Bounced</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-primary border-primary/30"
+                        onClick={() => handleStatusChange(cheque.id, "paid_in_cash")}>Paid in Cash</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-muted-foreground border-muted-foreground/30"
+                        onClick={() => handleStatusChange(cheque.id, "cancelled")}>Cancelled</Button>
                     </div>
                   )}
                 </div>
@@ -307,15 +352,27 @@ const Cheques = () => {
           </div>
         )}
       </div>
+
       {/* Status Change Confirmation */}
-      <AlertDialog open={!!statusConfirm} onOpenChange={(open) => !open && setStatusConfirm(null)}>
+      <AlertDialog open={!!statusConfirm} onOpenChange={(open) => { if (!open) { setStatusConfirm(null); setTransactionId(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to mark this cheque as <strong>{statusConfirm?.newStatus}</strong>? This action will be logged.
+              Are you sure you want to mark this cheque as <strong>{statusConfirm ? (STATUS_LABELS[statusConfirm.newStatus] || statusConfirm.newStatus) : ""}</strong>? This action will be logged.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {statusConfirm?.newStatus === "cleared" && (
+            <div className="py-2">
+              <Label>Transaction ID <span className="text-destructive">*</span></Label>
+              <Input
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                placeholder="Enter transaction ID"
+                className="mt-1"
+              />
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmStatusChange}>Confirm</AlertDialogAction>
