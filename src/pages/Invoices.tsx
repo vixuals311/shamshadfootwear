@@ -742,8 +742,12 @@ const Invoices = () => {
                 </div>
               )}
               <div className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-muted-foreground">Via</span>
+                <span className="text-sm text-foreground capitalize">{invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
                 <span className="text-sm text-muted-foreground">Date</span>
-                <span className="text-sm text-foreground">{format(new Date(invoice.date), "dd MMM yyyy")}</span>
+                <span className="text-sm text-foreground">{format(new Date(invoice.date), "dd MMM yyyy, hh:mm a")}</span>
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-sm text-muted-foreground">Status</span>
