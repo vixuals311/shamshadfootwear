@@ -772,8 +772,9 @@ const Invoices = () => {
                 <th>Amount</th>
                 <th>Paid</th>
                 <th>Balance</th>
+                <th>Via</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th>Date & Time</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
@@ -808,12 +809,18 @@ const Invoices = () => {
                   <td className={cn("font-medium", invoice.balanceDue > 0 ? "text-destructive" : "text-muted-foreground")}>
                     Rs {invoice.balanceDue.toLocaleString()}
                   </td>
+                  <td className="text-xs text-muted-foreground capitalize">
+                    {invoice.paymentMethod === "account" ? invoice.accountName || "Account" : "Cash"}
+                  </td>
                   <td>
                     <span className={cn("status-badge capitalize", statusStyles[invoice.status])}>
                       {invoice.status}
                     </span>
                   </td>
-                  <td className="text-muted-foreground">{format(new Date(invoice.date), "dd MMM yyyy")}</td>
+                  <td className="text-muted-foreground">
+                    <div>{format(new Date(invoice.date), "dd MMM yyyy")}</div>
+                    <div className="text-xs">{format(new Date(invoice.date), "hh:mm a")}</div>
+                  </td>
                   <td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
