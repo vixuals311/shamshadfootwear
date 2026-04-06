@@ -1348,7 +1348,10 @@ const Clients = () => {
                                 <p className="font-mono font-medium text-sm">{inv.invoiceNumber}</p>
                                 <p className="text-xs text-muted-foreground">{format(inv.createdAt, "dd MMM yyyy")}</p>
                               </div>
-                              <span className="font-bold whitespace-nowrap">Rs {inv.total.toLocaleString()}</span>
+                              <div className="text-right">
+                                <span className="font-bold whitespace-nowrap block">Rs {inv.total.toLocaleString()}</span>
+                                <span className="text-xs text-destructive font-medium">Bal: Rs {item.runningBalance.toLocaleString()}</span>
+                              </div>
                             </div>
                             <span className="status-badge status-badge-info">Invoice</span>
                           </div>
@@ -1362,7 +1365,10 @@ const Clients = () => {
                                 <p className="font-mono font-medium text-sm">{bill.bill_number}</p>
                                 <p className="text-xs text-muted-foreground">{format(new Date(bill.date), "dd MMM yyyy")}</p>
                               </div>
-                              <span className="font-bold whitespace-nowrap">Rs {bill.amount.toLocaleString()}</span>
+                              <div className="text-right">
+                                <span className="font-bold whitespace-nowrap block">Rs {bill.amount.toLocaleString()}</span>
+                                <span className="text-xs text-destructive font-medium">Bal: Rs {item.runningBalance.toLocaleString()}</span>
+                              </div>
                             </div>
                             <span className="status-badge status-badge-warning">Bill</span>
                           </div>
@@ -1375,7 +1381,10 @@ const Clients = () => {
                               <div className="min-w-0">
                                 <p className="text-xs text-muted-foreground">{format(rec.date, "dd MMM yyyy")}</p>
                               </div>
-                              <span className="font-bold text-success whitespace-nowrap">Rs {rec.amount.toLocaleString()}</span>
+                              <div className="text-right">
+                                <span className="font-bold text-success whitespace-nowrap block">Rs {rec.amount.toLocaleString()}</span>
+                                <span className="text-xs text-destructive font-medium">Bal: Rs {item.runningBalance.toLocaleString()}</span>
+                              </div>
                             </div>
                             <span className={cn("status-badge", rec.isFromCity ? "status-badge-warning" : "status-badge-success")}>{rec.isFromCity ? "City Rec." : "Recovery"}</span>
                           </div>
