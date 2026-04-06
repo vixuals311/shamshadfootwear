@@ -59,6 +59,8 @@ interface Invoice {
   date: string;
   dueDate: string;
   items: number;
+  paymentMethod: string;
+  accountName: string;
 }
 
 interface ReturnInfo {
@@ -129,8 +131,11 @@ const Invoices = () => {
           balance_due,
           status,
           created_at,
+          payment_method,
+          account_id,
           clients (name, email),
-          invoice_items (id)
+          invoice_items (id),
+          payment_accounts (name)
         `)
         .order("created_at", { ascending: false });
 
@@ -148,6 +153,8 @@ const Invoices = () => {
         date: inv.created_at,
         dueDate: inv.created_at,
         items: inv.invoice_items?.length || 0,
+        paymentMethod: inv.payment_method || "cash",
+        accountName: inv.payment_accounts?.name || "",
       }));
 
       setInvoices(formattedInvoices);
