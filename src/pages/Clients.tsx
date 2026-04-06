@@ -1148,8 +1148,8 @@ const Clients = () => {
     const handlePrintManualBills = () => {
       if (!selectedClient) return;
       const totalAmount = clientManualBills.reduce((s, b) => s + b.amount, 0);
-      const tableHtml = `<table><thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Notes</th></tr></thead><tbody>
-        ${clientManualBills.map(b => `<tr><td>${b.bill_number}</td><td>${format(new Date(b.date), "dd MMM yyyy")}</td><td>Rs ${b.amount.toLocaleString()}</td><td>${b.status}</td><td>${b.notes || "-"}</td></tr>`).join("")}
+      const tableHtml = `<table><thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Balance</th></tr></thead><tbody>
+        ${clientManualBills.map(b => `<tr><td>${b.bill_number}</td><td>${format(new Date(b.date), "dd MMM yyyy")}</td><td>Rs ${b.amount.toLocaleString()}</td><td>${b.status}</td><td class="due-col">Rs ${(manualBillBalanceMap.get(b.id) || 0).toLocaleString()}</td></tr>`).join("")}
         <tr class="totals-row"><td colspan="2" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td colspan="2"></td></tr>
         </tbody></table>`;
       openPrintWindow(generateBrandedPrintPage({ title: "Manual Bills History", subtitle: selectedClient.name, tableHtml }));
@@ -1157,17 +1157,18 @@ const Clients = () => {
 
     const handlePrintAll = () => {
       if (!selectedClient) return;
-      const tableHtml = `<table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Notes</th></tr></thead><tbody>
-        ${allItems.map(item => {
+      const tableHtml = `<table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th>Amount</th><th>Balance</th></tr></thead><tbody>
+        <tr style="background:#f5f0eb"><td colspan="3" style="text-align:right;font-weight:600">Opening Balance</td><td></td><td class="due-col">Rs ${selectedClient.openingBalance.toLocaleString()}</td></tr>
+        ${[...allItems].reverse().map(item => {
           if (item.type === "bill") {
             const inv = item.data as Invoice;
-            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yyyy")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td class="paid-col">Rs ${(inv.amountReceived || 0).toLocaleString()}</td><td class="${inv.balanceDue > 0 ? 'due-col' : ''}">${inv.balanceDue > 0 ? 'Rs ' + inv.balanceDue.toLocaleString() : '-'}</td><td>${inv.status}</td></tr>`;
+            return `<tr class="bill"><td>${format(inv.createdAt, "dd MMM yyyy")}</td><td>Invoice</td><td>${inv.invoiceNumber}</td><td>Rs ${inv.total.toLocaleString()}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
           } else if (item.type === "manual") {
             const bill = item.data as ManualBill;
-            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yyyy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td>-</td><td>-</td><td>${bill.notes || "-"}</td></tr>`;
+            return `<tr class="bill"><td>${format(new Date(bill.date), "dd MMM yyyy")}</td><td>Manual Bill</td><td>${bill.bill_number}</td><td>Rs ${bill.amount.toLocaleString()}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
           } else {
             const rec = item.data as RecoveryRecord;
-            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yyyy")}</td><td>${rec.isFromCity ? "City Recovery" : "Recovery"}</td><td>-</td><td style="color:green">Rs ${rec.amount.toLocaleString()}</td><td>-</td><td>-</td><td>${rec.notes || "-"}</td></tr>`;
+            return `<tr class="recovery"><td>${format(rec.date, "dd MMM yyyy")}</td><td>${rec.isFromCity ? "City Rec." : "Recovery"}</td><td>-</td><td style="color:green">- Rs ${rec.amount.toLocaleString()}</td><td class="due-col">Rs ${item.runningBalance.toLocaleString()}</td></tr>`;
           }
         }).join("")}
         </tbody></table>`;
