@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 import { DeviceLimitDialog } from "@/components/auth/DeviceLimitDialog";
 import { PwaUpdatePrompt } from "@/components/layout/PwaUpdatePrompt";
+import { InstallPrompt } from "@/components/layout/InstallPrompt";
 
 // Lazy-loaded routes
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -199,6 +200,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <PwaUpdatePrompt />
+              <InstallPrompt />
               <BrowserRouter>
                 <AppRoutes />
               </BrowserRouter>
