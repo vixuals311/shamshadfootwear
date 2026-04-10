@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.shamshadfootwear.twa",
+      "sha256_cert_fingerprints": [
+        "BC:AD:6A:0B:2A:94:82:5C:01:93:E9:B4:3B:DD:D6:18:44:D4:FA:E7:61:CD:53:D3:6A:7A:D1:34:33:CE:73:3D"
+      ]
+    }
+  }
+]
