@@ -1,11 +1,16 @@
 {
   "name": "Shamshad Footwear",
   "short_name": "Shamshad",
-  "description": "Reliable Wholesale Footwear for Retailers",
+  "description": "Reliable Wholesale Footwear for Retailers. Premium quality. Competitive pricing. Consistent supply.",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#F0E8D8",
   "theme_color": "#3D3D3D",
+  "categories": ["business", "productivity", "shopping"],
+  "dir": "ltr",
+  "lang": "en",
+  "scope": "/",
   "icons": [
     {
       "src": "/favicon.png",
@@ -16,7 +21,34 @@
       "src": "/logo-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Invoice",
+      "short_name": "Invoice",
+      "url": "/invoices/new",
+      "description": "Create a new invoice",
+      "icons": [{ "src": "/favicon.png", "sizes": "512x512" }]
+    },
+    {
+      "name": "Inventory",
+      "short_name": "Stock",
+      "url": "/inventory",
+      "description": "View and manage inventory"
+    },
+    {
+      "name": "Clients",
+      "short_name": "Clients",
+      "url": "/clients",
+      "description": "Manage client accounts"
+    },
+    {
+      "name": "Recovery",
+      "short_name": "Recovery",
+      "url": "/recovery",
+      "description": "Record payment recoveries"
     }
   ]
 }
