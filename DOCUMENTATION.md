@@ -759,11 +759,34 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 ## 17. PWA & Mobile Support
 
 ### 17.1 Progressive Web App
-- **Manifest:** `public/manifest.json` configured with app name, icons, theme color
-- **Installable:** Can be added to mobile home screen
+- **Manifest:** `public/manifest.json` configured with app name, icons, theme color, orientation, categories
+- **Orientation:** `portrait-primary` (optimized for mobile use)
+- **Categories:** `business`, `productivity`, `finance`
+- **Installable:** Can be added to mobile home screen via custom install prompt
 - **Theme Color:** `#F0E8D8` (warm beige)
+- **Shortcuts:** Home screen long-press shortcuts for quick access:
+  - New Invoice (`/invoices/new`)
+  - Inventory (`/inventory`)
+  - Clients (`/clients`)
+  - Recovery (`/recovery`)
 
-### 17.2 Responsive Design
+### 17.2 Custom Install Prompt (`InstallPrompt`)
+- **Component:** `src/components/layout/InstallPrompt.tsx`
+- **Android/Chrome:** Intercepts `beforeinstallprompt` event and shows a branded install banner
+- **iOS/Safari:** Detects iOS devices and displays a step-by-step guide (Share → Add to Home Screen)
+- **Dismissal:** Remembers user dismissal for 7 days via `localStorage`
+- **Auto-hide:** Hidden when app is already running in standalone mode
+
+### 17.3 Android TWA (Trusted Web Activity)
+- **Asset Links:** `public/.well-known/assetlinks.json` configured for domain verification
+- **Package:** `com.shamshadfootwear.twa`
+
+### 17.4 PWA Update Strategy
+- **Component:** `src/components/layout/PwaUpdatePrompt.tsx`
+- **Strategy:** Prompt-based — user is notified when a new version is available and can choose to update
+- **Caching:** `NetworkFirst` for API calls, `NetworkOnly` for auth endpoints to prevent stale cache issues
+
+### 17.5 Responsive Design
 - **Breakpoints:** Mobile-first with `sm:`, `md:`, `lg:` Tailwind breakpoints
 - **Mobile Sidebar:** Collapsible hamburger menu via `MobileSidebar` component
 - **Card Layouts:** Grid switches from 1 column (mobile) to 2-4 columns (desktop)
