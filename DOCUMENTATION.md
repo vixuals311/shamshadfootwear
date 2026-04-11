@@ -1,7 +1,7 @@
 # Shamshad Footwear — Application Documentation
 
 > **Comprehensive Use Case & Feature Reference**
-> Version 1.0 | Last Updated: March 2026
+> Version 1.1 | Last Updated: April 2026
 > Contact: 0315-7162093 | 0305-5388093
 > Address: Faisalabad Road, Chowk Azam, Layyah
 
