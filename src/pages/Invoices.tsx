@@ -872,7 +872,10 @@ const Invoices = () => {
                           <Eye className="w-4 h-4" /> View
                         </DropdownMenuItem>
                         <DropdownMenuItem className="gap-2" onClick={() => handlePrintInvoice(invoice.id)}>
-                          <Printer className="w-4 h-4" /> Print
+                          <Printer className="w-4 h-4" /> Print ({getPrintDefault("invoice") === "slip80" ? "Slip" : "A4"})
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2 text-xs text-muted-foreground" onClick={() => handlePrintInvoice(invoice.id, getPrintDefault("invoice") === "slip80" ? "A4" : "slip80")}>
+                          <Printer className="w-3 h-3" /> Print ({getPrintDefault("invoice") === "slip80" ? "A4" : "Slip"})
                         </DropdownMenuItem>
                         <DropdownMenuItem className="gap-2" onClick={() => handleSendToClient(invoice)}>
                           <Send className="w-4 h-4" /> Send to Client
@@ -924,7 +927,7 @@ const Invoices = () => {
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
         invoice={selectedInvoice}
-        onPrint={() => selectedInvoice && handlePrintInvoice(selectedInvoice.id)}
+        onPrint={(size) => selectedInvoice && handlePrintInvoice(selectedInvoice.id, size)}
       />
     </div>
   );
