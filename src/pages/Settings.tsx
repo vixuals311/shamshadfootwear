@@ -179,6 +179,15 @@ const Settings = () => {
     taxId: "",
     address: "",
   });
+
+  // Print preferences (per document type)
+  const [printPrefs, setPrintPrefs] = useState<Record<PrintDocType, PaperSize>>(() => getAllPrintDefaults());
+
+  const handleUpdatePrintPref = (docType: PrintDocType, size: PaperSize) => {
+    setPrintDefault(docType, size);
+    setPrintPrefs((prev) => ({ ...prev, [docType]: size }));
+    toast({ title: "Saved", description: `${PRINT_DOC_LABELS[docType]} → ${PAPER_SIZE_LABELS[size]}` });
+  };
   const [initialBusinessSettings, setInitialBusinessSettings] = useState<BusinessSettings>({
     businessName: "BillFlow Inc.",
     taxId: "",
