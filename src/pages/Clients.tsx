@@ -1162,17 +1162,17 @@ const Clients = () => {
       else recoveryBalanceMap.set(item.data.id + '-' + item.date.getTime(), item.runningBalance);
     }
 
-    const handlePrintManualBills = () => {
+    const handlePrintManualBills = (paperSize: PaperSize = getPrintDefault("clientHistory")) => {
       if (!selectedClient) return;
       const totalAmount = clientManualBills.reduce((s, b) => s + b.amount, 0);
       const tableHtml = `<table><thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Balance</th></tr></thead><tbody>
         ${clientManualBills.map(b => `<tr><td>${b.bill_number}</td><td>${format(new Date(b.date), "dd MMM yyyy")}</td><td>Rs ${b.amount.toLocaleString()}</td><td>${b.status}</td><td class="due-col">Rs ${(manualBillBalanceMap.get(b.id) || 0).toLocaleString()}</td></tr>`).join("")}
         <tr class="totals-row"><td colspan="2" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td colspan="2"></td></tr>
         </tbody></table>`;
-      openPrintWindow(generateBrandedPrintPage({ title: "Manual Bills History", subtitle: selectedClient.name, tableHtml }));
+      openPrintWindow(generateBrandedPrintPage({ title: "Manual Bills History", subtitle: selectedClient.name, tableHtml, paperSize }));
     };
 
-    const handlePrintAll = () => {
+    const handlePrintAll = (paperSize: PaperSize = getPrintDefault("clientHistory")) => {
       if (!selectedClient) return;
       const tableHtml = `<table><thead><tr><th>Date & Time</th><th>Type</th><th>Ref</th><th>Amount</th><th>Via</th><th>Balance</th></tr></thead><tbody>
         <tr style="background:#f5f0eb"><td colspan="4" style="text-align:right;font-weight:600">Opening Balance</td><td></td><td class="due-col">Rs ${selectedClient.openingBalance.toLocaleString()}</td></tr>
@@ -1189,7 +1189,7 @@ const Clients = () => {
           }
         }).join("")}
         </tbody></table>`;
-      openPrintWindow(generateBrandedPrintPage({ title: "Complete History", subtitle: selectedClient.name, tableHtml }));
+      openPrintWindow(generateBrandedPrintPage({ title: "Complete History", subtitle: selectedClient.name, tableHtml, paperSize }));
     };
 
     return (
