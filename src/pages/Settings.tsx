@@ -55,6 +55,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { DataBackupRestore } from "@/components/admin/DataBackupRestore";
+import { Printer } from "lucide-react";
+import {
+  getAllPrintDefaults,
+  setPrintDefault,
+  PRINT_DOC_LABELS,
+  PAPER_SIZE_LABELS,
+  type PrintDocType,
+} from "@/utils/printPreferences";
+import type { PaperSize } from "@/utils/printUtils";
 
 interface PaymentAccount {
   id: string;
