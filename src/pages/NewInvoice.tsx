@@ -724,9 +724,7 @@ const NewInvoice = () => {
           <Button variant="outline" size="icon" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3 sm:gap-2" onClick={() => setShowDraftConfirm(true)} disabled={saving}>
             <Save className="w-4 h-4" /><span className="hidden sm:inline">Draft</span>
           </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3 sm:gap-2" onClick={handlePrint} disabled={items.length === 0}>
-            <Printer className="w-4 h-4" /><span className="hidden sm:inline">Print</span>
-          </Button>
+          <PrintButton docType="invoice" onPrint={handlePrint} disabled={items.length === 0} />
         </div>
       </motion.div>
 
