@@ -635,8 +635,8 @@ const NewInvoice = () => {
     }
   };
 
-  const handlePrint = () => {
-    const printContent = generatePrintContent();
+  const handlePrint = (paperSize: PaperSize = getPrintDefault("invoice")) => {
+    const printContent = generatePrintContent(paperSize);
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(printContent);
@@ -645,9 +645,26 @@ const NewInvoice = () => {
     }
   };
 
-  const generatePrintContent = () => {
-    return `<!DOCTYPE html><html><head><title>Invoice ${invoiceNumber}</title>
-      <style>
+  const generatePrintContent = (paperSize: PaperSize = "A4") => {
+    const isSlip = paperSize === "slip80";
+    const styles = isSlip ? `
+        @page { size: 80mm auto; margin: 3mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; padding: 2mm; width: 74mm; font-size: 10px; color: #000; }
+        h1 { text-align: center; font-size: 13px; margin-bottom: 3px; }
+        .header { text-align: center; padding-bottom: 4px; border-bottom: 1px dashed #000; margin-bottom: 4px; }
+        .client-info { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed #000; font-size: 9px; }
+        .client-info h3 { font-size: 10px; margin-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 9px; }
+        th { padding: 2px 1px; text-align: left; border-top: 1px solid #000; border-bottom: 1px solid #000; font-weight: 700; }
+        td { padding: 2px 1px; border-bottom: 1px dashed #ccc; }
+        tbody tr:last-child td { border-bottom: 1px solid #000; }
+        .totals { margin-top: 4px; text-align: right; font-size: 10px; }
+        .totals p { margin: 1px 0; }
+        .total-final { font-size: 12px; font-weight: bold; border-top: 1px solid #000; padding-top: 3px; }
+        @media print { button { display: none; } }
+    ` : `
+        @page { size: A4; margin: 10mm; }
         body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
         h1 { text-align: center; margin-bottom: 5px; }
         .header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
@@ -659,7 +676,9 @@ const NewInvoice = () => {
         .totals p { margin: 5px 0; }
         .total-final { font-size: 1.2em; font-weight: bold; }
         @media print { button { display: none; } }
-      </style></head><body>
+    `;
+    return `<!DOCTYPE html><html><head><title>Invoice ${invoiceNumber}</title>
+      <style>${styles}</style></head><body>
         <div class="header"><div><h1>INVOICE</h1><p><strong>${invoiceNumber}</strong></p><p>Date: ${format(new Date(), "dd MMM yyyy")}</p></div></div>
         <div class="client-info"><h3>Bill To:</h3><p><strong>${selectedClient?.name || "N/A"}</strong></p><p>${selectedClient?.city || ""}</p></div>
         <table><thead><tr><th>#</th><th>Product</th><th>Article</th><th>Size</th><th>Qty</th><th>Pairs</th><th>Rate</th>${calculations.totalDiscount > 0 ? '<th>Discount</th>' : ''}<th>Total</th></tr></thead>
