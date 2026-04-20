@@ -307,7 +307,7 @@ const Invoices = () => {
   };
 
   // Print invoice
-  const handlePrintInvoice = async (invoiceId: string) => {
+  const handlePrintInvoice = async (invoiceId: string, paperSize: PaperSize = getPrintDefault("invoice")) => {
     try {
       const { data, error } = await supabase
         .from("invoices")
@@ -333,7 +333,7 @@ const Invoices = () => {
 
       if (error) throw error;
 
-      const printContent = generatePrintContent(data);
+      const printContent = generatePrintContent(data, paperSize);
       const printWindow = window.open("", "_blank");
       if (printWindow) {
         printWindow.document.write(printContent);
