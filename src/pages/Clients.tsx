@@ -800,7 +800,7 @@ const Clients = () => {
     }
   };
 
-  const generatePrintContent = (type: "bills" | "recoveries", clientName: string, data: any[], balanceMap?: Map<string, number>) => {
+  const generatePrintContent = (type: "bills" | "recoveries", clientName: string, data: any[], balanceMap?: Map<string, number>, paperSize: PaperSize = "A4") => {
     const title = type === "bills" ? "Bills History" : "Recoveries History";
     
     let tableHtml = "";
@@ -865,11 +865,8 @@ const Clients = () => {
       `;
     }
 
-    return generateBrandedPrintPage({ title, subtitle: clientName, tableHtml, totalsHtml, paperSize: currentPaperSize });
+    return generateBrandedPrintPage({ title, subtitle: clientName, tableHtml, totalsHtml, paperSize });
   };
-
-  // shared paper size for the next print call (set immediately before generating)
-  let currentPaperSize: PaperSize = "A4";
 
   const handlePrint = (
     type: "bills" | "recoveries",
@@ -878,10 +875,9 @@ const Clients = () => {
     paperSize: PaperSize = getPrintDefault("clientHistory"),
   ) => {
     if (!selectedClient) return;
-    currentPaperSize = paperSize;
     const data = type === "bills" ? clientInvoices : clientRecoveries;
     const balMap = type === "bills" ? invoiceBalMap : recoveryBalMap;
-    const content = generatePrintContent(type, selectedClient.name, data, balMap);
+    const content = generatePrintContent(type, selectedClient.name, data, balMap, paperSize);
     openPrintWindow(content);
   };
 
