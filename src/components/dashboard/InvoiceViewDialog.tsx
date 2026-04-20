@@ -1,9 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Printer, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
+import type { PaperSize } from "@/utils/printUtils";
+import { PrintButton } from "@/components/common/PrintButton";
 
 interface InvoiceItem {
   id: string;
@@ -49,7 +51,7 @@ interface InvoiceViewDialogProps {
     items: InvoiceItem[];
     returns?: ReturnInfo[];
   } | null;
-  onPrint?: () => void;
+  onPrint?: (size: PaperSize) => void;
 }
 
 export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: InvoiceViewDialogProps) {
