@@ -46,6 +46,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { exportToCSV } from "@/utils/exportUtils";
 import { InvoiceViewDialog } from "@/components/dashboard/InvoiceViewDialog";
+import type { PaperSize } from "@/utils/printUtils";
+import { getPrintDefault } from "@/utils/printPreferences";
+import { PrintButton } from "@/components/common/PrintButton";
 
 interface Invoice {
   id: string;
