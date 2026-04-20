@@ -360,13 +360,35 @@ const Invoices = () => {
   };
 
   // Generate print content - optimized for paper saving
-  const generatePrintContent = (invoice: any) => {
+  const generatePrintContent = (invoice: any, paperSize: PaperSize = "A4") => {
     const hasDiscount = (invoice.invoice_items || []).some((i: any) => i.discount_per_pair > 0);
     const paymentMethodLabel = invoice.payment_method === "account"
       ? `Account (${(invoice as any).payment_accounts?.name || "N/A"})`
       : "Cash";
-    return `<!DOCTYPE html><html><head><title>Invoice ${invoice.invoice_number}</title>
-      <style>
+    const isSlip = paperSize === "slip80";
+    const styles = isSlip ? `
+        @page { size: 80mm auto; margin: 3mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 2mm; color: #000; font-size: 10px; width: 74mm; }
+        .header { text-align: center; padding: 4px 0; border-bottom: 1px dashed #000; margin-bottom: 4px; }
+        .header h2 { font-size: 13px; margin: 0; }
+        .header .tagline { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; }
+        .header .contact { font-size: 8px; }
+        .header .right { text-align: center; font-size: 9px; margin-top: 3px; }
+        .header .right p { margin: 1px 0; }
+        .client-row { display: block; margin-bottom: 4px; padding: 3px 0; border-bottom: 1px dashed #999; font-size: 9px; }
+        .client-row .label { font-size: 8px; }
+        .client-row > div { margin-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; margin: 2px 0; }
+        th { padding: 2px 1px; text-align: left; border-top: 1px solid #000; border-bottom: 1px solid #000; font-size: 9px; }
+        td { padding: 2px 1px; border-bottom: 1px dashed #ccc; font-size: 9px; }
+        tbody tr:last-child td { border-bottom: 1px solid #000; }
+        .totals { text-align: right; margin-top: 4px; font-size: 10px; }
+        .totals p { margin: 1px 0; }
+        .total-final { font-size: 12px; font-weight: bold; border-top: 1px solid #000; padding-top: 3px; margin-top: 3px; }
+        .footer { margin-top: 6px; padding: 4px; text-align: center; font-size: 8px; border-top: 1px dashed #000; }
+        @media print { body { padding: 0; } }
+    ` : `
         @page { size: A4; margin: 10mm; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; padding: 8px; color: #1a1a1a; font-size: 11px; }
@@ -388,7 +410,9 @@ const Invoices = () => {
         .payment-info { margin-top: 4px; font-size: 10px; color: #666; text-align: right; }
         .footer { margin-top: 10px; padding: 6px; background: #F0E8D8; border-radius: 6px; text-align: center; font-size: 9px; color: #666; }
         @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-      </style></head><body>
+    `;
+    return `<!DOCTYPE html><html><head><title>Invoice ${invoice.invoice_number}</title>
+      <style>${styles}</style></head><body>
         <div class="header">
           <div>
             <h2>Shamshad Footwear</h2>
