@@ -742,9 +742,13 @@ const CityRecoveryPage = () => {
                 <h3 className="font-semibold text-foreground">
                   Preview ({clientsByCities.length} clients)
                 </h3>
-                <Button onClick={handlePrint} className="gap-2">
-                  <Printer className="w-4 h-4" /> Print List
-                </Button>
+                <PrintButton
+                  docType="recoveryList"
+                  onPrint={handlePrint}
+                  label="Print List"
+                  variant="default"
+                  size="default"
+                />
               </div>
               <div className="overflow-x-auto max-h-96">
                 <table className="w-full text-sm">

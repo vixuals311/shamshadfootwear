@@ -1706,14 +1706,14 @@ const RecoveryPage = () => {
             >
               Cancel
             </Button>
-            <Button
-              onClick={handlePrintRecoveryList}
+            <PrintButton
+              docType="recoveryList"
+              onPrint={handlePrintRecoveryList}
               disabled={selectedCities.length === 0}
-              className="gap-2"
-            >
-              <Printer className="w-4 h-4" />
-              Print List
-            </Button>
+              label="Print List"
+              variant="default"
+              size="default"
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>
