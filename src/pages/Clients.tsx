@@ -865,11 +865,20 @@ const Clients = () => {
       `;
     }
 
-    return generateBrandedPrintPage({ title, subtitle: clientName, tableHtml, totalsHtml });
+    return generateBrandedPrintPage({ title, subtitle: clientName, tableHtml, totalsHtml, paperSize: currentPaperSize });
   };
 
-  const handlePrint = (type: "bills" | "recoveries", invoiceBalMap?: Map<string, number>, recoveryBalMap?: Map<string, number>) => {
+  // shared paper size for the next print call (set immediately before generating)
+  let currentPaperSize: PaperSize = "A4";
+
+  const handlePrint = (
+    type: "bills" | "recoveries",
+    invoiceBalMap?: Map<string, number>,
+    recoveryBalMap?: Map<string, number>,
+    paperSize: PaperSize = getPrintDefault("clientHistory"),
+  ) => {
     if (!selectedClient) return;
+    currentPaperSize = paperSize;
     const data = type === "bills" ? clientInvoices : clientRecoveries;
     const balMap = type === "bills" ? invoiceBalMap : recoveryBalMap;
     const content = generatePrintContent(type, selectedClient.name, data, balMap);
