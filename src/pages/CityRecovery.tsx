@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { generateBrandedPrintPage, openPrintWindow } from "@/utils/printUtils";
+import { generateBrandedPrintPage, openPrintWindow, type PaperSize } from "@/utils/printUtils";
+import { getPrintDefault } from "@/utils/printPreferences";
+import { PrintButton } from "@/components/common/PrintButton";
 import { motion } from "framer-motion";
 import {
   Search, Printer, MapPin, Calendar as CalendarIcon,
@@ -366,7 +368,7 @@ const CityRecoveryPage = () => {
   };
   const handleDragEnd = () => setDraggedCity(null);
 
-  const handlePrint = () => {
+  const handlePrint = (paperSize: PaperSize = getPrintDefault("recoveryList")) => {
     if (selectedCities.length === 0) return;
     const cityOrder = sortedCities.map(sc => sc.city);
     const citiesTitle = cityOrder.join(", ");
@@ -381,7 +383,7 @@ const CityRecoveryPage = () => {
       <td><div class="recovery-input"></div></td>
     </tr>`).join("")}
     </tbody></table>`;
-    openPrintWindow(generateBrandedPrintPage({ title: "Recovery List", subtitle: citiesTitle, tableHtml }));
+    openPrintWindow(generateBrandedPrintPage({ title: "Recovery List", subtitle: citiesTitle, tableHtml, paperSize }));
   };
 
   if (loading) {

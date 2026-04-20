@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { generateBrandedPrintPage, openPrintWindow } from "@/utils/printUtils";
+import { generateBrandedPrintPage, openPrintWindow, type PaperSize } from "@/utils/printUtils";
+import { getPrintDefault } from "@/utils/printPreferences";
+import { PrintButton } from "@/components/common/PrintButton";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
