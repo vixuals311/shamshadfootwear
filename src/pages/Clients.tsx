@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { generateBrandedPrintPage, openPrintWindow } from "@/utils/printUtils";
+import { generateBrandedPrintPage, openPrintWindow, type PaperSize } from "@/utils/printUtils";
+import { getPrintDefault } from "@/utils/printPreferences";
+import { PrintButton } from "@/components/common/PrintButton";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -798,7 +800,7 @@ const Clients = () => {
     }
   };
 
-  const generatePrintContent = (type: "bills" | "recoveries", clientName: string, data: any[], balanceMap?: Map<string, number>) => {
+  const generatePrintContent = (type: "bills" | "recoveries", clientName: string, data: any[], balanceMap?: Map<string, number>, paperSize: PaperSize = "A4") => {
     const title = type === "bills" ? "Bills History" : "Recoveries History";
     
     let tableHtml = "";
@@ -863,14 +865,19 @@ const Clients = () => {
       `;
     }
 
-    return generateBrandedPrintPage({ title, subtitle: clientName, tableHtml, totalsHtml });
+    return generateBrandedPrintPage({ title, subtitle: clientName, tableHtml, totalsHtml, paperSize });
   };
 
-  const handlePrint = (type: "bills" | "recoveries", invoiceBalMap?: Map<string, number>, recoveryBalMap?: Map<string, number>) => {
+  const handlePrint = (
+    type: "bills" | "recoveries",
+    invoiceBalMap?: Map<string, number>,
+    recoveryBalMap?: Map<string, number>,
+    paperSize: PaperSize = getPrintDefault("clientHistory"),
+  ) => {
     if (!selectedClient) return;
     const data = type === "bills" ? clientInvoices : clientRecoveries;
     const balMap = type === "bills" ? invoiceBalMap : recoveryBalMap;
-    const content = generatePrintContent(type, selectedClient.name, data, balMap);
+    const content = generatePrintContent(type, selectedClient.name, data, balMap, paperSize);
     openPrintWindow(content);
   };
 
@@ -1155,17 +1162,17 @@ const Clients = () => {
       else recoveryBalanceMap.set(item.data.id + '-' + item.date.getTime(), item.runningBalance);
     }
 
-    const handlePrintManualBills = () => {
+    const handlePrintManualBills = (paperSize: PaperSize = getPrintDefault("clientHistory")) => {
       if (!selectedClient) return;
       const totalAmount = clientManualBills.reduce((s, b) => s + b.amount, 0);
       const tableHtml = `<table><thead><tr><th>Bill #</th><th>Date</th><th>Amount</th><th>Status</th><th>Balance</th></tr></thead><tbody>
         ${clientManualBills.map(b => `<tr><td>${b.bill_number}</td><td>${format(new Date(b.date), "dd MMM yyyy")}</td><td>Rs ${b.amount.toLocaleString()}</td><td>${b.status}</td><td class="due-col">Rs ${(manualBillBalanceMap.get(b.id) || 0).toLocaleString()}</td></tr>`).join("")}
         <tr class="totals-row"><td colspan="2" style="text-align:right">Total:</td><td>Rs ${totalAmount.toLocaleString()}</td><td colspan="2"></td></tr>
         </tbody></table>`;
-      openPrintWindow(generateBrandedPrintPage({ title: "Manual Bills History", subtitle: selectedClient.name, tableHtml }));
+      openPrintWindow(generateBrandedPrintPage({ title: "Manual Bills History", subtitle: selectedClient.name, tableHtml, paperSize }));
     };
 
-    const handlePrintAll = () => {
+    const handlePrintAll = (paperSize: PaperSize = getPrintDefault("clientHistory")) => {
       if (!selectedClient) return;
       const tableHtml = `<table><thead><tr><th>Date & Time</th><th>Type</th><th>Ref</th><th>Amount</th><th>Via</th><th>Balance</th></tr></thead><tbody>
         <tr style="background:#f5f0eb"><td colspan="4" style="text-align:right;font-weight:600">Opening Balance</td><td></td><td class="due-col">Rs ${selectedClient.openingBalance.toLocaleString()}</td></tr>
@@ -1182,7 +1189,7 @@ const Clients = () => {
           }
         }).join("")}
         </tbody></table>`;
-      openPrintWindow(generateBrandedPrintPage({ title: "Complete History", subtitle: selectedClient.name, tableHtml }));
+      openPrintWindow(generateBrandedPrintPage({ title: "Complete History", subtitle: selectedClient.name, tableHtml, paperSize }));
     };
 
     return (
@@ -1296,10 +1303,7 @@ const Clients = () => {
           {/* All Tab */}
           <TabsContent value="all">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={handlePrintAll}>
-                <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
+              <PrintButton docType="clientHistory" onPrint={handlePrintAll} />
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {allItems.length > 0 ? (
@@ -1421,10 +1425,10 @@ const Clients = () => {
 
           <TabsContent value="bills">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("bills", invoiceBalanceMap, recoveryBalanceMap)}>
-                <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
+              <PrintButton
+                docType="clientHistory"
+                onPrint={(size) => handlePrint("bills", invoiceBalanceMap, recoveryBalanceMap, size)}
+              />
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientInvoices.length > 0 ? (
@@ -1481,10 +1485,7 @@ const Clients = () => {
           {/* Manual Bills Tab */}
           <TabsContent value="manual_bills">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={handlePrintManualBills}>
-                <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
+              <PrintButton docType="clientHistory" onPrint={handlePrintManualBills} />
               <Button size="sm" className="gap-2" onClick={() => setIsAddManualBillOpen(true)}>
                 <Plus className="w-4 h-4" />
                 Add Manual Bill
@@ -1539,10 +1540,10 @@ const Clients = () => {
 
           <TabsContent value="recoveries">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("recoveries", invoiceBalanceMap, recoveryBalanceMap)}>
-                <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
+              <PrintButton
+                docType="clientHistory"
+                onPrint={(size) => handlePrint("recoveries", invoiceBalanceMap, recoveryBalanceMap, size)}
+              />
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientRecoveries.length > 0 ? (

@@ -1,11 +1,14 @@
 import { format } from "date-fns";
 
+export type PaperSize = "A4" | "slip80";
+
 interface PrintPageOptions {
   title: string;
   subtitle?: string;
   tableHtml: string;
   totalsHtml?: string;
   extraStyles?: string;
+  paperSize?: PaperSize;
 }
 
 export function generateBrandedPrintPage({
@@ -14,12 +17,43 @@ export function generateBrandedPrintPage({
   tableHtml,
   totalsHtml,
   extraStyles = "",
+  paperSize = "A4",
 }: PrintPageOptions): string {
   const today = format(new Date(), "dd MMM yyyy");
   const sub = subtitle ? `<div class="subtitle">${subtitle} — ${today}</div>` : `<div class="subtitle">${today}</div>`;
 
+  const isSlip = paperSize === "slip80";
+  const sizeStyles = isSlip ? slipStyles : a4Styles;
+
   return `<!DOCTYPE html><html><head><title>${title}</title>
 <style>
+  ${sizeStyles}
+  @media print { button, .no-print { display: none; } }
+  ${extraStyles}
+</style></head><body>
+  <div class="header">
+    <div class="company-name">SHAMSHAD FOOTWEAR</div>
+    <div class="company-tagline">Wholesale Supplier</div>
+    <div class="company-address">Faisalabad Road, Chowk Azam, Layyah</div>
+    <div class="company-phone">0315-7162093 | 0305-5388093</div>
+  </div>
+  <div class="doc-title">${title}</div>
+  ${sub}
+  ${tableHtml}
+  ${totalsHtml || ""}
+  <script>window.print();</script>
+</body></html>`;
+}
+
+export function openPrintWindow(html: string) {
+  const w = window.open("", "_blank");
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+  }
+}
+
+const a4Styles = `
   @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; padding: 10px; color: #1a1a1a; }
@@ -49,28 +83,37 @@ export function generateBrandedPrintPage({
   .bill { color: #333; }
   .paid-col { color: #16a34a; }
   .due-col { color: #dc2626; font-weight: 600; }
+`;
 
-  @media print { button, .no-print { display: none; } }
-  ${extraStyles}
-</style></head><body>
-  <div class="header">
-    <div class="company-name">SHAMSHAD FOOTWEAR</div>
-    <div class="company-tagline">Wholesale Supplier</div>
-    <div class="company-address">Faisalabad Road, Chowk Azam, Layyah</div>
-    <div class="company-phone">0315-7162093 | 0305-5388093</div>
-  </div>
-  <div class="doc-title">${title}</div>
-  ${sub}
-  ${tableHtml}
-  ${totalsHtml || ""}
-  <script>window.print();</script>
-</body></html>`;
-}
+const slipStyles = `
+  @page { size: 80mm auto; margin: 3mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; padding: 2mm; color: #000; font-size: 10px; width: 74mm; }
 
-export function openPrintWindow(html: string) {
-  const w = window.open("", "_blank");
-  if (w) {
-    w.document.write(html);
-    w.document.close();
-  }
-}
+  .header { text-align: center; padding-bottom: 4px; margin-bottom: 4px; border-bottom: 1px dashed #000; }
+  .company-name { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
+  .company-tagline { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; margin-top: 1px; }
+  .company-address { font-size: 8px; margin-top: 2px; }
+  .company-phone { font-size: 8px; }
+
+  .doc-title { text-align: center; font-size: 11px; font-weight: 700; margin: 4px 0 1px; text-transform: uppercase; }
+  .subtitle { text-align: center; font-size: 9px; margin-bottom: 4px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 2px; font-size: 9px; }
+  th { font-weight: 700; padding: 2px 1px; text-align: left; border-bottom: 1px solid #000; border-top: 1px solid #000; }
+  td { padding: 2px 1px; border-bottom: 1px dashed #ccc; text-align: left; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: 1px solid #000; }
+
+  .totals-row { font-weight: 700; }
+  .totals-section { margin-top: 4px; text-align: right; font-size: 10px; }
+  .totals-section span { font-weight: 700; }
+
+  .pending { font-weight: 700; }
+  .recovery-input { width: 100%; border: none; border-bottom: 1px dashed #000; padding: 2px 0; min-height: 14px; }
+  .amount-col { width: auto; }
+  .recovery, .bill, .paid-col, .due-col { color: #000; }
+  .due-col { font-weight: 700; }
+
+  /* Hide non-essential columns on slip */
+  .slip-hide { display: none !important; }
+`;

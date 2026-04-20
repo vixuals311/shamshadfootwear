@@ -746,6 +746,24 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 - **Footer:** Thank you message + company info + terms
 - **Auto-print:** `window.print()` triggers automatically
 
+### 16.4 Dual Printer Support (A4 + 80mm Slip)
+The system supports printing to both standard **A4** printers and **80mm thermal slip** printers using the browser's native print dialog.
+
+- **Paper sizes:**
+  - `A4` — full-page layout (210mm), 10mm margins, 11px font, branded header/footer
+  - `slip80` — 80mm wide, auto-height, 10px font, dashed dividers, single-column blocks (optimized for thermal cutting)
+- **Per-document defaults** (configurable in **Settings → Printing**):
+  - Invoices / Bills → Slip 80mm (default)
+  - Payment Receipts → Slip 80mm (default)
+  - Recovery Lists, Client History, Cheques, Returns → A4 (default)
+- **Override per print:** Every Print button is a split-button — main click uses the saved default, the caret menu lets the user override to A4 or Slip for that single print.
+- **Implementation:**
+  - `src/utils/printUtils.ts` — exports `PaperSize` type and emits paper-specific `@page` + body styles inside `generateBrandedPrintPage`.
+  - `src/utils/printPreferences.ts` — `localStorage`-backed store (`getPrintDefault` / `setPrintDefault` / `getAllPrintDefaults`).
+  - `src/components/common/PrintButton.tsx` — shared split-button component used across all printable views.
+- **Printer setup:** The OS print dialog lets the user pick the physical printer. For one-click printing, set the desired physical printer (A4 or thermal) as the system default in Windows/Android. The CSS `@page size: 80mm auto` instructs Chrome/Edge to render the slip at the correct width.
+- **Coverage:** Invoices (`Invoices.tsx`, `NewInvoice.tsx`, `InvoiceViewDialog`), Recovery (`Recovery.tsx`, `CityRecovery.tsx`), Client History (bills / recoveries / manual bills / complete history) all support both paper sizes.
+
 ### 16.3 Asset Requirements
 | Asset | Dimensions | Location | Purpose |
 |-------|-----------|----------|---------|

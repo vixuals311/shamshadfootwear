@@ -55,6 +55,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { DataBackupRestore } from "@/components/admin/DataBackupRestore";
+import { Printer } from "lucide-react";
+import {
+  getAllPrintDefaults,
+  setPrintDefault,
+  PRINT_DOC_LABELS,
+  PAPER_SIZE_LABELS,
+  type PrintDocType,
+} from "@/utils/printPreferences";
+import type { PaperSize } from "@/utils/printUtils";
 
 interface PaymentAccount {
   id: string;
@@ -170,6 +179,15 @@ const Settings = () => {
     taxId: "",
     address: "",
   });
+
+  // Print preferences (per document type)
+  const [printPrefs, setPrintPrefs] = useState<Record<PrintDocType, PaperSize>>(() => getAllPrintDefaults());
+
+  const handleUpdatePrintPref = (docType: PrintDocType, size: PaperSize) => {
+    setPrintDefault(docType, size);
+    setPrintPrefs((prev) => ({ ...prev, [docType]: size }));
+    toast({ title: "Saved", description: `${PRINT_DOC_LABELS[docType]} → ${PAPER_SIZE_LABELS[size]}` });
+  };
   const [initialBusinessSettings, setInitialBusinessSettings] = useState<BusinessSettings>({
     businessName: "BillFlow Inc.",
     taxId: "",
@@ -1215,6 +1233,43 @@ const Settings = () => {
           </div>
         </motion.div>
       )}
+
+      {/* Printing Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.24 }}
+        className="bg-card rounded-xl p-6 shadow-card"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <Printer className="w-5 h-5 text-primary" />
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Printing</h3>
+            <p className="text-sm text-muted-foreground">
+              Choose the default paper size for each document type. Use A4 for a normal printer or 80mm Slip for a thermal/receipt printer. You can override per print.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(Object.keys(PRINT_DOC_LABELS) as PrintDocType[]).map((docType) => (
+            <div key={docType} className="space-y-2">
+              <Label htmlFor={`print-${docType}`}>{PRINT_DOC_LABELS[docType]}</Label>
+              <Select
+                value={printPrefs[docType]}
+                onValueChange={(value) => handleUpdatePrintPref(docType, value as PaperSize)}
+              >
+                <SelectTrigger id={`print-${docType}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A4">{PAPER_SIZE_LABELS.A4}</SelectItem>
+                  <SelectItem value="slip80">{PAPER_SIZE_LABELS.slip80}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+        </div>
+      </motion.div>
 
       {/* Business Section - Admin Only */}
       {isAdmin && (

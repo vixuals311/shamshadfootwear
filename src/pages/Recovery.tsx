@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { generateBrandedPrintPage, openPrintWindow } from "@/utils/printUtils";
+import { generateBrandedPrintPage, openPrintWindow, type PaperSize } from "@/utils/printUtils";
+import { getPrintDefault } from "@/utils/printPreferences";
+import { PrintButton } from "@/components/common/PrintButton";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -779,7 +781,7 @@ const RecoveryPage = () => {
     setDraggedCity(null);
   };
 
-  const handlePrintRecoveryList = () => {
+  const handlePrintRecoveryList = (paperSize: PaperSize = getPrintDefault("recoveryList")) => {
     if (selectedCities.length === 0) return;
 
     const cityOrder = sortedCities.map((sc) => sc.city);
@@ -811,7 +813,7 @@ const RecoveryPage = () => {
         </tbody>
       </table>`;
 
-    openPrintWindow(generateBrandedPrintPage({ title: "Recovery List", subtitle: citiesTitle, tableHtml }));
+    openPrintWindow(generateBrandedPrintPage({ title: "Recovery List", subtitle: citiesTitle, tableHtml, paperSize }));
     setIsPrintDialogOpen(false);
     setSelectedCities([]);
     setSortedCities([]);
@@ -1704,14 +1706,14 @@ const RecoveryPage = () => {
             >
               Cancel
             </Button>
-            <Button
-              onClick={handlePrintRecoveryList}
+            <PrintButton
+              docType="recoveryList"
+              onPrint={handlePrintRecoveryList}
               disabled={selectedCities.length === 0}
-              className="gap-2"
-            >
-              <Printer className="w-4 h-4" />
-              Print List
-            </Button>
+              label="Print List"
+              variant="default"
+              size="default"
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>
