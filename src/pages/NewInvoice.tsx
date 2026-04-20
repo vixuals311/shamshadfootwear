@@ -63,6 +63,9 @@ import { InvoiceItem } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/useAuditLog";
+import type { PaperSize } from "@/utils/printUtils";
+import { getPrintDefault } from "@/utils/printPreferences";
+import { PrintButton } from "@/components/common/PrintButton";
 import { useDefaultSizeRanges } from "@/hooks/useDefaultSizeRanges";
 import { format } from "date-fns";
 
