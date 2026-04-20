@@ -1303,10 +1303,7 @@ const Clients = () => {
           {/* All Tab */}
           <TabsContent value="all">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={handlePrintAll}>
-                <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
+              <PrintButton docType="clientHistory" onPrint={handlePrintAll} />
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {allItems.length > 0 ? (
@@ -1428,10 +1425,10 @@ const Clients = () => {
 
           <TabsContent value="bills">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("bills", invoiceBalanceMap, recoveryBalanceMap)}>
-                <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
+              <PrintButton
+                docType="clientHistory"
+                onPrint={(size) => handlePrint("bills", invoiceBalanceMap, recoveryBalanceMap, size)}
+              />
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientInvoices.length > 0 ? (
@@ -1488,10 +1485,7 @@ const Clients = () => {
           {/* Manual Bills Tab */}
           <TabsContent value="manual_bills">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={handlePrintManualBills}>
-                <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
+              <PrintButton docType="clientHistory" onPrint={handlePrintManualBills} />
               <Button size="sm" className="gap-2" onClick={() => setIsAddManualBillOpen(true)}>
                 <Plus className="w-4 h-4" />
                 Add Manual Bill
@@ -1546,10 +1540,10 @@ const Clients = () => {
 
           <TabsContent value="recoveries">
             <div className="flex flex-wrap justify-end gap-2 mb-4">
-              <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" onClick={() => handlePrint("recoveries", invoiceBalanceMap, recoveryBalanceMap)}>
-                <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Print</span>
-              </Button>
+              <PrintButton
+                docType="clientHistory"
+                onPrint={(size) => handlePrint("recoveries", invoiceBalanceMap, recoveryBalanceMap, size)}
+              />
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-card rounded-xl shadow-card overflow-hidden">
               {clientRecoveries.length > 0 ? (
