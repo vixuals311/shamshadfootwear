@@ -64,8 +64,14 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
     ? `Account (${invoice.account_name || "N/A"})`
     : "Cash";
 
-  const handlePrint = () => {
+  const handlePrint = (paperSize: PaperSize = "A4") => {
+    // If a parent print handler is provided (e.g. from Invoices page), prefer it
+    if (onPrint) {
+      onPrint(paperSize);
+      return;
+    }
     const hasDiscount = invoice.items.some(i => i.discount_per_pair > 0);
+    const isSlip = paperSize === "slip80";
     const returnsHtml = hasReturns ? `
       <div style="margin-top:8px;border-top:1px solid #ddd;padding-top:6px;">
         <h4 style="font-size:11px;margin:0 0 4px;">Returns (${invoice.returns!.length})</h4>
@@ -80,8 +86,28 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
       </div>
     ` : '';
 
-    const printContent = `<!DOCTYPE html><html><head><title>Invoice ${invoice.invoice_number}</title>
-      <style>
+    const styles = isSlip ? `
+        @page { size: 80mm auto; margin: 3mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 2mm; color: #000; font-size: 10px; width: 74mm; }
+        .header { text-align: center; padding: 4px 0; border-bottom: 1px dashed #000; margin-bottom: 4px; }
+        .header h2 { font-size: 13px; margin: 0; }
+        .header .tagline { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; }
+        .header .contact { font-size: 8px; }
+        .header .right { text-align: center; font-size: 9px; margin-top: 3px; }
+        .header .right p { margin: 1px 0; }
+        .client-row { display: block; margin-bottom: 4px; padding: 3px 0; border-bottom: 1px dashed #999; font-size: 9px; }
+        .client-row > div { margin-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; margin: 2px 0; }
+        th { padding: 2px 1px; text-align: left; border-top: 1px solid #000; border-bottom: 1px solid #000; font-size: 9px; }
+        td { padding: 2px 1px; border-bottom: 1px dashed #ccc; font-size: 9px; }
+        tbody tr:last-child td { border-bottom: 1px solid #000; }
+        .totals { text-align: right; margin-top: 4px; font-size: 10px; }
+        .totals p { margin: 1px 0; }
+        .total-final { font-size: 12px; font-weight: bold; border-top: 1px solid #000; padding-top: 3px; margin-top: 3px; }
+        .footer { margin-top: 6px; padding: 4px; text-align: center; font-size: 8px; border-top: 1px dashed #000; }
+        @media print { body { padding: 0; } }
+    ` : `
         @page { size: A4; margin: 10mm; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; padding: 8px; color: #1a1a1a; font-size: 11px; }
@@ -103,7 +129,9 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
         .total-final { font-size: 13px; font-weight: bold; border-top: 2px solid #3D3D3D; padding-top: 4px; margin-top: 4px; }
         .footer { margin-top: 10px; padding: 6px; background: #F0E8D8; border-radius: 6px; text-align: center; font-size: 9px; color: #666; page-break-inside: avoid; }
         @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-      </style></head><body>
+    `;
+    const printContent = `<!DOCTYPE html><html><head><title>Invoice ${invoice.invoice_number}</title>
+      <style>${styles}</style></head><body>
         <div class="header">
           <div>
             <h2>Shamshad Footwear</h2>
@@ -167,10 +195,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
                 </Badge>
               )}
             </div>
-            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
-              <Printer className="w-4 h-4" />
-              Print
-            </Button>
+            <PrintButton docType="invoice" onPrint={handlePrint} />
           </DialogTitle>
         </DialogHeader>
         
