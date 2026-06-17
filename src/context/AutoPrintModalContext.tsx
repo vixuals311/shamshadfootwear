@@ -96,10 +96,13 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
               <CheckCircle2 className="w-6 h-6 text-success" />
             </div>
             <DialogTitle className="text-xl">{state.title}</DialogTitle>
-            {state.description && !hasDetails && (
-              <DialogDescription>{state.description}</DialogDescription>
+            {state.description && (
+              <DialogDescription className="text-base">
+                {state.description}
+              </DialogDescription>
             )}
           </DialogHeader>
+
 
           {hasDetails && (
             <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
