@@ -197,18 +197,19 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
       const acctName = form.accountId
         ? (paymentAccounts.find((a) => a.id === form.accountId)?.name || null)
         : "Cash";
+      const previousBalance = clients.find((c) => c.id === form.clientId)?.currentBalance ?? 0;
       const receiptHtml = generatePaymentReceiptHTML({
         clientName: form.clientName,
         amount,
         account: acctName,
         notes: form.notes || null,
         paperSize: getPrintDefault("paymentReceipt"),
-        previousBalance: clients.find((c) => c.id === form.clientId)?.currentBalance,
+        previousBalance,
       });
       promptAutoPrint(
         "paymentReceipt",
         "Recovery saved",
-        `Rs ${amount.toLocaleString()} • ${form.clientName}`,
+        `Rs ${amount.toLocaleString()} • ${form.clientName} (Previous: Rs ${previousBalance.toLocaleString()} | Remaining: Rs ${(previousBalance - amount).toLocaleString()})`,
         () => receiptHtml,
       );
     } catch (error: any) {
