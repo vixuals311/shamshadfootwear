@@ -3,6 +3,7 @@ import { Search, Loader2, User, MapPin } from "lucide-react";
 import { generatePaymentReceiptHTML } from "@/utils/printUtils";
 import { getPrintDefault } from "@/utils/printPreferences";
 import { useAutoPrintModalPrompt } from "@/context/AutoPrintModalContext";
+import { buildPaymentReceiptDescription } from "@/utils/autoPrintDescriptions";
 import {
   Dialog,
   DialogContent,
