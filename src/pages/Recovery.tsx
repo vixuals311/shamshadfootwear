@@ -4,6 +4,7 @@ import { getPrintDefault } from "@/utils/printPreferences";
 import { PrintButton } from "@/components/common/PrintButton";
 import { useAutoPrintModalPrompt } from "@/context/AutoPrintModalContext";
 import { generatePaymentReceiptHTML } from "@/utils/printUtils";
+import { buildPaymentReceiptDescription } from "@/utils/autoPrintDescriptions";
 import { motion } from "framer-motion";
 import {
   Search,
