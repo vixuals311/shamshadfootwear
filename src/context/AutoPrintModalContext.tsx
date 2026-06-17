@@ -13,19 +13,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Printer, X } from "lucide-react";
+import { Printer, X, CheckCircle2 } from "lucide-react";
 import { shouldAutoPrint, type AutoPrintDocType } from "@/utils/printPreferences";
+
+export interface AutoPrintDetailRow {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}
 
 interface AutoPrintModalState {
   open: boolean;
   title: string;
   description: string;
+  details: AutoPrintDetailRow[];
   buildHtml: (() => string) | null;
 }
 
 interface AutoPrintModalContextValue {
-  prompt: (title: string, description: string, buildHtml: () => string) => void;
+  prompt: (
+    title: string,
+    description: string,
+    details: AutoPrintDetailRow[],
+    buildHtml: () => string
+  ) => void;
 }
 
 const AutoPrintModalContext = createContext<AutoPrintModalContextValue | null>(null);
@@ -35,12 +53,13 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
     open: false,
     title: "",
     description: "",
+    details: [],
     buildHtml: null,
   });
 
   const prompt = useCallback(
-    (title: string, description: string, buildHtml: () => string) => {
-      setState({ open: true, title, description, buildHtml });
+    (title: string, description: string, details: AutoPrintDetailRow[], buildHtml: () => string) => {
+      setState({ open: true, title, description, details, buildHtml });
     },
     []
   );
@@ -61,6 +80,8 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, open: false }));
   }, []);
 
+  const hasDetails = state.details.length > 0;
+
   return (
     <AutoPrintModalContext.Provider value={{ prompt }}>
       {children}
@@ -70,10 +91,42 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          <DialogHeader>
-            <DialogTitle>{state.title}</DialogTitle>
-            <DialogDescription>{state.description}</DialogDescription>
+          <DialogHeader className="items-center text-center gap-2">
+            <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-success" />
+            </div>
+            <DialogTitle className="text-xl">{state.title}</DialogTitle>
+            {state.description && !hasDetails && (
+              <DialogDescription>{state.description}</DialogDescription>
+            )}
           </DialogHeader>
+
+          {hasDetails && (
+            <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+              <Table>
+                <TableBody>
+                  {state.details.map((row, index) => (
+                    <TableRow
+                      key={index}
+                      className={row.highlight ? "bg-success/5" : undefined}
+                    >
+                      <TableCell className="py-3 px-4 text-muted-foreground font-medium w-1/2">
+                        {row.label}
+                      </TableCell>
+                      <TableCell
+                        className={`py-3 px-4 text-right font-semibold ${
+                          row.highlight ? "text-success" : "text-foreground"
+                        }`}
+                      >
+                        {row.value}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
@@ -119,10 +172,11 @@ export function useAutoPrintModalPrompt() {
       docType: AutoPrintDocType,
       title: string,
       description: string,
-      buildHtml: () => string
+      buildHtml: () => string,
+      details?: AutoPrintDetailRow[]
     ) => {
       if (!shouldAutoPrint(docType)) return;
-      prompt(title, description, buildHtml);
+      prompt(title, description, details || [], buildHtml);
     },
     [prompt]
   );
