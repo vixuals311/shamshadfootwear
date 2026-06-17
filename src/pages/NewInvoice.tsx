@@ -67,6 +67,7 @@ import type { PaperSize } from "@/utils/printUtils";
 import { getPrintDefault } from "@/utils/printPreferences";
 import { PrintButton } from "@/components/common/PrintButton";
 import { useAutoPrintModalPrompt } from "@/context/AutoPrintModalContext";
+import { buildInvoiceDescription } from "@/utils/autoPrintDescriptions";
 import { useDefaultSizeRanges } from "@/hooks/useDefaultSizeRanges";
 import { format } from "date-fns";
 
