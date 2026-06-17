@@ -66,7 +66,7 @@ import { useAuditLog } from "@/hooks/useAuditLog";
 import type { PaperSize } from "@/utils/printUtils";
 import { getPrintDefault } from "@/utils/printPreferences";
 import { PrintButton } from "@/components/common/PrintButton";
-import { promptAutoPrint } from "@/utils/autoPrint";
+import { useAutoPrintModalPrompt } from "@/context/AutoPrintModalContext";
 import { useDefaultSizeRanges } from "@/hooks/useDefaultSizeRanges";
 import { format } from "date-fns";
 
