@@ -198,6 +198,7 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
         ? (paymentAccounts.find((a) => a.id === form.accountId)?.name || null)
         : "Cash";
       const previousBalance = clients.find((c) => c.id === form.clientId)?.currentBalance ?? 0;
+      const remainingBalance = previousBalance - amount;
       const receiptHtml = generatePaymentReceiptHTML({
         clientName: form.clientName,
         amount,
@@ -209,9 +210,19 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
       promptAutoPrint(
         "paymentReceipt",
         "Recovery saved",
-        `Rs ${amount.toLocaleString()} • ${form.clientName} (Previous: Rs ${previousBalance.toLocaleString()} | Remaining: Rs ${(previousBalance - amount).toLocaleString()})`,
+        "Payment recorded. Review the details before printing.",
         () => receiptHtml,
+        [
+          { label: "Client", value: form.clientName },
+          { label: "Amount", value: `Rs ${amount.toLocaleString()}`, highlight: true },
+          { label: "Account", value: acctName || "Cash" },
+          { label: "Previous Balance", value: `Rs ${previousBalance.toLocaleString()}` },
+          { label: "Remaining Balance", value: `Rs ${remainingBalance.toLocaleString()}` },
+          ...(form.notes ? [{ label: "Notes", value: form.notes }] : []),
+        ]
       );
+
+
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to add recovery", variant: "destructive" });
     } finally {

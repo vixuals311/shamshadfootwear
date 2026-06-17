@@ -550,6 +550,8 @@ const RecoveryPage = () => {
     let paymentReceiptPrompt: {
       amount: number;
       clientName: string;
+      account: string | null;
+      notes: string;
       receiptHtml: string;
       previousBalance?: number;
     } | null = null;
@@ -619,6 +621,8 @@ const RecoveryPage = () => {
         paymentReceiptPrompt = {
           amount: amt,
           clientName: clientRecovery.clientName,
+          account: acctName,
+          notes: clientRecovery.notes || "",
           previousBalance,
           receiptHtml: generatePaymentReceiptHTML({
             clientName: clientRecovery.clientName,
@@ -631,6 +635,7 @@ const RecoveryPage = () => {
         };
 
         setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "", accountId: "" });
+
       } else {
         if (!cityRecoveryCity) return;
 
@@ -764,13 +769,24 @@ const RecoveryPage = () => {
       // Show the centered print prompt after the add-recovery dialog is closed.
       if (paymentReceiptPrompt) {
         const prevBalance = paymentReceiptPrompt.previousBalance ?? 0;
+        const remainingBalance = prevBalance - paymentReceiptPrompt.amount;
         promptAutoPrint(
           "paymentReceipt",
           "Recovery saved",
-          `Rs ${paymentReceiptPrompt.amount.toLocaleString()} • ${paymentReceiptPrompt.clientName} (Previous: Rs ${prevBalance.toLocaleString()} | Remaining: Rs ${(prevBalance - paymentReceiptPrompt.amount).toLocaleString()})`,
+          "Payment recorded. Review the details before printing.",
           () => paymentReceiptPrompt!.receiptHtml,
+          [
+            { label: "Client", value: paymentReceiptPrompt.clientName },
+            { label: "Amount", value: `Rs ${paymentReceiptPrompt.amount.toLocaleString()}`, highlight: true },
+            { label: "Account", value: paymentReceiptPrompt.account || "Cash" },
+            { label: "Previous Balance", value: `Rs ${prevBalance.toLocaleString()}` },
+            { label: "Remaining Balance", value: `Rs ${remainingBalance.toLocaleString()}` },
+            ...(paymentReceiptPrompt.notes ? [{ label: "Notes", value: paymentReceiptPrompt.notes }] : []),
+          ]
         );
+
       }
+
 
     } catch (error: any) {
       // If network error, data was queued — close dialog gracefully
