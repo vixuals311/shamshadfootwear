@@ -62,6 +62,11 @@ import {
   PRINT_DOC_LABELS,
   PAPER_SIZE_LABELS,
   type PrintDocType,
+  getAutoPrintState,
+  setAutoPrintGlobal,
+  setAutoPrintFor,
+  AUTO_PRINT_LABELS,
+  type AutoPrintDocType,
 } from "@/utils/printPreferences";
 import type { PaperSize } from "@/utils/printUtils";
 
