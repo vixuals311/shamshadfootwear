@@ -622,6 +622,7 @@ const RecoveryPage = () => {
           amount: amt,
           clientName: clientRecovery.clientName,
           previousBalance,
+          account: acctName,
           receiptHtml: generatePaymentReceiptHTML({
             clientName: clientRecovery.clientName,
             amount: amt,
