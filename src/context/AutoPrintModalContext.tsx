@@ -103,8 +103,8 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
             )}
           </DialogHeader>
 
-
           {hasDetails && (
+
             <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
               <Table>
                 <TableBody>
