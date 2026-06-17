@@ -623,6 +623,7 @@ const RecoveryPage = () => {
             account: acctName,
             notes: clientRecovery.notes || null,
             paperSize: getPrintDefault("paymentReceipt"),
+            previousBalance: clients.find((c) => c.id === clientRecovery.clientId)?.currentBalance,
           }),
         };
 
