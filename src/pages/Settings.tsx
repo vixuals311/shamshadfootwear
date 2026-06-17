@@ -193,6 +193,20 @@ const Settings = () => {
     setPrintPrefs((prev) => ({ ...prev, [docType]: size }));
     toast({ title: "Saved", description: `${PRINT_DOC_LABELS[docType]} → ${PAPER_SIZE_LABELS[size]}` });
   };
+
+  // Auto-print on save (POS) — global master + per-document toggles
+  const [autoPrint, setAutoPrint] = useState(() => getAutoPrintState());
+
+  const handleToggleAutoPrintGlobal = (enabled: boolean) => {
+    setAutoPrintGlobal(enabled);
+    setAutoPrint((p) => ({ ...p, enabled }));
+    toast({ title: enabled ? "Auto-print enabled" : "Auto-print disabled" });
+  };
+
+  const handleToggleAutoPrintDoc = (doc: AutoPrintDocType, enabled: boolean) => {
+    setAutoPrintFor(doc, enabled);
+    setAutoPrint((p) => ({ ...p, perDoc: { ...p.perDoc, [doc]: enabled } }));
+  };
   const [initialBusinessSettings, setInitialBusinessSettings] = useState<BusinessSettings>({
     businessName: "BillFlow Inc.",
     taxId: "",
