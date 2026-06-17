@@ -551,6 +551,7 @@ const RecoveryPage = () => {
       amount: number;
       clientName: string;
       receiptHtml: string;
+      previousBalance?: number;
     } | null = null;
 
     try {
@@ -614,16 +615,18 @@ const RecoveryPage = () => {
         const acctName = clientRecovery.accountId
           ? (paymentAccounts.find((a) => a.id === clientRecovery.accountId)?.name || null)
           : "Cash";
+        const previousBalance = clients.find((c) => c.id === clientRecovery.clientId)?.currentBalance;
         paymentReceiptPrompt = {
           amount: amt,
           clientName: clientRecovery.clientName,
+          previousBalance,
           receiptHtml: generatePaymentReceiptHTML({
             clientName: clientRecovery.clientName,
             amount: amt,
             account: acctName,
             notes: clientRecovery.notes || null,
             paperSize: getPrintDefault("paymentReceipt"),
-            previousBalance: clients.find((c) => c.id === clientRecovery.clientId)?.currentBalance,
+            previousBalance,
           }),
         };
 
