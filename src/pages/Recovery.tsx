@@ -544,6 +544,15 @@ const RecoveryPage = () => {
   const handleAddRecovery = async () => {
     if (isSavingRecovery) return;
     setIsSavingRecovery(true);
+
+    // Holds data for the post-save payment-receipt prompt so it can be shown
+    // after the add-recovery dialog is fully closed.
+    let paymentReceiptPrompt: {
+      amount: number;
+      clientName: string;
+      receiptHtml: string;
+    } | null = null;
+
     try {
       if (recoveryCategory === "client") {
         if (!clientRecovery.clientId || !clientRecovery.amount) return;
@@ -600,24 +609,22 @@ const RecoveryPage = () => {
           description: onlineSaved ? "Client recovery added" : "Recovery saved offline and will sync when back online.",
         });
 
-        // Auto-print payment receipt prompt (individual recoveries only).
+        // Capture payment receipt data (individual recoveries only).
         const amt = parseFloat(clientRecovery.amount);
         const acctName = clientRecovery.accountId
           ? (paymentAccounts.find((a) => a.id === clientRecovery.accountId)?.name || null)
           : "Cash";
-        const receiptHtml = generatePaymentReceiptHTML({
-          clientName: clientRecovery.clientName,
+        paymentReceiptPrompt = {
           amount: amt,
-          account: acctName,
-          notes: clientRecovery.notes || null,
-          paperSize: getPrintDefault("paymentReceipt"),
-        });
-        promptAutoPrint(
-          "paymentReceipt",
-          "Recovery saved",
-          `Rs ${amt.toLocaleString()} • ${clientRecovery.clientName}`,
-          () => receiptHtml,
-        );
+          clientName: clientRecovery.clientName,
+          receiptHtml: generatePaymentReceiptHTML({
+            clientName: clientRecovery.clientName,
+            amount: amt,
+            account: acctName,
+            notes: clientRecovery.notes || null,
+            paperSize: getPrintDefault("paymentReceipt"),
+          }),
+        };
 
         setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "", accountId: "" });
       } else {
