@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Search, Loader2, User, MapPin } from "lucide-react";
 import { generatePaymentReceiptHTML } from "@/utils/printUtils";
 import { getPrintDefault } from "@/utils/printPreferences";
-import { promptAutoPrint } from "@/utils/autoPrint";
+import { useAutoPrintModalPrompt } from "@/context/AutoPrintModalContext";
 import {
   Dialog,
   DialogContent,
