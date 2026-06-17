@@ -4,7 +4,6 @@ import { getPrintDefault } from "@/utils/printPreferences";
 import { PrintButton } from "@/components/common/PrintButton";
 import { useAutoPrintModalPrompt } from "@/context/AutoPrintModalContext";
 import { generatePaymentReceiptHTML } from "@/utils/printUtils";
-import { buildPaymentReceiptDescription } from "@/utils/autoPrintDescriptions";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -553,7 +552,6 @@ const RecoveryPage = () => {
       clientName: string;
       receiptHtml: string;
       previousBalance?: number;
-      account?: string | null;
     } | null = null;
 
     try {
@@ -622,7 +620,6 @@ const RecoveryPage = () => {
           amount: amt,
           clientName: clientRecovery.clientName,
           previousBalance,
-          account: acctName,
           receiptHtml: generatePaymentReceiptHTML({
             clientName: clientRecovery.clientName,
             amount: amt,
@@ -766,15 +763,11 @@ const RecoveryPage = () => {
 
       // Show the centered print prompt after the add-recovery dialog is closed.
       if (paymentReceiptPrompt) {
+        const prevBalance = paymentReceiptPrompt.previousBalance ?? 0;
         promptAutoPrint(
           "paymentReceipt",
           "Recovery saved",
-          buildPaymentReceiptDescription({
-            clientName: paymentReceiptPrompt.clientName,
-            amount: paymentReceiptPrompt.amount,
-            previousBalance: paymentReceiptPrompt.previousBalance,
-            account: paymentReceiptPrompt.account,
-          }),
+          `Rs ${paymentReceiptPrompt.amount.toLocaleString()} • ${paymentReceiptPrompt.clientName} (Previous: Rs ${prevBalance.toLocaleString()} | Remaining: Rs ${(prevBalance - paymentReceiptPrompt.amount).toLocaleString()})`,
           () => paymentReceiptPrompt!.receiptHtml,
         );
       }
