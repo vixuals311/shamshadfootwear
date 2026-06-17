@@ -602,7 +602,7 @@ const RecoveryPage = () => {
         // Auto-print payment receipt prompt (individual recoveries only).
         const amt = parseFloat(clientRecovery.amount);
         const acctName = clientRecovery.accountId
-          ? (accounts.find((a) => a.id === clientRecovery.accountId)?.name || null)
+          ? (paymentAccounts.find((a) => a.id === clientRecovery.accountId)?.name || null)
           : "Cash";
         const receiptHtml = generatePaymentReceiptHTML({
           clientName: clientRecovery.clientName,
