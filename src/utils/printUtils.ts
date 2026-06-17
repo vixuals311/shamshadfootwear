@@ -32,7 +32,7 @@ export function generateBrandedPrintPage({
   ${extraStyles}
 </style></head><body>
   <div class="header">
-    <div class="company-name">SHAMSHAD FOOTWEAR</div>
+    <div class="company-name">BILAL TRADERS</div>
     <div class="company-tagline">Wholesale Supplier</div>
     <div class="company-address">Faisalabad Road, Chowk Azam, Layyah</div>
     <div class="company-phone">0315-7162093 | 0305-5388093</div>

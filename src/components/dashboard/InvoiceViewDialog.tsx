@@ -134,7 +134,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
       <style>${styles}</style></head><body>
         <div class="header">
           <div>
-            <h2>Shamshad Footwear</h2>
+            <h2>Bilal Traders</h2>
             <div class="tagline">Wholesale Supplier</div>
             <div class="contact">0315-7162093 | 0305-5388093</div>
             <div class="contact">Faisalabad Road, Chowk Azam, Layyah</div>
@@ -204,9 +204,9 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice, onPrint }: Invo
           <div className="rounded-xl p-5 border border-border" style={{ background: 'hsl(40 30% 95%)' }}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <img src={logo} alt="Shamshad Footwear" className="w-14 h-14 object-contain" />
+                <img src={logo} alt="Bilal Traders" className="w-14 h-14 object-contain" />
                 <div>
-                  <h3 className="font-bold text-lg text-foreground">Shamshad Footwear</h3>
+                  <h3 className="font-bold text-lg text-foreground">Bilal Traders</h3>
                   <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">Wholesale Supplier</p>
                   <p className="text-xs text-muted-foreground mt-1">0315-7162093 | 0305-5388093</p>
                   <p className="text-xs text-muted-foreground">Faisalabad Road, Chowk Azam, Layyah</p>

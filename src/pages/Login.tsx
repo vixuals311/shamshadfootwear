@@ -182,8 +182,8 @@ const Login = () => {
         <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <img src={logo} alt="Shamshad Footwear" className="w-24 h-24 object-contain mb-2" />
-            <span className="text-xl font-bold text-foreground">Shamshad Footwear</span>
+            <img src={logo} alt="Bilal Traders" className="w-24 h-24 object-contain mb-2" />
+            <span className="text-xl font-bold text-foreground">Bilal Traders</span>
             <span className="text-xs tracking-[0.25em] text-muted-foreground uppercase">Wholesale Supplier</span>
           </div>
 
