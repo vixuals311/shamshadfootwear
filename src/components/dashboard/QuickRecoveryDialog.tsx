@@ -211,7 +211,6 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
         "paymentReceipt",
         "Recovery saved",
         "Payment recorded. Review the details before printing.",
-
         () => receiptHtml,
         [
           { label: "Client", value: form.clientName },
@@ -222,6 +221,7 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
           ...(form.notes ? [{ label: "Notes", value: form.notes }] : []),
         ]
       );
+
 
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to add recovery", variant: "destructive" });
