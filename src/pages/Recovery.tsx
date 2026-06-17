@@ -748,14 +748,25 @@ const RecoveryPage = () => {
       setShowAddRecoveryConfirm(false);
       setIsAddRecoveryOpen(false);
       setRecoveryCategory("client");
-      
+
       if (activeDraftId) {
         deleteDraft(activeDraftId);
         setActiveDraftId(null);
       }
-      
+
       fetchData();
       setRecoveryCategory("client");
+
+      // Show the centered print prompt after the add-recovery dialog is closed.
+      if (paymentReceiptPrompt) {
+        promptAutoPrint(
+          "paymentReceipt",
+          "Recovery saved",
+          `Rs ${paymentReceiptPrompt.amount.toLocaleString()} • ${paymentReceiptPrompt.clientName}`,
+          () => paymentReceiptPrompt!.receiptHtml,
+        );
+      }
+
     } catch (error: any) {
       // If network error, data was queued — close dialog gracefully
       if (isNetworkError(error)) {
