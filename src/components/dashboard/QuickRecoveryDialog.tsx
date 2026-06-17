@@ -210,7 +210,12 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
       promptAutoPrint(
         "paymentReceipt",
         "Recovery saved",
-        `Rs ${amount.toLocaleString()} • ${form.clientName} (Previous: Rs ${previousBalance.toLocaleString()} | Remaining: Rs ${(previousBalance - amount).toLocaleString()})`,
+        buildPaymentReceiptDescription({
+          clientName: form.clientName,
+          amount,
+          previousBalance,
+          account: acctName,
+        }),
         () => receiptHtml,
       );
     } catch (error: any) {
