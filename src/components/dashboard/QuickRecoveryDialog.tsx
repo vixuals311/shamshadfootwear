@@ -3,6 +3,7 @@ import { Search, Loader2, User, MapPin } from "lucide-react";
 import { generatePaymentReceiptHTML } from "@/utils/printUtils";
 import { getPrintDefault } from "@/utils/printPreferences";
 import { useAutoPrintModalPrompt } from "@/context/AutoPrintModalContext";
+import { buildPaymentReceiptDescription } from "@/utils/autoPrintDescriptions";
 import {
   Dialog,
   DialogContent,
@@ -209,7 +210,12 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
       promptAutoPrint(
         "paymentReceipt",
         "Recovery saved",
-        `Rs ${amount.toLocaleString()} • ${form.clientName} (Previous: Rs ${previousBalance.toLocaleString()} | Remaining: Rs ${(previousBalance - amount).toLocaleString()})`,
+        buildPaymentReceiptDescription({
+          clientName: form.clientName,
+          amount,
+          previousBalance,
+          account: acctName,
+        }),
         () => receiptHtml,
       );
     } catch (error: any) {

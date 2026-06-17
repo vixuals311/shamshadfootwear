@@ -20,12 +20,12 @@ import { shouldAutoPrint, type AutoPrintDocType } from "@/utils/printPreferences
 interface AutoPrintModalState {
   open: boolean;
   title: string;
-  description: string;
+  description: ReactNode;
   buildHtml: (() => string) | null;
 }
 
 interface AutoPrintModalContextValue {
-  prompt: (title: string, description: string, buildHtml: () => string) => void;
+  prompt: (title: string, description: ReactNode, buildHtml: () => string) => void;
 }
 
 const AutoPrintModalContext = createContext<AutoPrintModalContextValue | null>(null);
@@ -39,7 +39,7 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
   });
 
   const prompt = useCallback(
-    (title: string, description: string, buildHtml: () => string) => {
+    (title: string, description: ReactNode, buildHtml: () => string) => {
       setState({ open: true, title, description, buildHtml });
     },
     []
@@ -72,7 +72,11 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
         >
           <DialogHeader>
             <DialogTitle>{state.title}</DialogTitle>
-            <DialogDescription>{state.description}</DialogDescription>
+            <DialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                {state.description}
+              </div>
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button
@@ -118,7 +122,7 @@ export function useAutoPrintModalPrompt() {
     (
       docType: AutoPrintDocType,
       title: string,
-      description: string,
+      description: ReactNode,
       buildHtml: () => string
     ) => {
       if (!shouldAutoPrint(docType)) return;
