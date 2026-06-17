@@ -8,6 +8,7 @@ import { SupabaseAuthProvider, useSupabaseAuthContext } from "@/context/Supabase
 import { supabase } from "@/integrations/supabase/client";
 import { AuditProvider } from "@/context/AuditContext";
 import { OfflineSyncProvider } from "@/context/OfflineSyncContext";
+import { AutoPrintModalProvider } from "@/context/AutoPrintModalContext";
 import { AppLayout } from "@/components/layout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "./pages/Login";
@@ -202,7 +203,9 @@ const App = () => (
               <PwaUpdatePrompt />
               <InstallPrompt />
               <BrowserRouter>
-                <AppRoutes />
+                <AutoPrintModalProvider>
+                  <AppRoutes />
+                </AutoPrintModalProvider>
               </BrowserRouter>
             </ErrorBoundary>
           </TooltipProvider>
