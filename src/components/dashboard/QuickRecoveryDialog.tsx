@@ -189,6 +189,10 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
       await log({ action: "create", entityType: "recovery", entityId: form.clientId, details: { clientName: form.clientName, amount, type: "client" } });
       toast({ title: "Success", description: `Recovery of Rs ${amount.toLocaleString()} added for ${form.clientName}` });
 
+      // Close the recovery dialog first so the print modal sits cleanly on top.
+      resetForm();
+      onOpenChange(false);
+
       // Auto-print payment receipt prompt (individual recoveries only).
       const acctName = form.accountId
         ? (paymentAccounts.find((a) => a.id === form.accountId)?.name || null)
@@ -206,9 +210,6 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
         `Rs ${amount.toLocaleString()} • ${form.clientName}`,
         () => receiptHtml,
       );
-
-      resetForm();
-      onOpenChange(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to add recovery", variant: "destructive" });
     } finally {
