@@ -127,109 +127,119 @@ const Dashboard = () => {
         </motion.div>
       )}
 
-      {/* Full Dashboard for Admin */}
-      {!isRestrictedRole && stats && (
-        <>
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <MetricCard
-              title="Total Revenue"
-              value={`Rs ${stats.totalRevenue.toLocaleString()}`}
-              change={stats.revenueChange}
-              changeType={stats.revenueChange.startsWith('+') ? "positive" : "negative"}
-              icon={DollarSign}
-              variant="primary"
-            />
-            <MetricCard
-              title="Active Invoices"
-              value={stats.activeInvoices.toString()}
-              change={stats.invoiceChange}
-              changeType="positive"
-              icon={FileText}
-              variant="success"
-            />
-            <MetricCard
-              title="Products in Stock"
-              value={stats.productsInStock.toLocaleString()}
-              change={stats.stockChange || "pairs"}
-              changeType="neutral"
-              icon={Package}
-              variant="warning"
-            />
-            <MetricCard
-              title="Active Clients"
-              value={stats.activeClients.toString()}
-              change={stats.clientChange}
-              changeType="positive"
-              icon={Users}
-              variant="default"
-            />
-          </div>
-
-          {/* Charts and Tables */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <SalesChart data={monthlySales} />
+      {/* Desktop analytics */}
+      <div className="hidden lg:block">
+        {/* Full Dashboard for Admin */}
+        {!isRestrictedRole && stats && (
+          <>
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <MetricCard
+                title="Total Revenue"
+                value={`Rs ${stats.totalRevenue.toLocaleString()}`}
+                change={stats.revenueChange}
+                changeType={stats.revenueChange.startsWith('+') ? "positive" : "negative"}
+                icon={DollarSign}
+                variant="primary"
+              />
+              <MetricCard
+                title="Active Invoices"
+                value={stats.activeInvoices.toString()}
+                change={stats.invoiceChange}
+                changeType="positive"
+                icon={FileText}
+                variant="success"
+              />
+              <MetricCard
+                title="Products in Stock"
+                value={stats.productsInStock.toLocaleString()}
+                change={stats.stockChange || "pairs"}
+                changeType="neutral"
+                icon={Package}
+                variant="warning"
+              />
+              <MetricCard
+                title="Active Clients"
+                value={stats.activeClients.toString()}
+                change={stats.clientChange}
+                changeType="positive"
+                icon={Users}
+                variant="default"
+              />
             </div>
-            <div>
-              <LowStockAlert items={lowStockProducts} />
-            </div>
-          </div>
 
-          {/* Recent Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RecentInvoices invoices={recentInvoices} />
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-card rounded-xl p-6 shadow-card"
-            >
-              <h3 className="text-lg font-semibold text-foreground mb-6">
-                Quick Stats
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-lg bg-success/5 border border-success/10">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <TrendingUp className="w-5 h-5 text-success shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">Paid This Month</p>
-                      <p className="text-xs text-muted-foreground hidden sm:block">Collected revenue</p>
-                    </div>
-                  </div>
-                  <span className="text-base sm:text-xl font-bold text-success whitespace-nowrap">Rs {stats.paidThisMonth.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-lg bg-warning/5 border border-warning/10">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <TrendingDown className="w-5 h-5 text-warning shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">Pending</p>
-                      <p className="text-xs text-muted-foreground hidden sm:block">Outstanding</p>
-                    </div>
-                  </div>
-                  <span className="text-base sm:text-xl font-bold text-warning whitespace-nowrap">Rs {stats.pendingPayments.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-lg bg-destructive/5 border border-destructive/10">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <TrendingDown className="w-5 h-5 text-destructive shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">Overdue</p>
-                      <p className="text-xs text-muted-foreground hidden sm:block">Needs follow-up</p>
-                    </div>
-                  </div>
-                  <span className="text-base sm:text-xl font-bold text-destructive whitespace-nowrap">Rs {stats.overdueAmount.toLocaleString()}</span>
-                </div>
+            {/* Charts and Tables */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <SalesChart data={monthlySales} />
               </div>
-            </motion.div>
-          </div>
-        </>
-      )}
+              <div>
+                <LowStockAlert items={lowStockProducts} />
+              </div>
+            </div>
 
-      {/* Restricted Dashboard for Biller/Cashier */}
-      {isRestrictedRole && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <RecentInvoices invoices={recentInvoices} />
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="bg-card rounded-xl p-6 shadow-card"
+              >
+                <h3 className="text-lg font-semibold text-foreground mb-6">
+                  Quick Stats
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-lg bg-success/5 border border-success/10">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <TrendingUp className="w-5 h-5 text-success shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">Paid This Month</p>
+                        <p className="text-xs text-muted-foreground hidden sm:block">Collected revenue</p>
+                      </div>
+                    </div>
+                    <span className="text-base sm:text-xl font-bold text-success whitespace-nowrap">Rs {stats.paidThisMonth.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-lg bg-warning/5 border border-warning/10">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <TrendingDown className="w-5 h-5 text-warning shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">Pending</p>
+                        <p className="text-xs text-muted-foreground hidden sm:block">Outstanding</p>
+                      </div>
+                    </div>
+                    <span className="text-base sm:text-xl font-bold text-warning whitespace-nowrap">Rs {stats.pendingPayments.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-lg bg-destructive/5 border border-destructive/10">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <TrendingDown className="w-5 h-5 text-destructive shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">Overdue</p>
+                        <p className="text-xs text-muted-foreground hidden sm:block">Needs follow-up</p>
+                      </div>
+                    </div>
+                    <span className="text-base sm:text-xl font-bold text-destructive whitespace-nowrap">Rs {stats.overdueAmount.toLocaleString()}</span>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+
+        {/* Restricted Dashboard for Biller/Cashier */}
+        {isRestrictedRole && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <LowStockAlert items={lowStockProducts} />
+            <RecentInvoices invoices={recentInvoices} />
+          </div>
+        )}
+      </div>
+
+      {/* Mobile low stock alert */}
+      {lowStockProducts.length > 0 && (
+        <div className="lg:hidden">
           <LowStockAlert items={lowStockProducts} />
-          <RecentInvoices invoices={recentInvoices} />
         </div>
       )}
     </div>
