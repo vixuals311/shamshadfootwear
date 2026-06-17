@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { generateBrandedPrintPage, openPrintWindow, type PaperSize } from "@/utils/printUtils";
 import { getPrintDefault } from "@/utils/printPreferences";
 import { PrintButton } from "@/components/common/PrintButton";
+import { promptAutoPrint } from "@/utils/autoPrint";
+import { generatePaymentReceiptHTML } from "@/utils/printUtils";
 import { motion } from "framer-motion";
 import {
   Search,
