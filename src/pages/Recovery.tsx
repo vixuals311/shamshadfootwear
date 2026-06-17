@@ -120,6 +120,7 @@ interface SortableCityItem {
 const RecoveryPage = () => {
   const { toast } = useToast();
   const { log } = useAuditLog();
+  const promptAutoPrint = useAutoPrintModalPrompt();
   const { drafts, saveDraft, deleteDraft, getDraftForCityDate } = useRecoveryDrafts();
   const [clients, setClients] = useState<Client[]>([]);
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
