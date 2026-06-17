@@ -209,7 +209,7 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
       promptAutoPrint(
         "paymentReceipt",
         "Recovery saved",
-        `Rs ${amount.toLocaleString()} • ${form.clientName}`,
+        `Rs ${amount.toLocaleString()} • ${form.clientName} (Previous: Rs ${previousBalance.toLocaleString()} | Remaining: Rs ${(previousBalance - amount).toLocaleString()})`,
         () => receiptHtml,
       );
     } catch (error: any) {
