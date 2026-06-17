@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   ReactNode,
+  useRef,
 } from "react";
 import {
   Dialog,
@@ -20,7 +21,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Printer, X, CheckCircle2 } from "lucide-react";
+import { Printer, X, CheckCircle2, Download } from "lucide-react";
+import { toPng } from "html-to-image";
+import { useToast } from "@/hooks/use-toast";
 import { shouldAutoPrint, type AutoPrintDocType } from "@/utils/printPreferences";
 
 export interface AutoPrintDetailRow {
@@ -56,6 +59,8 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
     details: [],
     buildHtml: null,
   });
+  const captureRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const prompt = useCallback(
     (title: string, description: string, details: AutoPrintDetailRow[], buildHtml: () => string) => {
@@ -79,6 +84,48 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
   const handleSkip = useCallback(() => {
     setState((prev) => ({ ...prev, open: false }));
   }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!captureRef.current) return;
+    try {
+      const dataUrl = await toPng(captureRef.current, {
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+        cacheBust: true,
+      });
+      const safeTitle = state.title.replace(/[^a-z0-9]+/gi, "_").toLowerCase() || "receipt";
+      const filename = `${safeTitle}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.png`;
+
+      // Try native share-to-gallery on mobile (PWAs/Android can save to Photos).
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: "image/png" });
+        const nav: any = navigator;
+        if (nav.canShare && nav.canShare({ files: [file] })) {
+          await nav.share({ files: [file], title: state.title });
+          toast({ title: "Saved", description: "Receipt shared. Choose 'Save to Photos' or 'Download'." });
+          return;
+        }
+      } catch {
+        // fall through to download
+      }
+
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ title: "Saved", description: "Receipt image downloaded to your device." });
+    } catch (err: any) {
+      toast({
+        title: "Save failed",
+        description: err?.message || "Could not save image.",
+        variant: "destructive",
+      });
+    }
+  }, [state.title, toast]);
 
   const hasDetails = state.details.length > 0;
 
@@ -104,8 +151,16 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
           </DialogHeader>
 
           {hasDetails && (
-            <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
-
+            <div
+              ref={captureRef}
+              className="rounded-lg border border-border bg-background overflow-hidden p-4"
+            >
+              <div className="text-center mb-3">
+                <p className="text-base font-semibold text-foreground">{state.title}</p>
+                {state.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{state.description}</p>
+                )}
+              </div>
               <Table>
                 <TableBody>
                   {state.details.map((row, index) => (
@@ -127,6 +182,9 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
                   ))}
                 </TableBody>
               </Table>
+              <p className="text-[10px] text-muted-foreground text-center mt-3">
+                {new Date().toLocaleString()}
+              </p>
             </div>
           )}
 
@@ -139,6 +197,16 @@ export function AutoPrintModalProvider({ children }: { children: ReactNode }) {
               <X className="w-4 h-4 mr-2" />
               Skip
             </Button>
+            {hasDetails && (
+              <Button
+                variant="secondary"
+                onClick={handleSave}
+                className="w-full sm:w-auto"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Save
+              </Button>
+            )}
             <Button
               onClick={handlePrint}
               className="w-full sm:w-auto"
