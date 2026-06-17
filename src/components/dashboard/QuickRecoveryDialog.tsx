@@ -70,6 +70,7 @@ interface QuickRecoveryDialogProps {
 export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogProps) {
   const { toast } = useToast();
   const { log } = useAuditLog();
+  const promptAutoPrint = useAutoPrintModalPrompt();
   const [mode, setMode] = useState<"individual" | "city">("individual");
   const [clients, setClients] = useState<Client[]>([]);
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
