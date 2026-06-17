@@ -65,6 +65,7 @@ export function generatePaymentReceiptHTML(opts: {
   notes?: string | null;
   date?: Date;
   paperSize?: PaperSize;
+  previousBalance?: number;
 }): string {
   const {
     receiptNo,
@@ -74,6 +75,7 @@ export function generatePaymentReceiptHTML(opts: {
     notes,
     date = new Date(),
     paperSize = "A4",
+    previousBalance,
   } = opts;
 
   const isSlip = paperSize === "slip80";
@@ -117,6 +119,12 @@ export function generatePaymentReceiptHTML(opts: {
   <div class="row"><span class="label">Received From</span><span><strong>${clientName}</strong></span></div>
   ${account ? `<div class="row"><span class="label">Account</span><span>${account}</span></div>` : ""}
   <div class="amount-box">Rs ${amount.toLocaleString()}</div>
+  ${
+    typeof previousBalance === "number"
+      ? `<div class="row"><span class="label">Previous Balance</span><span>Rs ${previousBalance.toLocaleString()}</span></div>
+         <div class="row"><span class="label">Remaining Balance</span><span><strong>Rs ${(previousBalance - amount).toLocaleString()}</strong></span></div>`
+      : ""
+  }
   ${notes ? `<div class="row"><span class="label">Notes</span><span>${notes}</span></div>` : ""}
   <div class="footer">Thank you for your payment.</div>
   <script>window.print();</script>
