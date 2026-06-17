@@ -210,7 +210,8 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
       promptAutoPrint(
         "paymentReceipt",
         "Recovery saved",
-        "",
+        "Payment recorded. Review the details before printing.",
+
         () => receiptHtml,
         [
           { label: "Client", value: form.clientName },

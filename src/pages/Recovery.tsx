@@ -773,7 +773,8 @@ const RecoveryPage = () => {
         promptAutoPrint(
           "paymentReceipt",
           "Recovery saved",
-          "",
+          "Payment recorded. Review the details before printing.",
+
           () => paymentReceiptPrompt!.receiptHtml,
           [
             { label: "Client", value: paymentReceiptPrompt.clientName },
