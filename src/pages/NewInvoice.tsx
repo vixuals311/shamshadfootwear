@@ -115,6 +115,7 @@ const NewInvoice = () => {
   const isEditMode = !!invoiceId;
   const { toast } = useToast();
   const { log } = useAuditLog();
+  const promptAutoPrint = useAutoPrintModalPrompt();
   const { sortBySizeRangeOrder, getSizeRangeSortIndex } = useDefaultSizeRanges();
   const sortBySizeRangeOrderRef = useRef(sortBySizeRangeOrder);
   sortBySizeRangeOrderRef.current = sortBySizeRangeOrder;
