@@ -25,7 +25,17 @@ const BACKUP_TABLES = [
   "application_settings",
 ];
 
-const MAX_BACKUPS = 7;
+// Tiered retention
+const MAX_DAILY = 30;    // ~1 month of daily snapshots
+const MAX_WEEKLY = 12;   // ~3 months of weekly snapshots
+const MAX_MONTHLY = 12;  // ~1 year of monthly snapshots
+
+function pruneByPrefix(files: { name: string }[], prefix: string, keep: number): string[] {
+  const matching = files
+    .filter((f) => f.name.startsWith(prefix))
+    .sort((a, b) => b.name.localeCompare(a.name)); // newest first by name (ISO date in name)
+  return matching.slice(keep).map((f) => f.name);
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -71,34 +81,53 @@ serve(async (req) => {
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = now.toISOString().slice(11, 16).replace(":", "");
-    const fileName = `backup_${dateStr}_${timeStr}.json`;
+    // Always write a daily snapshot. Additionally write a weekly snapshot on Sundays
+    // and a monthly snapshot on the 1st of the month.
+    const dayOfWeek = now.getUTCDay();   // 0 = Sunday
+    const dayOfMonth = now.getUTCDate(); // 1..31
+    const tiers: { prefix: "daily" | "weekly" | "monthly"; fileName: string }[] = [
+      { prefix: "daily", fileName: `daily_${dateStr}_${timeStr}.json` },
+    ];
+    if (dayOfWeek === 0) {
+      tiers.push({ prefix: "weekly", fileName: `weekly_${dateStr}.json` });
+    }
+    if (dayOfMonth === 1) {
+      tiers.push({ prefix: "monthly", fileName: `monthly_${dateStr.slice(0, 7)}.json` });
+    }
 
     const jsonContent = JSON.stringify({
-      version: "1.0",
+      version: "1.1",
       exported_at: now.toISOString(),
       type: "automated",
       tables: backup,
     });
+    const blob = new Blob([jsonContent], { type: "application/json" });
 
-    // 2. Upload to storage
-    const { error: uploadError } = await supabase.storage
-      .from("backups")
-      .upload(fileName, new Blob([jsonContent], { type: "application/json" }), {
-        contentType: "application/json",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      throw new Error(`Upload failed: ${uploadError.message}`);
+    // 2. Upload each tier
+    const uploadedFiles: string[] = [];
+    for (const tier of tiers) {
+      const { error: uploadError } = await supabase.storage
+        .from("backups")
+        .upload(tier.fileName, blob, { contentType: "application/json", upsert: true });
+      if (uploadError) {
+        throw new Error(`Upload failed for ${tier.fileName}: ${uploadError.message}`);
+      }
+      uploadedFiles.push(tier.fileName);
     }
+    const fileName = uploadedFiles[0];
 
-    // 3. Clean up old backups (keep only last MAX_BACKUPS)
+    // 3. Tiered cleanup. Treat legacy "backup_" files as daily for pruning.
     const { data: files } = await supabase.storage
       .from("backups")
-      .list("", { sortBy: { column: "created_at", order: "desc" } });
+      .list("", { limit: 1000, sortBy: { column: "name", order: "desc" } });
 
-    if (files && files.length > MAX_BACKUPS) {
-      const toDelete = files.slice(MAX_BACKUPS).map((f) => f.name);
+    if (files && files.length > 0) {
+      const toDelete: string[] = [
+        ...pruneByPrefix(files, "daily_", MAX_DAILY),
+        ...pruneByPrefix(files, "weekly_", MAX_WEEKLY),
+        ...pruneByPrefix(files, "monthly_", MAX_MONTHLY),
+        ...pruneByPrefix(files, "backup_", MAX_DAILY), // legacy filenames
+      ];
       if (toDelete.length > 0) {
         await supabase.storage.from("backups").remove(toDelete);
       }
@@ -116,10 +145,13 @@ serve(async (req) => {
       .in("role", ["admin", "manager"]);
 
     if (roleUsers && roleUsers.length > 0) {
+      const tierLabel = uploadedFiles.length > 1
+        ? ` (${uploadedFiles.map((f) => f.split("_")[0]).join(" + ")})`
+        : "";
       const notifications = roleUsers.map((ru) => ({
         user_id: ru.user_id,
         title: "Daily Backup Ready",
-        message: `Automated backup completed — ${totalRows} records across ${BACKUP_TABLES.length} tables (${sizeKB} KB). [file:${fileName}]`,
+        message: `Automated backup completed${tierLabel} — ${totalRows} records across ${BACKUP_TABLES.length} tables (${sizeKB} KB). [file:${fileName}]`,
         type: "backup",
       }));
 
@@ -133,6 +165,7 @@ serve(async (req) => {
       details: {
         type: "automated_backup",
         file_name: fileName,
+        files: uploadedFiles,
         tables: BACKUP_TABLES.length,
         total_rows: totalRows,
         size_kb: sizeKB,
@@ -143,6 +176,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         file_name: fileName,
+        files: uploadedFiles,
         total_rows: totalRows,
         size_kb: sizeKB,
       }),
