@@ -203,6 +203,7 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
         account: acctName,
         notes: form.notes || null,
         paperSize: getPrintDefault("paymentReceipt"),
+        previousBalance: clients.find((c) => c.id === form.clientId)?.currentBalance,
       });
       promptAutoPrint(
         "paymentReceipt",
