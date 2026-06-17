@@ -1,5 +1,13 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, deleteDoc, collection, writeBatch } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  deleteDoc,
+  collection,
+  writeBatch,
+  getDocs,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCyFdzaTM2hPbUypss-WXbCqOo-NA4Y_HY",
@@ -66,4 +74,13 @@ export async function updateSyncMetadata(tableName: string) {
   } catch (err) {
     console.error(`[Firebase] Failed to update metadata for ${tableName}:`, err);
   }
+}
+
+// Read a full table snapshot from Firestore (used during Cloud outage failover)
+export async function readTableFromFirebase(tableName: string): Promise<any[]> {
+  const colRef = collection(firebaseDb, "tables", tableName, "records");
+  const snap = await getDocs(colRef);
+  const rows: any[] = [];
+  snap.forEach((d) => rows.push(d.data()));
+  return rows;
 }
