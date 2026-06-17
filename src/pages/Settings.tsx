@@ -1288,6 +1288,49 @@ const Settings = () => {
             </div>
           ))}
         </div>
+
+        <Separator className="my-6" />
+
+        {/* Auto-print on save (POS behaviour) */}
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-foreground">Auto-print on save</h4>
+            <p className="text-sm text-muted-foreground">
+              After a record is saved, show a Print prompt so you can send it straight to the printer.
+              The master switch overrides the per-document toggles below.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
+            <div>
+              <Label htmlFor="auto-print-master" className="text-base">Auto-print on save (master)</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                When off, nothing auto-prints — even if document toggles are on.
+              </p>
+            </div>
+            <Switch
+              id="auto-print-master"
+              checked={autoPrint.enabled}
+              onCheckedChange={handleToggleAutoPrintGlobal}
+            />
+          </div>
+
+          <div className={`space-y-3 pl-2 ${autoPrint.enabled ? "" : "opacity-50 pointer-events-none"}`}>
+            {(Object.keys(AUTO_PRINT_LABELS) as AutoPrintDocType[]).map((doc) => (
+              <div key={doc} className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
+                <Label htmlFor={`auto-print-${doc}`} className="text-sm font-medium">
+                  {AUTO_PRINT_LABELS[doc]}
+                </Label>
+                <Switch
+                  id={`auto-print-${doc}`}
+                  checked={autoPrint.perDoc[doc]}
+                  onCheckedChange={(v) => handleToggleAutoPrintDoc(doc, v)}
+                  disabled={!autoPrint.enabled}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       </motion.div>
 
       {/* Business Section - Admin Only */}
