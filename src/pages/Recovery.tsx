@@ -553,6 +553,7 @@ const RecoveryPage = () => {
       clientName: string;
       receiptHtml: string;
       previousBalance?: number;
+      account?: string | null;
     } | null = null;
 
     try {
