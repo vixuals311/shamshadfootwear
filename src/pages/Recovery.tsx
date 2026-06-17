@@ -550,6 +550,8 @@ const RecoveryPage = () => {
     let paymentReceiptPrompt: {
       amount: number;
       clientName: string;
+      account: string | null;
+      notes: string;
       receiptHtml: string;
       previousBalance?: number;
     } | null = null;
@@ -619,6 +621,8 @@ const RecoveryPage = () => {
         paymentReceiptPrompt = {
           amount: amt,
           clientName: clientRecovery.clientName,
+          account: acctName,
+          notes: clientRecovery.notes || "",
           previousBalance,
           receiptHtml: generatePaymentReceiptHTML({
             clientName: clientRecovery.clientName,
@@ -631,6 +635,7 @@ const RecoveryPage = () => {
         };
 
         setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "", accountId: "" });
+
       } else {
         if (!cityRecoveryCity) return;
 
