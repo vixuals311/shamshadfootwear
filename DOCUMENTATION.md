@@ -1,4 +1,4 @@
-# Shamshad Footwear — Application Documentation
+# Bilal Traders — Application Documentation
 
 > **Comprehensive Use Case & Feature Reference**
 > Version 1.1 | Last Updated: April 2026
@@ -34,7 +34,7 @@
 
 ## 1. Overview
 
-Shamshad Footwear is a **wholesale footwear business management system** built as a Progressive Web Application (PWA). It manages the complete business lifecycle including inventory tracking, client management, invoicing, payments, debt recovery, returns, and reporting.
+Bilal Traders is a **wholesale footwear business management system** built as a Progressive Web Application (PWA). It manages the complete business lifecycle including inventory tracking, client management, invoicing, payments, debt recovery, returns, and reporting.
 
 ### Key Business Concepts
 - **Products** are footwear items organized by brand, article number, gender category, and size bundles
@@ -374,7 +374,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 - **Flow:**
   1. Click Printer icon on an invoice row (or from view dialog)
   2. New browser window opens with branded print layout:
-     - **Header:** Company logo, "Shamshad Footwear", "Wholesale Supplier", phone numbers, address
+     - **Header:** Company logo, "Bilal Traders", "Wholesale Supplier", phone numbers, address
      - **Client Info:** Bill To name and city
      - **Items Table:** #, Product, Article, Size, Qty, Pairs, Rate, Discount, Total
      - **Totals:** Subtotal, Discount, Tax, Total, Received, Balance Due
@@ -735,7 +735,7 @@ Shamshad Footwear is a **wholesale footwear business management system** built a
 ### 16.1 Company Branding
 - **Logo:** 512×512px PNG used across the app
 - **Color Theme:** Warm beige (`#F0E8D8`) and charcoal (`#3D3D3D`)
-- **Company Name:** Shamshad Footwear
+- **Company Name:** Bilal Traders
 - **Tagline:** Wholesale Supplier
 - **Contact:** 0315-7162093 | 0305-5388093
 - **Address:** Faisalabad Road, Chowk Azam, Layyah

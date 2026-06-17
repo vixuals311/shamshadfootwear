@@ -415,7 +415,7 @@ const Invoices = () => {
       <style>${styles}</style></head><body>
         <div class="header">
           <div>
-            <h2>Shamshad Footwear</h2>
+            <h2>Bilal Traders</h2>
             <div class="tagline">Wholesale Supplier</div>
             <div class="contact">0315-7162093 | 0305-5388093</div>
             <div class="contact">Faisalabad Road, Chowk Azam, Layyah</div>

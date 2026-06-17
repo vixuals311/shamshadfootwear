@@ -76,7 +76,7 @@ export function InstallPrompt() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-foreground text-sm">
-              Install Shamshad Footwear
+              Install Bilal Traders
             </p>
             {showIosGuide ? (
               <div className="mt-1">

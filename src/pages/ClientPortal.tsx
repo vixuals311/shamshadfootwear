@@ -251,8 +251,8 @@ const ClientPortal = () => {
         >
           <div className="bg-card rounded-2xl p-8 shadow-lg border border-border">
             <div className="text-center mb-8">
-              <img src={logoImg} alt="Shamshad Footwear" className="w-20 h-20 rounded-2xl mx-auto mb-4 object-contain" />
-              <h1 className="text-2xl font-bold text-foreground">Shamshad Footwear</h1>
+              <img src={logoImg} alt="Bilal Traders" className="w-20 h-20 rounded-2xl mx-auto mb-4 object-contain" />
+              <h1 className="text-2xl font-bold text-foreground">Bilal Traders</h1>
               <p className="text-sm text-muted-foreground mt-1">Client Portal</p>
               <p className="text-xs text-muted-foreground mt-1">
                 View your bills and payment history
@@ -322,9 +322,9 @@ const ClientPortal = () => {
       <div className="bg-card border-b border-border sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logoImg} alt="Shamshad Footwear" className="w-10 h-10 rounded-lg object-contain" />
+            <img src={logoImg} alt="Bilal Traders" className="w-10 h-10 rounded-lg object-contain" />
             <div>
-              <h1 className="text-lg font-bold text-foreground">Shamshad Footwear</h1>
+              <h1 className="text-lg font-bold text-foreground">Bilal Traders</h1>
               <p className="text-xs text-muted-foreground">{currentClient.name} • {currentClient.city}</p>
             </div>
           </div>

@@ -63,8 +63,8 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
           >
             <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
               <div className="flex items-center gap-3">
-                <img src={logo} alt="Shamshad Footwear" className="w-8 h-8 object-contain rounded" />
-                <span className="text-sidebar-foreground font-semibold text-lg">Shamshad Footwear</span>
+                <img src={logo} alt="Bilal Traders" className="w-8 h-8 object-contain rounded" />
+                <span className="text-sidebar-foreground font-semibold text-lg">Bilal Traders</span>
               </div>
               <button onClick={onClose} className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors">
                 <X className="w-5 h-5" />

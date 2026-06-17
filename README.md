@@ -1,6 +1,6 @@
-# Shamshad Footwear — Business Management System
+# Bilal Traders — Business Management System
 
-A wholesale footwear business management PWA for **Shamshad Footwear**, Chowk Azam, Layyah.
+A wholesale footwear business management PWA for **Bilal Traders**, Chowk Azam, Layyah.
 
 **Live App:** [shamshadfootwear.lovable.app](https://shamshadfootwear.lovable.app)
 

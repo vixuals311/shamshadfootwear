@@ -51,8 +51,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <motion.div initial={false} animate={{
         opacity: collapsed ? 0 : 1
       }} className="flex items-center gap-3 overflow-hidden">
-          <img src={logo} alt="Shamshad Footwear" className="w-8 h-8 object-contain rounded" />
-          {!collapsed && <span className="text-sidebar-foreground font-semibold text-lg whitespace-nowrap">Shamshad Footwear</span>}
+          <img src={logo} alt="Bilal Traders" className="w-8 h-8 object-contain rounded" />
+          {!collapsed && <span className="text-sidebar-foreground font-semibold text-lg whitespace-nowrap">Bilal Traders</span>}
         </motion.div>
         <button onClick={onToggle} className="p-1.5 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors">
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
