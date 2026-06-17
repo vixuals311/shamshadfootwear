@@ -774,7 +774,6 @@ const RecoveryPage = () => {
           "paymentReceipt",
           "Recovery saved",
           "Payment recorded. Review the details before printing.",
-
           () => paymentReceiptPrompt!.receiptHtml,
           [
             { label: "Client", value: paymentReceiptPrompt.clientName },
@@ -785,6 +784,7 @@ const RecoveryPage = () => {
             ...(paymentReceiptPrompt.notes ? [{ label: "Notes", value: paymentReceiptPrompt.notes }] : []),
           ]
         );
+
       }
 
 
