@@ -66,6 +66,7 @@ import { useAuditLog } from "@/hooks/useAuditLog";
 import type { PaperSize } from "@/utils/printUtils";
 import { getPrintDefault } from "@/utils/printPreferences";
 import { PrintButton } from "@/components/common/PrintButton";
+import { promptAutoPrint } from "@/utils/autoPrint";
 import { useDefaultSizeRanges } from "@/hooks/useDefaultSizeRanges";
 import { format } from "date-fns";
 
@@ -626,6 +627,18 @@ const NewInvoice = () => {
           ? `Invoice ${invoiceNumber} updated successfully`
           : (status === "draft" ? "Invoice saved as draft" : `Invoice ${invoiceNumber} created successfully`),
       });
+
+      // Auto-print prompt (POS): only for newly created, finalized invoices.
+      if (!isEditMode && status !== "draft") {
+        const snapshotHtml = generatePrintContent(getPrintDefault("invoice"));
+        promptAutoPrint(
+          "invoice",
+          `Invoice ${invoiceNumber} saved`,
+          `Rs ${calculations.total.toLocaleString()} • ${selectedClient.name}`,
+          () => snapshotHtml,
+        );
+      }
+
       navigate("/invoices");
     } catch (error: any) {
       console.error("Error saving invoice:", error);

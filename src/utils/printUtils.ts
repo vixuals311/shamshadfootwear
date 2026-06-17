@@ -53,6 +53,76 @@ export function openPrintWindow(html: string) {
   }
 }
 
+/**
+ * Build a self-contained HTML page for a payment / recovery receipt.
+ * Renders nicely on both 80mm thermal slips and full A4 sheets.
+ */
+export function generatePaymentReceiptHTML(opts: {
+  receiptNo?: string;
+  clientName: string;
+  amount: number;
+  account?: string | null;
+  notes?: string | null;
+  date?: Date;
+  paperSize?: PaperSize;
+}): string {
+  const {
+    receiptNo,
+    clientName,
+    amount,
+    account,
+    notes,
+    date = new Date(),
+    paperSize = "A4",
+  } = opts;
+
+  const isSlip = paperSize === "slip80";
+  const styles = isSlip
+    ? `@page { size: 80mm auto; margin: 3mm; }
+       * { box-sizing: border-box; margin: 0; padding: 0; }
+       body { font-family: Arial, sans-serif; padding: 2mm; width: 74mm; font-size: 11px; color: #000; }
+       .header { text-align: center; padding-bottom: 4px; border-bottom: 1px dashed #000; margin-bottom: 6px; }
+       .header .biz { font-weight: 700; font-size: 13px; }
+       .header .tag { font-size: 9px; }
+       .doc-title { text-align: center; font-weight: 700; font-size: 13px; margin: 4px 0; }
+       .row { display: flex; justify-content: space-between; margin: 2px 0; }
+       .row .label { color: #333; }
+       .amount-box { text-align: center; border: 2px solid #000; padding: 6px; margin: 6px 0; font-size: 16px; font-weight: 700; }
+       .footer { text-align: center; margin-top: 8px; padding-top: 4px; border-top: 1px dashed #000; font-size: 9px; }
+       @media print { button { display: none; } }`
+    : `@page { size: A4; margin: 15mm; }
+       * { box-sizing: border-box; margin: 0; padding: 0; }
+       body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; max-width: 700px; margin: 0 auto; color: #1a1a1a; }
+       .header { text-align: center; padding-bottom: 12px; border-bottom: 2px solid #333; margin-bottom: 20px; }
+       .header .biz { font-weight: 700; font-size: 22px; }
+       .header .tag { font-size: 12px; color: #555; }
+       .doc-title { text-align: center; font-size: 18px; font-weight: 700; margin: 14px 0; letter-spacing: 1px; }
+       .row { display: flex; justify-content: space-between; margin: 6px 0; font-size: 14px; }
+       .row .label { color: #555; }
+       .amount-box { text-align: center; border: 2px solid #333; padding: 18px; margin: 18px 0; font-size: 22px; font-weight: 700; }
+       .footer { text-align: center; margin-top: 30px; padding-top: 10px; border-top: 1px dashed #999; font-size: 11px; color: #666; }
+       @media print { button { display: none; } }`;
+
+  return `<!DOCTYPE html><html><head><title>Receipt ${receiptNo || ""}</title>
+<style>${styles}</style></head><body>
+  <div class="header">
+    <div class="biz">BILAL TRADERS</div>
+    <div class="tag">Wholesale Supplier</div>
+    <div class="tag">Faisalabad Road, Chowk Azam, Layyah</div>
+    <div class="tag">0315-7162093 | 0305-5388093</div>
+  </div>
+  <div class="doc-title">PAYMENT RECEIPT</div>
+  ${receiptNo ? `<div class="row"><span class="label">Receipt #</span><span>${receiptNo}</span></div>` : ""}
+  <div class="row"><span class="label">Date</span><span>${format(date, "dd MMM yyyy, hh:mm a")}</span></div>
+  <div class="row"><span class="label">Received From</span><span><strong>${clientName}</strong></span></div>
+  ${account ? `<div class="row"><span class="label">Account</span><span>${account}</span></div>` : ""}
+  <div class="amount-box">Rs ${amount.toLocaleString()}</div>
+  ${notes ? `<div class="row"><span class="label">Notes</span><span>${notes}</span></div>` : ""}
+  <div class="footer">Thank you for your payment.</div>
+  <script>window.print();</script>
+</body></html>`;
+}
+
 const a4Styles = `
   @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }

@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Search, Loader2, User, MapPin } from "lucide-react";
+import { generatePaymentReceiptHTML } from "@/utils/printUtils";
+import { getPrintDefault } from "@/utils/printPreferences";
+import { promptAutoPrint } from "@/utils/autoPrint";
 import {
   Dialog,
   DialogContent,
@@ -184,6 +187,25 @@ export function QuickRecoveryDialog({ open, onOpenChange }: QuickRecoveryDialogP
 
       await log({ action: "create", entityType: "recovery", entityId: form.clientId, details: { clientName: form.clientName, amount, type: "client" } });
       toast({ title: "Success", description: `Recovery of Rs ${amount.toLocaleString()} added for ${form.clientName}` });
+
+      // Auto-print payment receipt prompt (individual recoveries only).
+      const acctName = form.accountId
+        ? (paymentAccounts.find((a) => a.id === form.accountId)?.name || null)
+        : "Cash";
+      const receiptHtml = generatePaymentReceiptHTML({
+        clientName: form.clientName,
+        amount,
+        account: acctName,
+        notes: form.notes || null,
+        paperSize: getPrintDefault("paymentReceipt"),
+      });
+      promptAutoPrint(
+        "paymentReceipt",
+        "Recovery saved",
+        `Rs ${amount.toLocaleString()} • ${form.clientName}`,
+        () => receiptHtml,
+      );
+
       resetForm();
       onOpenChange(false);
     } catch (error: any) {

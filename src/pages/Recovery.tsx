@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { generateBrandedPrintPage, openPrintWindow, type PaperSize } from "@/utils/printUtils";
 import { getPrintDefault } from "@/utils/printPreferences";
 import { PrintButton } from "@/components/common/PrintButton";
+import { promptAutoPrint } from "@/utils/autoPrint";
+import { generatePaymentReceiptHTML } from "@/utils/printUtils";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -596,6 +598,26 @@ const RecoveryPage = () => {
           title: onlineSaved ? "Success" : "Queued for sync",
           description: onlineSaved ? "Client recovery added" : "Recovery saved offline and will sync when back online.",
         });
+
+        // Auto-print payment receipt prompt (individual recoveries only).
+        const amt = parseFloat(clientRecovery.amount);
+        const acctName = clientRecovery.accountId
+          ? (paymentAccounts.find((a) => a.id === clientRecovery.accountId)?.name || null)
+          : "Cash";
+        const receiptHtml = generatePaymentReceiptHTML({
+          clientName: clientRecovery.clientName,
+          amount: amt,
+          account: acctName,
+          notes: clientRecovery.notes || null,
+          paperSize: getPrintDefault("paymentReceipt"),
+        });
+        promptAutoPrint(
+          "paymentReceipt",
+          "Recovery saved",
+          `Rs ${amt.toLocaleString()} • ${clientRecovery.clientName}`,
+          () => receiptHtml,
+        );
+
         setClientRecovery({ clientId: "", clientName: "", amount: "", notes: "", accountId: "" });
       } else {
         if (!cityRecoveryCity) return;

@@ -67,3 +67,72 @@ export const PAPER_SIZE_LABELS: Record<PaperSize, string> = {
   A4: "A4 (full page)",
   slip80: "Slip 80mm (thermal)",
 };
+
+// ─────────────────────────────────────────────────────────────
+// Auto-print on save (POS behaviour)
+// ─────────────────────────────────────────────────────────────
+
+export type AutoPrintDocType = "invoice" | "paymentReceipt";
+
+export const AUTO_PRINT_LABELS: Record<AutoPrintDocType, string> = {
+  invoice: "New Invoices",
+  paymentReceipt: "Payment Receipts",
+};
+
+interface AutoPrintState {
+  enabled: boolean; // global master switch
+  perDoc: Record<AutoPrintDocType, boolean>;
+}
+
+const AUTO_PRINT_KEY = "shamshad.autoPrint.v1";
+
+const AUTO_PRINT_DEFAULTS: AutoPrintState = {
+  enabled: true,
+  perDoc: { invoice: true, paymentReceipt: true },
+};
+
+function readAutoPrint(): AutoPrintState {
+  if (typeof window === "undefined") return { ...AUTO_PRINT_DEFAULTS, perDoc: { ...AUTO_PRINT_DEFAULTS.perDoc } };
+  try {
+    const raw = window.localStorage.getItem(AUTO_PRINT_KEY);
+    if (!raw) return { ...AUTO_PRINT_DEFAULTS, perDoc: { ...AUTO_PRINT_DEFAULTS.perDoc } };
+    const parsed = JSON.parse(raw) as Partial<AutoPrintState>;
+    return {
+      enabled: parsed.enabled ?? AUTO_PRINT_DEFAULTS.enabled,
+      perDoc: { ...AUTO_PRINT_DEFAULTS.perDoc, ...(parsed.perDoc || {}) },
+    };
+  } catch {
+    return { ...AUTO_PRINT_DEFAULTS, perDoc: { ...AUTO_PRINT_DEFAULTS.perDoc } };
+  }
+}
+
+function writeAutoPrint(state: AutoPrintState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(AUTO_PRINT_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getAutoPrintState(): AutoPrintState {
+  return readAutoPrint();
+}
+
+export function setAutoPrintGlobal(enabled: boolean) {
+  const s = readAutoPrint();
+  s.enabled = enabled;
+  writeAutoPrint(s);
+}
+
+export function setAutoPrintFor(doc: AutoPrintDocType, enabled: boolean) {
+  const s = readAutoPrint();
+  s.perDoc[doc] = enabled;
+  writeAutoPrint(s);
+}
+
+/** Master AND per-doc both have to be ON. */
+export function shouldAutoPrint(doc: AutoPrintDocType): boolean {
+  const s = readAutoPrint();
+  return s.enabled && s.perDoc[doc];
+}
