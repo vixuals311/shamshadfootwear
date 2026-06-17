@@ -9,6 +9,8 @@ import { useSupabaseAuthContext } from "@/context/SupabaseAuthContext";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebaseSync } from "@/hooks/useFirebaseSync";
+import { useCloudOutageFailover } from "@/hooks/useCloudOutageFailover";
+import { CloudOutageBanner } from "./CloudOutageBanner";
 
 export function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -18,6 +20,7 @@ export function AppLayout() {
   const { toast } = useToast();
 
   useFirebaseSync();
+  const outageState = useCloudOutageFailover();
 
   useInactivityTimeout({
     timeoutMinutes: sessionTimeoutMinutes,
@@ -56,6 +59,7 @@ export function AppLayout() {
         }`}
       >
         <Header onMenuClick={() => setMobileSidebarOpen(true)} />
+        <CloudOutageBanner state={outageState} />
         <main className="flex-1 p-4 lg:p-6">
           <AnimatePresence mode="wait">
             <motion.div
