@@ -766,11 +766,15 @@ const RecoveryPage = () => {
 
       // Show the centered print prompt after the add-recovery dialog is closed.
       if (paymentReceiptPrompt) {
-        const prevBalance = paymentReceiptPrompt.previousBalance ?? 0;
         promptAutoPrint(
           "paymentReceipt",
           "Recovery saved",
-          `Rs ${paymentReceiptPrompt.amount.toLocaleString()} • ${paymentReceiptPrompt.clientName} (Previous: Rs ${prevBalance.toLocaleString()} | Remaining: Rs ${(prevBalance - paymentReceiptPrompt.amount).toLocaleString()})`,
+          buildPaymentReceiptDescription({
+            clientName: paymentReceiptPrompt.clientName,
+            amount: paymentReceiptPrompt.amount,
+            previousBalance: paymentReceiptPrompt.previousBalance,
+            account: paymentReceiptPrompt.account,
+          }),
           () => paymentReceiptPrompt!.receiptHtml,
         );
       }
